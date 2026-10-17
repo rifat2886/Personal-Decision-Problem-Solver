@@ -1,1 +1,1 @@
-# Personal-Decision-Problem-sol
+# Personal-Decision-Problem-Solver
