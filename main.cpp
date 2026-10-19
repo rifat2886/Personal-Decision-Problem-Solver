@@ -8,7 +8,8 @@
 #include "habit.h"
 #include "report.h"
 #include "problem.h"
-
+#include "history.h"
+#include "control.h"
 using namespace std;
 
 int main() {
