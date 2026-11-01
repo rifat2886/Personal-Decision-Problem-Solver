@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <string>
 
@@ -92,27 +93,28 @@ int main()
     bool running = true;
     string username;
     bool loggedIn = false;
+    bool isAdmin = false;
 
     while (running)
     {
         showMenu();
 
         cout << "Enter your choice: ";
-        choice = getValidatedInteger(0, 34);
+        choice = getValidNumber(0, 34);
 
         switch (choice)
         {
-            // Authentication & Core System
             case 1:
                 registerUser();
                 break;
 
             case 2:
-                if (loginUser())
+                if (loggedIn)
                 {
-                    cout << "Login successful.\n";
-                    cout << "Enter your username for this session: ";
-                    cin >> username;
+                    cout << "You are already logged in.\n";
+                }
+                else if (loginUser(username, isAdmin))
+                {
                     loggedIn = true;
                 }
                 else
@@ -123,7 +125,7 @@ int main()
 
             case 3:
                 if (loggedIn)
-                    showProfile(username);
+                    showProfile(username, isAdmin);
                 else
                     cout << "Please login first.\n";
                 break;
@@ -136,24 +138,33 @@ int main()
                 break;
 
             case 5:
-                adminPanel();
+                if (loggedIn && isAdmin)
+                    adminPanel();
+                else
+                    cout << "Admin access required. Please login as ADMIN.\n";
                 break;
 
             case 6:
-                timeAllocation();
+                if (loggedIn)
+                    timeAllocation();
+                else
+                    cout << "Please login first.\n";
                 break;
 
             case 7:
-                studyPlanner();
+                if (loggedIn)
+                    studyPlanner();
+                else
+                    cout << "Please login first.\n";
                 break;
 
             case 8:
-                logoutUser();
-                loggedIn = false;
-                username.clear();
+                if (loggedIn)
+                    logoutUser(username, isAdmin, loggedIn);
+                else
+                    cout << "You are not logged in.\n";
                 break;
 
-            // Decision & Task Management
             case 9:
                 dailyDecisionMaker();
                 break;
@@ -182,7 +193,6 @@ int main()
                 decisionExplanation();
                 break;
 
-            // Budget, Savings & Habits
             case 16:
                 addTransaction();
                 break;
@@ -231,7 +241,6 @@ int main()
                 exportReportCSV();
                 break;
 
-            // History & File Management
             case 28:
                 searchHistory();
                 break;
@@ -258,6 +267,12 @@ int main()
 
             case 34:
             {
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
+
                 string id;
 
                 cout << "Enter decision ID to delete: ";
@@ -268,12 +283,12 @@ int main()
             }
 
             case 0:
+                if (loggedIn)
+                    logoutUser(username, isAdmin, loggedIn);
+
                 cout << "Thank you for using the system!\n";
                 running = false;
                 break;
-
-            default:
-                cout << "Invalid choice. Please try again.\n";
         }
 
         if (running)
@@ -285,4 +300,4 @@ int main()
     }
 
     return 0;
-} 
+}
