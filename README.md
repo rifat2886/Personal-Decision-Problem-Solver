@@ -1,351 +1,189 @@
-# 🚀 Personal Decision & Problem Solver Suite
+# Personal Decision & Problem Solver
 
-A console-based C++ application that helps users make smarter decisions, manage daily tasks, solve problems, plan studies, track habits, and organize personal activities. The system includes user authentication, activity tracking, and an admin panel.
+A C++ based application designed to help users make better daily decisions, manage tasks, organize time, track expenses, and build productive habits.
 
----
+## Project Overview
 
-## 📖 Overview
+**Personal Decision & Problem Solver** is a team-based Object-Oriented Programming (OOP) project. It provides several tools for personal planning and decision-making through a menu-driven console application.
 
-The **Personal Decision & Problem Solver Suite** is designed to assist students and individuals in making better decisions through a simple menu-driven interface.
+The main goal is to make everyday activities easier by combining decision-making, task management, budgeting, and habit tracking in one system.
 
-Users can:
+## Team Members
 
-- Register and log in
-- Manage daily decisions
-- Prioritize tasks
-- Plan study schedules
-- Track habits
-- Analyze budgets
-- Compare options
-- Solve personal problems
-- View activity history
+| Member | Responsibility |
+|---|---|
+| Rifat | System Core & Authentication |
+| Umma Habiba Nuriya | Logic & Decision Engine |
+| Sweety Akter | Planner & Habit Tracker |
 
----
+## Main Features
 
-## ✨ Features
-
-### 🔐 Authentication System
-
+### 1. Authentication & Core System
 - User Registration
 - User Login
-- Duplicate Username Detection
-- Admin Panel Access
-- Activity Tracking
-- Logout System
+- User Profile
+- Password Change
+- Admin Panel
+- Time Allocation
+- Study Planner
+- Logout
 
-### 🧠 Decision-Making Tools
+### 2. Decision & Task Management
+- Daily Decision Maker
+- Priority Calculator
+- Task Prioritization
+- Compare Options
+- Task Status Manager
+- Deadline Alert
+- Decision Explanation
 
-| No. | Feature |
-|------|----------|
-| 1 | Daily Decision Maker |
-| 2 | Priority Calculator |
-| 3 | Time Allocation |
-| 4 | Budget Decision |
-| 5 | Task Prioritization |
-| 6 | Study Planner |
-| 7 | Habit Decision |
-| 8 | Compare Options |
-| 9 | Problem Solver |
-| 10 | Decision History |
-| 11 | Reports |
-| 12 | Control Panel |
-| 13 | Exit |
+### 3. Budget, Savings & Habits
+- Add Income and Expenses
+- View Transactions
+- Check Balance
+- Add Savings Goals
+- Add Savings Amount
+- View Savings Goals
+- Habit Completion Tracking
+- Weekly Report
+- Monthly Report
+- Export TXT Report
+- Export CSV Report
 
----
+### 4. History & File Management
+- Search Decision History
+- Filter Decisions
+- Sort Decisions by Priority
+- Backup Decisions
+- Restore Decisions
+- Error Log
+- Delete Confirmation
 
-## 🛠 Built With
+## Technologies Used
 
-- C++
-- Standard Template Library (STL)
-- Vector
-- Structures
-- Functions
-- Conditional Statements
-- Loops
+- **Programming Language:** C++
+- **Concepts:** Object-Oriented Programming (OOP)
+- **Compiler:** GCC / G++
+- **Development Environment:** Visual Studio Code
+- **Version Control:** Git & GitHub
+- **Data Storage:** Local File Handling
 
----
+## Project Structure
 
-## 📊 System Flowchart
-
-```mermaid
-flowchart TD
-
-    A([Start Program]) --> B[Main Menu]
-
-    B -->|Login| C[Login User]
-    B -->|Register| D[Register User]
-    B -->|Admin Panel| E[Admin Authentication]
-    B -->|Exit| Z([End Program])
-
-    D --> B
-
-    E --> F{Correct Password?}
-
-    F -->|Yes| G[View Registered Users]
-    F -->|No| H[Access Denied]
-
-    G --> B
-    H --> B
-
-    C --> I{Valid Credentials?}
-
-    I -->|No| B
-    I -->|Yes| J[User Dashboard]
-
-    J --> K[Select Option]
-
-    K -->|1| L[Daily Decision Maker]
-    K -->|2| M[Priority Calculator]
-    K -->|3| N[Time Allocation]
-    K -->|4| O[Budget Decision]
-    K -->|5| P[Task Prioritization]
-    K -->|6| Q[Study Planner]
-    K -->|7| R[Habit Decision]
-    K -->|8| S[Compare Options]
-    K -->|9| T[Problem Solver]
-    K -->|10| U[Decision History]
-    K -->|11| V[Reports]
-    K -->|12| W[Control Panel]
-    K -->|13| X[Logout]
-
-    L --> Y[Save Activity]
-    M --> Y
-    N --> Y
-    O --> Y
-    P --> Y
-    Q --> Y
-    R --> Y
-    S --> Y
-    T --> Y
-
-    Y --> J
-
-    U --> J
-    V --> J
-    W --> J
-
-    X --> B
-```
-
----
-
-## 📂 Project Structure
+The project is organized into separate header (`.h`) and source (`.cpp`) files.
 
 ```text
-Personal-Decision-Solver/
+Personal-Decision-Problem-Solver/
 │
 ├── main.cpp
 ├── README.md
-└── screenshots/
+│
+├── Authentication/
+│   ├── registration.h / registration.cpp
+│   ├── login.h / login.cpp
+│   ├── password_validation.h / password_validation.cpp
+│   ├── profile.h / profile.cpp
+│   ├── password_change.h / password_change.cpp
+│   ├── admin.h / admin.cpp
+│   ├── input_validation.h / input_validation.cpp
+│   ├── logout.h / logout.cpp
+│
+├── Planning/
+│   ├── time_allocation.h / time_allocation.cpp
+│   ├── study_planner.h / study_planner.cpp
+│
+├── Decision_Management/
+│   ├── daily_decision.h / daily_decision.cpp
+│   ├── priority_calculator.h / priority_calculator.cpp
+│   ├── task_prioritization.h / task_prioritization.cpp
+│   ├── compare_options.h / compare_options.cpp
+│   ├── task_status.h / task_status.cpp
+│   ├── deadline_alert.h / deadline_alert.cpp
+│   ├── decision_explanation.h / decision_explanation.cpp
+│
+├── Budget_and_Habits/
+│   ├── income_expense.h / income_expense.cpp
+│   ├── savings_goal.h / savings_goal.cpp
+│   ├── habit_streak.h / habit_streak.cpp
+│   ├── period_report.h / period_report.cpp
+│   ├── export_report.h / export_report.cpp
+│
+└── History_and_Control/
+    ├── search_history.h / search_history.cpp
+    ├── filter_sort.h / filter_sort.cpp
+    ├── backup_restore.h / backup_restore.cpp
+    ├── error_handler.h / error_handler.cpp
+    └── delete_confirmation.h / delete_confirmation.cpp
 ```
 
----
+*Note: The structure above describes the intended module organization. Some files may currently remain in the repository root directory.*
 
-## 📋 Main Menu
+## How to Run the Project
 
-```text
-===================================
- DECISION & PROBLEM SOLVER SUITE
-===================================
+### Requirements
+- Windows, Linux, or macOS
+- GCC/G++ compiler
+- Visual Studio Code (recommended)
 
-1. Login
-2. Register
-3. Admin Panel
-4. Exit App
-```
-
----
-
-## 📋 User Dashboard
-
-```text
-1. Daily Decision Maker
-2. Priority Calculator
-3. Time Allocation
-4. Budget Decision
-5. Task Prioritization
-6. Study Planner
-7. Habit Decision
-8. Compare Options
-9. Problem Solver
-10. Decision History
-11. Reports
-12. Control Panel
-13. Exit
-```
-
----
-
-## 🔍 Feature Details
-
-### 1️⃣ Daily Decision Maker
-
-Suggests whether the user should:
-
-- Study
-- Rest
-
-Based on:
-- Exam deadline
-- Energy level
-
----
-
-### 2️⃣ Priority Calculator
-
-Calculates:
-
-```text
-Priority Score = Urgency × Importance
-```
-
-Priority levels:
-
-- High Priority
-- Medium Priority
-- Low Priority
-
----
-
-### 3️⃣ Time Allocation
-
-Helps users distribute:
-
-- Study Time
-- Sleep Time
-- Chore Time
-
-Within a 24-hour schedule.
-
----
-
-### 4️⃣ Budget Decision
-
-Determines whether purchasing an item is financially reasonable based on the user's monthly budget.
-
----
-
-### 5️⃣ Task Prioritization
-
-Compares two tasks and displays the task that should be completed first.
-
----
-
-### 6️⃣ Study Planner
-
-Calculates:
-
-```text
-Chapters Per Day = Total Chapters ÷ Remaining Days
-```
-
----
-
-### 7️⃣ Habit Decision
-
-Evaluates weekly consistency and encourages improvement.
-
----
-
-### 8️⃣ Compare Options
-
-Compares two options using ratings and recommends the better choice.
-
----
-
-### 9️⃣ Problem Solver
-
-Provides guidance depending on whether a problem is:
-
-- Under your control
-- Outside your control
-
----
-
-### 🔟 Decision History
-
-Displays previously used tools and activities.
-
----
-
-### 1️⃣1️⃣ Reports
-
-Shows:
-
-- Active User
-- System Status
-- Total Registered Users
-
----
-
-### 1️⃣2️⃣ Control Panel
-
-Displays:
-
-- System Version
-- Security Information
-
----
-
-## ▶️ How to Run
-
-### Compile
+### Step 1: Clone the Repository
 
 ```bash
-g++ main.cpp -o decision_solver
+git clone https://github.com/rifat2886/Personal-Decision-Problem-Solver.git
 ```
 
-### Run
-
-Linux/Mac:
+### Step 2: Open the Project Folder
 
 ```bash
-./decision_solver
+cd Personal-Decision-Problem-Solver
 ```
 
-Windows:
+### Step 3: Compile the Project
+
+After confirming that all header files, source files, and function declarations match, compile the project using G++.
+
+### Step 4: Run the Application
+
+On Windows:
 
 ```bash
-decision_solver.exe
+project.exe
 ```
 
----
+On Linux/macOS, use the executable name generated by your compiler.
 
-## 🔮 Future Improvements
+## Version Control & Collaboration
 
-- File Handling
-- Data Persistence
-- Password Encryption
-- Input Validation
-- Database Integration
-- GUI Version
-- Web Application Version
-- User Analytics Dashboard
+GitHub is used to manage the project and collaborate among team members.
 
----
+Each team member works on assigned modules and pushes changes to GitHub. The main branch is used to maintain the integrated project.
 
-## 🎓 Learning Outcomes
+Repository:  
+https://github.com/rifat2886/Personal-Decision-Problem-Solver
 
-This project demonstrates:
+## Project Goals
 
-- C++ Programming
-- Structs
-- Vectors
-- Authentication System
-- Activity Tracking
-- Menu-Driven Applications
-- Decision-Making Algorithms
-- Problem-Solving Logic
+- Improve daily decision-making.
+- Organize tasks according to priority.
+- Manage time effectively.
+- Track income, expenses, and savings.
+- Build productive habits.
+- Maintain decision history and reports.
+- Practice teamwork and collaborative software development.
 
----
+## Future Improvements
 
-## 👨‍💻 Author
+- Web-based dashboard using HTML, CSS, and JavaScript.
+- C++ backend integration.
+- Database integration.
+- Improved user interface and user experience.
+- Enhanced authentication and data security.
 
-**Rifat**
+## Academic Project
 
-### Project
-**Personal Decision & Problem Solver Suite**
+**Project Name:** Personal Decision & Problem Solver  
+**Course:** Object-Oriented Programming (C++)  
+**Project Type:** Team Project
 
 ---
 
-⭐ If you found this project useful, don't forget to **Star** the repository!
+**Developed by the Personal Decision & Problem Solver Team**
