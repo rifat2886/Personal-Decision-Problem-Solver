@@ -185,3 +185,18 @@ tr:last-child td { border-bottom: 0; }
   .grid { grid-template-columns: 1fr; }
   .brand-mark { width: 34px; height: 34px; flex-basis: 34px; }
 }
+
+/* Landing hero + charts (Phase 5, own design) */
+.hero { padding: 24px 4px 8px; }
+.hero .eyebrow { letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; font-size: 13px; margin: 0 0 8px; }
+.hero h1 { font-size: 42px; line-height: 1.1; margin: 0 0 12px; }
+.hero-sub { font-size: 17px; color: var(--muted); max-width: 720px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 16px 0; }
+.chart-bar { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.chart-bar .label { width: 110px; flex-shrink: 0; }
+.chart-bar .bar { height: 22px; border-radius: 6px; background: var(--accent); min-width: 4px; }
+.chart-bar .bar.expense { background: #dc2626; }
+.chart-bar .bar.savings { background: #059669; }
+.chart-bar .value { color: var(--muted); }
+@media (max-width: 900px) { .grid3 { grid-template-columns: 1fr 1fr; } .hero h1 { font-size: 32px; } }
+@media (max-width: 560px) { .grid3 { grid-template-columns: 1fr; } }

@@ -79,6 +79,7 @@ function showSection(name) {
   if (name === "habits") loadHabits();
   if (name === "profile") loadProfile();
   if (name === "admin") loadAdmin();
+  if (name === "analytics") loadAnalytics();
   if (name === "settings") loadSettingsBackend();
 }
 
@@ -92,7 +93,7 @@ el("logoutBtn").addEventListener("click", async () => {
   sessionStorage.removeItem("pdps_token");
   sessionStorage.removeItem("pdps_user");
   setLoggedIn("");
-  showSection("auth");
+  showSection("landing");
 });
 
 // -- auth -----------------------------------------------------------
@@ -128,6 +129,11 @@ async function loadOverview() {
       ["Expense", o.expense.toFixed(2), "total expense"],
       ["Savings", o.savingsSaved.toFixed(2) + " / " + o.savingsTarget.toFixed(2), o.savingsGoals + " goal(s)"]
     ].map(([k, v, sub]) => `<div class="stat"><div class="label">${k}</div><div class="value">${v}</div><div class="sub">${sub}</div></div>`).join("");
+    el("ovChart").innerHTML = chartHtml([
+      { label: "Income", value: o.income, cls: "" },
+      { label: "Expense", value: o.expense, cls: "expense" },
+      { label: "Savings saved", value: o.savingsSaved, cls: "savings" }],
+      Math.max(o.income, o.expense, o.savingsSaved, 1));
     const decisions = await api("/api/decisions");
     el("overviewDecisions").innerHTML = decisions.length ? "<table><tr><th>ID</th><th>Date</th><th>Type</th><th>Priority</th><th>Title</th><th></th></tr>" +
       decisions.slice(-20).reverse().map(d =>
@@ -436,16 +442,51 @@ el("cpBtn").addEventListener("click", async () => {
 });
 
 
+el("heroLoginBtn").addEventListener("click", () => showSection("auth"));
+el("heroRegBtn").addEventListener("click", () => showSection("auth"));
+
+// -- charts (real data only, pure CSS bars, no library) --------------
+function chartHtml(rows, max) {
+  if (!rows.length) return "<div class='empty'>No data yet.</div>";
+  return rows.map(r => `<div class="chart-bar"><span class="label">${esc(r.label)}</span><span class="bar ${r.cls || ""}" style="width:${max > 0 ? Math.round(r.value / max * 100) : 0}%"></span><span class="value">${r.value.toFixed(2)}</span></div>`).join("");
+}
+async function loadAnalytics() {
+  try {
+    const txs = await api("/api/transactions");
+    const byMonth = {};
+    for (const t of txs) {
+      const m = t.date.slice(0, 7);
+      if (!byMonth[m]) byMonth[m] = { income: 0, expense: 0 };
+      if (t.type === "income") byMonth[m].income += t.amount; else byMonth[m].expense += t.amount;
+    }
+    const months = Object.keys(byMonth).sort();
+    let html = "";
+    let max = 0;
+    for (const m of months) max = Math.max(max, byMonth[m].income, byMonth[m].expense);
+    for (const m of months) {
+      html += `<h4>${esc(m)}</h4>` + chartHtml([
+        { label: "Income", value: byMonth[m].income, cls: "" },
+        { label: "Expense", value: byMonth[m].expense, cls: "expense" }], max);
+    }
+    el("anChart").innerHTML = html || "<div class='empty'>No transactions yet.</div>";
+    const sv = await api("/api/savings");
+    let smax = 0; for (const g of sv) smax = Math.max(smax, g.target, g.saved);
+    el("anSavings").innerHTML = sv.length ? sv.map(g => `<h4>${esc(g.name)}</h4>` + chartHtml([
+      { label: "Target", value: g.target, cls: "" },
+      { label: "Saved", value: g.saved, cls: "savings" }], smax)).join("") : "<div class='empty'>No savings goals yet.</div>";
+  } catch (e) { el("anChart").innerHTML = "<div class='empty'>" + esc(e.message) + "</div>"; }
+}
+
 // -- team-completion sections ---------------------------------------
 // Compare Options (Nuriya, menu 12): not saved, like the console.
-el("cpBtn").addEventListener("click", async () => {
+el("cmpBtn").addEventListener("click", async () => {
   try {
     const r = await api("/api/compare-options", { method: "POST", body: JSON.stringify({
-      name1: el("cpName1").value.trim(), benefit1: +el("cpBenefit1").value, cost1: +el("cpCost1").value, risk1: +el("cpRisk1").value,
-      name2: el("cpName2").value.trim(), benefit2: +el("cpBenefit2").value, cost2: +el("cpCost2").value, risk2: +el("cpRisk2").value }) });
+      name1: el("cmpName1").value.trim(), benefit1: +el("cmpBenefit1").value, cost1: +el("cmpCost1").value, risk1: +el("cmpRisk1").value,
+      name2: el("cmpName2").value.trim(), benefit2: +el("cmpBenefit2").value, cost2: +el("cmpCost2").value, risk2: +el("cmpRisk2").value }) });
     const sug = r.equal ? "Both options have equal scores." : "Suggested option: " + r.suggested;
-    showMsg("cpMsg", r.name1 + " Score: " + r.score1 + " | " + r.name2 + " Score: " + r.score2 + ". " + sug, true);
-  } catch (e) { showMsg("cpMsg", e.message, false); }
+    showMsg("cmpMsg", r.name1 + " Score: " + r.score1 + " | " + r.name2 + " Score: " + r.score2 + ". " + sug, true);
+  } catch (e) { showMsg("cmpMsg", e.message, false); }
 });
 
 // Problem Solver (Sweety, menu 35): saved as a Problem record.
@@ -483,8 +524,8 @@ async function downloadExport(fmt, filename) {
     const blob = new Blob([r.content], { type: fmt === "csv" ? "text/csv" : "text/plain" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = r.filename || filename;
     a.click(); URL.revokeObjectURL(a.href);
-    showMsg("exMsg", "Exported " + (r.filename || filename) + ".", true);
-  } catch (e) { showMsg("exMsg", e.message, false); }
+    showMsg("xpMsg", "Exported " + (r.filename || filename) + ".", true);
+  } catch (e) { showMsg("xpMsg", e.message, false); }
 }
 el("exTxtBtn").addEventListener("click", () => downloadExport("txt", "financial_report.txt"));
 el("exCsvBtn").addEventListener("click", () => downloadExport("csv", "financial_report.csv"));
@@ -529,5 +570,5 @@ if (token && username) {
   showSection("overview");
 } else {
   setLoggedIn("");
-  showSection("auth");
+  showSection("landing");
 }

@@ -27,6 +27,7 @@
 <div class="layout">
 <nav class="sidebar" id="sidebar" aria-label="Main navigation">
   <div class="nav-group">Main</div>
+  <button data-section="landing">&#127968; Home</button>
   <button data-section="auth">&#128272; Login / Register</button>
   <button data-section="overview">&#128202; Overview</button>
   <button data-section="history">&#128269; Search &amp; History</button>
@@ -51,11 +52,45 @@
   <button data-section="problem">&#129504; Problem Solver</button>
   <button data-section="profile">&#128100; User Profile</button>
   <button data-section="admin">&#128272; Admin Panel</button>
+  <button data-section="analytics">&#128200; Analytics</button>
   <button data-section="settings">&#9881; Settings</button>
 </nav>
 
 <main>
   <div id="globalMsg" role="status"></div>
+
+
+  <section id="landing">
+    <div class="hero">
+      <p class="eyebrow">Personal Decision &amp; Problem Solver</p>
+      <h1>Decide better, every day.</h1>
+      <p class="hero-sub">One app for your decisions, tasks, money, habits and study — built by a three-person team in C++, with a web dashboard that reads and writes the exact same data files as the console app. No fake data, no demo numbers: what you see is what you saved.</p>
+      <div class="actions">
+        <button class="btn btn-primary" id="heroLoginBtn">Log in</button>
+        <button class="btn btn-secondary" id="heroRegBtn">Create an account</button>
+      </div>
+      <p class="muted">First registered user becomes ADMIN. Runs on your own computer (localhost only) — your data stays in plain-text files in your data directory, and can be backed up with one click.</p>
+    </div>
+    <div class="grid3">
+      <div class="card"><h3>&#129504; Decide</h3><p>Daily decisions, priority scores, task prioritization, compare options, multi-task planning, deadline alerts and plain-language explanations.</p></div>
+      <div class="card"><h3>&#128176; Manage money</h3><p>Budget, income and expense, savings goals, weekly and monthly reports, and TXT/CSV export of your real transactions.</p></div>
+      <div class="card"><h3>&#128214; Build habits</h3><p>Habit tracking with a true consecutive-day streak, study planner, time allocation, and a daily summary report.</p></div>
+    </div>
+    <div class="card">
+      <h3>How it works</h3>
+      <ol>
+        <li><b>Register</b> — the first account is ADMIN, later accounts are USER.</li>
+        <li><b>Log in</b> — you get a session token; it is never your password, and it is never written to a file.</li>
+        <li><b>Use any section</b> — every button calls a real C++ API endpoint, and every change is saved to a plain-text file the console app can also read.</li>
+        <li><b>Back up</b> — Overview has Backup and Restore for your decision records.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>Team</h3>
+      <p><b>Rifat</b> — system core, authentication, profile, admin, password, time allocation, study planner, dashboard and C++ backend. <b>Nuriya</b> — daily decision, priority, tasks, compare, status, deadlines, explanations, multi-task. <b>Sweety</b> — budget, income/expense, savings, habits, streak, reports, export.</p>
+      <p class="muted">Design note: this landing page is our own design, inspired only by the general modern pattern of a hero + feature cards + how-it-works seen on reference sites. No content, text or images were copied from any reference site.</p>
+    </div>
+  </section>
 
   <section id="auth" class="active">
     <h2>Welcome back</h2>
@@ -82,6 +117,11 @@
     <h2>Overview</h2>
     <p class="muted">A live summary of your decisions, tasks, money and habits.</p>
     <div class="grid cards" id="overviewCards"></div>
+    <div class="card">
+      <h3>Finance chart (real totals)</h3>
+      <div id="ovChart"></div>
+      <p class="muted">Bars are drawn from your saved transactions and savings goals only. No data, no bars.</p>
+    </div>
     <div class="card">
       <h3>Recent decisions</h3>
       <div id="overviewDecisions"></div>
@@ -344,7 +384,7 @@
         <button class="btn btn-primary" id="exTxtBtn">Download TXT report</button>
         <button class="btn btn-primary" id="exCsvBtn">Download CSV report</button>
       </div>
-      <div id="exMsg"></div>
+      <div id="xpMsg"></div>
     </div>
   </section>
 
@@ -353,16 +393,16 @@
     <h2>Compare Options</h2>
     <p class="muted">Same formula as the C++ Compare Options (menu 12, Nuriya): score = benefit × 3 − cost − risk, each 1–10. This comparison is not saved as a decision, like the console module.</p>
     <div class="card">
-      <label>Option 1 name <input id="cpName1"></label>
-      <label>Benefit (1–10) <input id="cpBenefit1" type="number" min="1" max="10"></label>
-      <label>Cost (1–10) <input id="cpCost1" type="number" min="1" max="10"></label>
-      <label>Risk (1–10) <input id="cpRisk1" type="number" min="1" max="10"></label>
-      <label>Option 2 name <input id="cpName2"></label>
-      <label>Benefit (1–10) <input id="cpBenefit2" type="number" min="1" max="10"></label>
-      <label>Cost (1–10) <input id="cpCost2" type="number" min="1" max="10"></label>
-      <label>Risk (1–10) <input id="cpRisk2" type="number" min="1" max="10"></label>
-      <button class="btn btn-primary" id="cpBtn">Compare</button>
-      <div id="cpMsg"></div>
+      <label>Option 1 name <input id="cmpName1"></label>
+      <label>Benefit (1–10) <input id="cmpBenefit1" type="number" min="1" max="10"></label>
+      <label>Cost (1–10) <input id="cmpCost1" type="number" min="1" max="10"></label>
+      <label>Risk (1–10) <input id="cmpRisk1" type="number" min="1" max="10"></label>
+      <label>Option 2 name <input id="cmpName2"></label>
+      <label>Benefit (1–10) <input id="cmpBenefit2" type="number" min="1" max="10"></label>
+      <label>Cost (1–10) <input id="cmpCost2" type="number" min="1" max="10"></label>
+      <label>Risk (1–10) <input id="cmpRisk2" type="number" min="1" max="10"></label>
+      <button class="btn btn-primary" id="cmpBtn">Compare</button>
+      <div id="cmpMsg"></div>
     </div>
   </section>
 
@@ -389,6 +429,14 @@
     <p class="muted">Same information as the C++ Profile screen: username and role. Admins also see the registered user list (usernames and roles only, never passwords).</p>
     <div class="card"><div id="profileInfo"></div></div>
     <div class="card"><div id="profileUsers"></div></div>
+  </section>
+
+
+  <section id="analytics">
+    <h2>Analytics</h2>
+    <p class="muted">Charts drawn only from your saved data — monthly income vs expense from transactions.txt, and savings progress from savings_goals.txt. No demo or placeholder data.</p>
+    <div class="card"><h3>Monthly income vs expense</h3><div id="anChart"></div></div>
+    <div class="card"><h3>Savings progress</h3><div id="anSavings"></div></div>
   </section>
 
   <section id="settings">
