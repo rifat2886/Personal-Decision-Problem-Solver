@@ -41,6 +41,10 @@
 #include "habit.h"
 #include "control.h"
 
+// Restored multi-task decision (Sweety's logic_priority daily
+// decision, without that class's priority/compare/task methods).
+#include "multi_task_decision.h"
+
 using namespace std;
 
 void showMenu()
@@ -100,6 +104,7 @@ void showMenu()
     cout << "40. Habit Decision\n";
     cout << "41. Habit Streak (calculator)\n";
     cout << "42. Control Panel (History Management)\n";
+    cout << "43. Multi-Task Daily Decision (energy/time budget)\n";
 
     cout << "\n0. Exit Program\n";
     cout << "============================================\n";
@@ -117,7 +122,7 @@ int main()
     {
         showMenu();
 
-        choice = getValidNumber(0, 42);
+        choice = getValidNumber(0, 43);
 
         switch (choice)
         {
@@ -329,6 +334,10 @@ int main()
 
             case 42:
                 controlPanel();
+                break;
+
+            case 43:
+                multiTaskDecision();
                 break;
 
             case 0:

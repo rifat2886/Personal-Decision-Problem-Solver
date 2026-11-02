@@ -20,6 +20,12 @@ void controlPanel() {
         cout << "Enter choice: ";
 
         if (!(cin >> choice)) {
+            // FIX (final audit, local only): do not retry forever
+            // on end-of-file, as the old code did.
+            if (cin.eof()) {
+                cout << "\nInput closed. Returning to Main Menu.\n";
+                return;
+            }
             cin.clear();
             cin.ignore(
                 numeric_limits<streamsize>::max(), '\n'

@@ -6,10 +6,21 @@ using namespace std;
 
 void exportReportTXT()
 {
+    // FIX (final audit, local only): check the source BEFORE opening
+    // the destination. The old order truncated an existing report
+    // file even when transactions.txt was missing, then printed an
+    // error, leaving an empty report behind.
     ifstream source("transactions.txt");
+
+    if (!source)
+    {
+        cout << "Could not open report files!\n";
+        return;
+    }
+
     ofstream destination("financial_report.txt");
 
-    if (!source || !destination)
+    if (!destination)
     {
         cout << "Could not open report files!\n";
         return;
@@ -28,10 +39,19 @@ void exportReportTXT()
 
 void exportReportCSV()
 {
+    // Same fix as exportReportTXT: do not truncate an existing CSV
+    // when the source file is missing.
     ifstream source("transactions.txt");
+
+    if (!source)
+    {
+        cout << "Could not open report files!\n";
+        return;
+    }
+
     ofstream destination("financial_report.csv");
 
-    if (!source || !destination)
+    if (!destination)
     {
         cout << "Could not open report files!\n";
         return;

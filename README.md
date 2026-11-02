@@ -59,6 +59,17 @@ The main goal is to make everyday activities easier by combining decision-making
 - Error Log
 - Delete Confirmation
 
+### 5. Additional Integrated Modules
+- Problem Solver (35)
+- Daily Summary Report (36)
+- Budget Decision calculator (37)
+- Income & Expense Tracking summary (38)
+- Savings Goal Calculator (39)
+- Habit Decision (40)
+- Habit Streak calculator (41)
+- Control Panel for history management (42)
+- Multi-Task Daily Decision, energy/time budget (43)
+
 ## Technologies Used
 
 - **Programming Language:** C++
@@ -96,27 +107,38 @@ Personal-Decision-Problem-Solver/
 │   ├── daily_decision.h / daily_decision.cpp
 │   ├── priority_calculator.h / priority_calculator.cpp
 │   ├── task_prioritization.h / task_prioritization.cpp
+│   ├── task_data.h
 │   ├── compare_options.h / compare_options.cpp
 │   ├── task_status.h / task_status.cpp
 │   ├── deadline_alert.h / deadline_alert.cpp
 │   ├── decision_explanation.h / decision_explanation.cpp
+│   ├── multi_task_decision.h / multi_task_decision.cpp
+│   └── decision_store.h
 │
 ├── Budget_and_Habits/
 │   ├── income_expense.h / income_expense.cpp
 │   ├── savings_goal.h / savings_goal.cpp
+│   ├── habit.h / habit.cpp
 │   ├── habit_streak.h / habit_streak.cpp
 │   ├── period_report.h / period_report.cpp
 │   ├── export_report.h / export_report.cpp
+│   ├── budget.h / budget.cpp
+│   ├── report.h / report.cpp
+│   └── problem.h / problem.cpp
 │
 └── History_and_Control/
+    ├── history.h / history.cpp
     ├── search_history.h / search_history.cpp
     ├── filter_sort.h / filter_sort.cpp
     ├── backup_restore.h / backup_restore.cpp
     ├── error_handler.h / error_handler.cpp
-    └── delete_confirmation.h / delete_confirmation.cpp
+    ├── delete_confirmation.h / delete_confirmation.cpp
+    └── control.h / control.cpp
 ```
 
-*Note: The structure above describes the intended module organization. Some files may currently remain in the repository root directory.*
+*Note: The structure above shows the logical module grouping. All
+`.cpp` and `.h` files actually live in the repository root directory,
+not in subfolders.*
 
 ## How to Run the Project
 
@@ -154,11 +176,20 @@ summary (38), Savings Goal Calculator (39), Habit Decision (40),
 Habit Streak calculator (41), and Control Panel for history
 management (42).
 
+Multi-Task Daily Decision (43, local only, not yet pushed) restores
+the multi-task energy/time-budget capability from Sweety's old
+`logic_priority` daily decision: tasks are sorted by deadline
+urgency, then accepted in that order only while their energy and
+time both fit the remaining budgets. Only that capability was
+restored; the old class's priority, compare, and task methods were
+not, because Nuriya's Priority Calculator, Compare Options, and
+Task Prioritization already cover those features.
+
 Decision records are shared through `decision_store.h` in the
 format `id|date|type|priority|title` in `decisions.txt`, so
-Daily Decision Maker, Problem Solver, and Task Prioritization
-records can be found by Search (28), Filter (29), Sort (30),
-Backup (31), Restore (32), and Delete (34).
+Daily Decision Maker, Problem Solver, Task Prioritization, and
+Multi-Task Daily Decision records can be found by Search (28),
+Filter (29), Sort (30), Backup (31), Restore (32), and Delete (34).
 
 ### Step 4: Run the Application
 
