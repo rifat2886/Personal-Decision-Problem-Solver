@@ -1,4 +1,5 @@
 #include "export_report.h"
+#include "error_handler.h"
 #include <iostream>
 #include <fstream>
 
@@ -15,6 +16,7 @@ void exportReportTXT()
     if (!source)
     {
         cout << "Could not open report files!\n";
+        logError("exportReportTXT: transactions.txt not found");
         return;
     }
 
@@ -23,6 +25,7 @@ void exportReportTXT()
     if (!destination)
     {
         cout << "Could not open report files!\n";
+        logError("exportReportTXT: could not open financial_report.txt");
         return;
     }
 
@@ -46,6 +49,7 @@ void exportReportCSV()
     if (!source)
     {
         cout << "Could not open report files!\n";
+        logError("exportReportCSV: transactions.txt not found");
         return;
     }
 
@@ -54,6 +58,7 @@ void exportReportCSV()
     if (!destination)
     {
         cout << "Could not open report files!\n";
+        logError("exportReportCSV: could not open financial_report.csv");
         return;
     }
 

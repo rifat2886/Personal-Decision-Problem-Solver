@@ -1,4 +1,5 @@
 #include "backup_restore.h"
+#include "error_handler.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -16,6 +17,10 @@ void backupDecisions()
     if (!source)
     {
         cout << "No decision file found to back up.\n";
+        // FIX (backend final testing): logError() was defined but
+        // never called anywhere, so Show Error Log (option 33)
+        // could never show a real failure. Log file-open failures.
+        logError("backupDecisions: decisions.txt not found");
         return;
     }
 
@@ -24,6 +29,7 @@ void backupDecisions()
     if (!backup)
     {
         cout << "Could not create backup file.\n";
+        logError("backupDecisions: could not create decisions_backup.txt");
         return;
     }
 
@@ -42,6 +48,7 @@ void restoreDecisions()
     if (!backup)
     {
         cout << "No backup file found.\n";
+        logError("restoreDecisions: decisions_backup.txt not found");
         return;
     }
 
@@ -67,6 +74,7 @@ void restoreDecisions()
     if (!destination)
     {
         cout << "Could not open decision file.\n";
+        logError("restoreDecisions: could not open decisions.txt");
         return;
     }
 
