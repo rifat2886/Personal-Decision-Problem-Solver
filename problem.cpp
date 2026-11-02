@@ -1,6 +1,6 @@
 #include "problem.h"
+#include "decision_store.h"
 #include <iostream>
-#include <fstream>
 #include <string>
 using namespace std;
 
@@ -51,17 +51,10 @@ void problemSolver() {
 
     cout << "Suggestion: " << suggestion << '\n';
 
-    ofstream file("decision_history.txt", ios::app);
-
-    if (file) {
-        file << "Problem: " << problem
-             << " | Difficulty: " << difficulty
-             << " | Time: " << time
-             << " | Suggestion: " << suggestion << '\n';
-
-        cout << "History saved successfully.\n";
-    }
-    else {
-        cout << "Error: Could not save history.\n";
-    }
+    // Was decision_history.txt, a file no other menu module reads.
+    // Now uses the shared decisions.txt format (id|date|type|
+    // priority|title) so Search/Filter/Sort/Delete can find it.
+    appendDecisionRecord("Problem", difficulty,
+                         "Problem: " + problem + " - " + suggestion);
+    cout << "History saved successfully.\n";
 }

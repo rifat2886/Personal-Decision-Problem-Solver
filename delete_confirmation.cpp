@@ -10,8 +10,13 @@ void confirmDelete(const string& id)
     cout << "Are you sure you want to delete decision "
          << id << "? (y/n): ";
 
-    char choice;
-    cin >> choice;
+    char choice = 'n';
+    if (!(cin >> choice)) {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        cout << "Delete cancelled.\n";
+        return;
+    }
 
     if (choice != 'y' && choice != 'Y')
     {

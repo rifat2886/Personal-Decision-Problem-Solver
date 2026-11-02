@@ -6,8 +6,12 @@
 #include <algorithm>
 using namespace std;
 
-const string HISTORY_FILE = "decision_history.txt";
-const string BACKUP_FILE = "decision_backup.txt";
+// Unified with the rest of the menu (search/filter/sort/backup/
+// restore/delete in main.cpp options 28-32), which all use
+// decisions.txt / decisions_backup.txt. Previously this module used
+// decision_history.txt, a file no menu module wrote to.
+const string HISTORY_FILE = "decisions.txt";
+const string BACKUP_FILE = "decisions_backup.txt";
 
 // Extra: System Log
 void writeLog(const string& message) {
@@ -43,36 +47,12 @@ void decisionHistory() {
     writeLog("Decision history viewed.");
 }
 
-// Extra: Search History
-void searchHistory() {
-    string keyword, line;
-    bool found = false;
-
-    cout << "Enter keyword (one word): ";
-    cin >> keyword;
-
-    ifstream file(HISTORY_FILE);
-
-    if (!file) {
-        cout << "No history file found.\n";
-        writeLog("History search failed.");
-        return;
-    }
-
-    while (getline(file, line)) {
-        if (line.find(keyword) != string::npos) {
-            cout << line << '\n';
-            found = true;
-        }
-    }
-
-    if (!found) {
-        cout << "No matching record found.\n";
-    }
-
-    writeLog("History search completed.");
-}
-
+// NOTE: searchHistory() is intentionally NOT defined here.
+// It is defined once, in search_history.cpp, and declared in both
+// search_history.h and history.h. Defining it here as well was the
+// multiple-definition link error that broke the whole build.
+// The control panel (control.cpp) calls the search_history.cpp
+// version, which searches the same decisions.txt file.
 // Extra: Filter and Sort
 void filterSortHistory() {
     ifstream file(HISTORY_FILE);

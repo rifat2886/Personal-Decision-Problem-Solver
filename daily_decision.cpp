@@ -1,5 +1,7 @@
 #include "daily_decision.h"
+#include "decision_store.h"
 #include <iostream>
+#include <string>
 using namespace std;
 
 void dailyDecisionMaker() {
@@ -51,15 +53,23 @@ void dailyDecisionMaker() {
 
     cin.ignore(10000, '\n');
 
+    string suggestion;
     if (requiredTime > availableTime) {
-        cout << "Suggestion: Divide the task into smaller parts.\n";
+        suggestion = "Divide the task into smaller parts.";
     } else if (urgency >= 8 && importance >= 8) {
-        cout << "Suggestion: Complete this task first.\n";
+        suggestion = "Complete this task first.";
     } else if (importance >= 8 && energy <= 4) {
-        cout << "Suggestion: Take a short break, then do this task.\n";
+        suggestion = "Take a short break, then do this task.";
     } else if (urgency >= 7) {
-        cout << "Suggestion: Complete this task soon.\n";
+        suggestion = "Complete this task soon.";
     } else {
-        cout << "Suggestion: Schedule this task for later.\n";
+        suggestion = "Schedule this task for later.";
     }
+    cout << "Suggestion: " << suggestion << '\n';
+
+    // Integration fix: previously this module printed a suggestion
+    // and saved nothing, so Search/Filter/Sort/Backup/Delete
+    // (which all read decisions.txt) could never find it.
+    int score = urgency * 2 + importance * 3;
+    appendDecisionRecord("Daily", score, "Daily decision: " + suggestion);
 }

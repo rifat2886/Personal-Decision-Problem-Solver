@@ -1,5 +1,6 @@
 #include "income_expense.h"
 #include <iostream>
+#include <string>
 #include <fstream>
 #include <iomanip>
 #include <limits>
@@ -17,6 +18,12 @@ void addTransaction()
 
     cout << "Enter date (YYYY-MM-DD): ";
     cin >> date;
+
+    if (date.size() != 10 || date[4] != '-' || date[7] != '-')
+    {
+        cout << "Invalid date format! Use YYYY-MM-DD.\n";
+        return;
+    }
 
     cout << "Type (income/expense): ";
     cin >> type;
@@ -87,35 +94,28 @@ void showTransactions()
 void showBalance()
 {
     ifstream file(TRANSACTION_FILE);
-
-    string date, type, category, note;
-    double amount;
+    string line;
     double income = 0, expense = 0;
 
-    while (file >> date)
+    while (getline(file, line))
     {
-        if (!getline(file, type, '|'))
-            break;
-
-        if (!getline(file, category, '|'))
-            break;
-
-        if (!(file >> amount))
-            break;
-
-        file.ignore(numeric_limits<streamsize>::max(), '|');
-
-        if (!getline(file, note))
-            note = "";
-
-        // Remove the first '|' remaining before type.
-        if (!type.empty() && type[0] == '|')
-            type.erase(0, 1);
-
-        if (type == "income")
-            income += amount;
-        else if (type == "expense")
-            expense += amount;
+        // date|type|category|amount|note
+        size_t p1 = line.find('|');
+        if (p1 == string::npos) continue;
+        size_t p2 = line.find('|', p1 + 1);
+        if (p2 == string::npos) continue;
+        size_t p3 = line.find('|', p2 + 1);
+        if (p3 == string::npos) continue;
+        size_t p4 = line.find('|', p3 + 1);
+        if (p4 == string::npos) continue;
+        string type = line.substr(p1 + 1, p2 - p1 - 1);
+        try {
+            double amount = stod(line.substr(p3 + 1, p4 - p3 - 1));
+            if (type == "income") income += amount;
+            else if (type == "expense") expense += amount;
+        } catch (...) {
+            continue;
+        }
     }
 
     cout << fixed << setprecision(2);

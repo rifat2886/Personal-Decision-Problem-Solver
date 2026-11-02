@@ -81,8 +81,14 @@ void addSavingsAmount()
         }
 
         goalName = line.substr(0, first);
-        target = stod(line.substr(first + 1, second - first - 1));
-        saved = stod(line.substr(second + 1));
+        try {
+            target = stod(line.substr(first + 1, second - first - 1));
+            saved = stod(line.substr(second + 1));
+        } catch (...) {
+            // Preserve a malformed line instead of crashing.
+            outFile << line << '\n';
+            continue;
+        }
 
         if (goalName == name)
         {
@@ -125,17 +131,29 @@ void showSavingsGoals()
 
     cout << fixed << setprecision(2);
 
-    while (getline(file, name, '|'))
+    // Parse line by line. The old getline(name, '|') version treated
+    // a malformed line with no '|' as the start of the next line
+    // (getline with a non-newline delimiter does not stop at '\n'),
+    // so one bad line hid every goal after it.
+    string line;
+    while (getline(file, line))
     {
-        if (!(file >> target))
-            break;
-
-        file.ignore(numeric_limits<streamsize>::max(), '|');
-
-        if (!(file >> saved))
-            break;
-
-        file.ignore(numeric_limits<streamsize>::max(), '\n');
+        size_t first = line.find('|');
+        if (first == string::npos)
+            continue;
+        size_t second = line.find('|', first + 1);
+        if (second == string::npos)
+            continue;
+        try
+        {
+            name = line.substr(0, first);
+            target = stod(line.substr(first + 1, second - first - 1));
+            saved = stod(line.substr(second + 1));
+        }
+        catch (...)
+        {
+            continue;
+        }
 
         cout << "Goal: " << name
              << " | Target: " << target

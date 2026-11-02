@@ -1,28 +1,51 @@
-
 #include "report.h"
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <limits>
 using namespace std;
 
+static bool readDouble(double& value)
+{
+    if (cin >> value)
+        return true;
+    cout << "Invalid input!\n";
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    return false;
+}
+
+static bool readInt(int& value)
+{
+    if (cin >> value)
+        return true;
+    cout << "Invalid input!\n";
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    return false;
+}
 
 void generateReport() {
-    double income, expenses;
-    int habitsCompleted, habitsPlanned;
+    double income = 0, expenses = 0;
+    int habitsCompleted = 0, habitsPlanned = 0;
 
     cout << "\n===== DAILY SUMMARY REPORT =====\n";
 
     cout << "Enter total income: ";
-    cin >> income;
+    if (!readDouble(income))
+        return;
 
     cout << "Enter total expenses: ";
-    cin >> expenses;
+    if (!readDouble(expenses))
+        return;
 
     cout << "Habits completed today: ";
-    cin >> habitsCompleted;
+    if (!readInt(habitsCompleted))
+        return;
 
     cout << "Habits planned today: ";
-    cin >> habitsPlanned;
+    if (!readInt(habitsPlanned))
+        return;
 
     if (income < 0 || expenses < 0 ||
         habitsCompleted < 0 || habitsPlanned <= 0 ||

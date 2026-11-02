@@ -59,4 +59,4 @@ bool registerUser()
 
     std::cout << "Registration successful!\n";
     return true;
-};
+}

@@ -44,14 +44,16 @@ void exportReportCSV()
     while (getline(source, line))
     {
         size_t first = line.find('|');
+        if (first == string::npos)
+            continue;
         size_t second = line.find('|', first + 1);
+        if (second == string::npos)
+            continue;
         size_t third = line.find('|', second + 1);
+        if (third == string::npos)
+            continue;
         size_t fourth = line.find('|', third + 1);
-
-        if (first == string::npos ||
-            second == string::npos ||
-            third == string::npos ||
-            fourth == string::npos)
+        if (fourth == string::npos)
             continue;
 
         destination << line.substr(0, first) << ','

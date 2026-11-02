@@ -33,6 +33,14 @@
 #include "error_handler.h"
 #include "delete_confirmation.h"
 
+// Previously orphaned modules: their .cpp files were compiled but
+// never reachable from the menu, so users could not use them.
+#include "problem.h"
+#include "report.h"
+#include "budget.h"
+#include "habit.h"
+#include "control.h"
+
 using namespace std;
 
 void showMenu()
@@ -83,6 +91,16 @@ void showMenu()
     cout << "33. Show Error Log\n";
     cout << "34. Delete Decision\n";
 
+    cout << "\n--- Additional Integrated Modules ---\n";
+    cout << "35. Problem Solver\n";
+    cout << "36. Daily Summary Report\n";
+    cout << "37. Budget Decision (calculator)\n";
+    cout << "38. Income & Expense Tracking (summary)\n";
+    cout << "39. Savings Goal Calculator\n";
+    cout << "40. Habit Decision\n";
+    cout << "41. Habit Streak (calculator)\n";
+    cout << "42. Control Panel (History Management)\n";
+
     cout << "\n0. Exit Program\n";
     cout << "============================================\n";
 }
@@ -99,8 +117,7 @@ int main()
     {
         showMenu();
 
-        cout << "Enter your choice: ";
-        choice = getValidNumber(0, 34);
+        choice = getValidNumber(0, 42);
 
         switch (choice)
         {
@@ -281,6 +298,38 @@ int main()
                 confirmDelete(id);
                 break;
             }
+
+            case 35:
+                problemSolver();
+                break;
+
+            case 36:
+                generateReport();
+                break;
+
+            case 37:
+                budgetDecision();
+                break;
+
+            case 38:
+                incomeExpenseTracking();
+                break;
+
+            case 39:
+                savingsGoal();
+                break;
+
+            case 40:
+                habitDecision();
+                break;
+
+            case 41:
+                habitStreak();
+                break;
+
+            case 42:
+                controlPanel();
+                break;
 
             case 0:
                 if (loggedIn)

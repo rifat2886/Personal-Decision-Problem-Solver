@@ -19,6 +19,12 @@ void markHabitDone()
     cout << "Enter date (YYYY-MM-DD): ";
     cin >> date;
 
+    if (date.size() != 10 || date[4] != '-' || date[7] != '-')
+    {
+        cout << "Invalid date format! Use YYYY-MM-DD.\n";
+        return;
+    }
+
     ofstream file(HABIT_FILE, ios::app);
 
     if (!file)

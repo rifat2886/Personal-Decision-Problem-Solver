@@ -1,19 +1,31 @@
-
 #include "habit.h"
 #include <iostream>
 #include <iomanip>
+#include <limits>
 using namespace std;
+
+static bool readInt(int& value)
+{
+    if (cin >> value)
+        return true;
+    cout << "Invalid input!\n";
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    return false;
+}
 
 // Feature 7: Habit Decision
 void habitDecision() {
-    int completed, planned;
+    int completed = 0, planned = 0;
 
     cout << "\n===== HABIT DECISION =====\n";
     cout << "How many habits did you complete today? ";
-    cin >> completed;
+    if (!readInt(completed))
+        return;
 
     cout << "How many habits did you plan? ";
-    cin >> planned;
+    if (!readInt(planned))
+        return;
 
     if (planned <= 0 || completed < 0 || completed > planned) {
         cout << "Invalid input!\n";
@@ -35,14 +47,16 @@ void habitDecision() {
 
 // Feature: Habit Streak
 void habitStreak() {
-    int previousDays, completedToday;
+    int previousDays = 0, completedToday = 0;
 
     cout << "\n===== HABIT STREAK =====\n";
     cout << "Previous consecutive days completed: ";
-    cin >> previousDays;
+    if (!readInt(previousDays))
+        return;
 
     cout << "Did you complete today's habit? (1 = Yes, 0 = No): ";
-    cin >> completedToday;
+    if (!readInt(completedToday))
+        return;
 
     if (previousDays < 0 ||
         (completedToday != 0 && completedToday != 1)) {

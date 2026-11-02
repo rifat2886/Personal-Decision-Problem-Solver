@@ -139,7 +139,26 @@ cd Personal-Decision-Problem-Solver
 
 ### Step 3: Compile the Project
 
-After confirming that all header files, source files, and function declarations match, compile the project using G++.
+This project requires C++17. Compile every `.cpp` file together
+(the headers are included by the sources; there is no separate
+build system):
+
+```bash
+g++ -std=c++17 -Wall -Wextra -o project *.cpp
+```
+
+All modules are reachable from the main menu, including the
+previously unlisted ones: Problem Solver (35), Daily Summary
+Report (36), Budget Decision (37), Income & Expense Tracking
+summary (38), Savings Goal Calculator (39), Habit Decision (40),
+Habit Streak calculator (41), and Control Panel for history
+management (42).
+
+Decision records are shared through `decision_store.h` in the
+format `id|date|type|priority|title` in `decisions.txt`, so
+Daily Decision Maker, Problem Solver, and Task Prioritization
+records can be found by Search (28), Filter (29), Sort (30),
+Backup (31), Restore (32), and Delete (34).
 
 ### Step 4: Run the Application
 
@@ -169,6 +188,28 @@ https://github.com/rifat2886/Personal-Decision-Problem-Solver
 - Build productive habits.
 - Maintain decision history and reports.
 - Practice teamwork and collaborative software development.
+
+## Data Files Created at Runtime
+
+| File | Contents |
+|---|---|
+| `users.txt` | Username, password, and role, space-separated. The first registered user becomes `ADMIN`. |
+| `decisions.txt` | Shared decision records (`id\|date\|type\|priority\|title`). |
+| `decisions_backup.txt` | Backup of `decisions.txt`. |
+| `transactions.txt` | Income/expense records (`date\|type\|category\|amount\|note`). |
+| `savings_goals.txt` | Savings goals (`name\|target\|saved`). |
+| `habit_log.txt` | Habit completions (`habit\|date`). |
+| `search_history.txt`, `error_log.txt`, `system_log.txt` | Search history, error log, and history-action log. |
+| `financial_report.txt`, `financial_report.csv`, `daily_report.txt` | Exported reports. |
+
+Task prioritization data (`taskList` in `task_data.h`) is kept
+in memory only for the current run: run Task Prioritization (11)
+before Task Status (13) or Deadline Alert (14) in the same session.
+
+> Security note: this is a coursework console app. Passwords are
+> stored in plain text in `users.txt` and usernames/passwords
+> cannot contain spaces (they are space-separated in that file).
+> Do not reuse a real password here.
 
 ## Future Improvements
 

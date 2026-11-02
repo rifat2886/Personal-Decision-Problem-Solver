@@ -1,5 +1,6 @@
 #include "task_prioritization.h"
 #include "task_data.h"
+#include "decision_store.h"
 
 #include <iostream>
 #include <algorithm>
@@ -82,5 +83,15 @@ void taskPrioritization() {
              << (taskList[i].deadline.empty()
                  ? "Not set" : taskList[i].deadline)
              << " | Status: " << taskList[i].status << '\n';
+
+        // Save each prioritised task as a decision record so
+        // Search/Filter/Sort can find prioritised tasks. The
+        // deadline is carried in the title for visibility.
+        appendDecisionRecord("Task", score,
+                             taskList[i].title +
+                                 (taskList[i].deadline.empty()
+                                      ? ""
+                                      : " (deadline " +
+                                            taskList[i].deadline + ")"));
     }
 }

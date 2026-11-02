@@ -1,18 +1,34 @@
-
 #include "budget.h"
 #include <iostream>
 #include <iomanip>
+#include <limits>
 using namespace std;
 
+// Reads a double safely: on non-numeric input the stream is cleared
+// and the bad input discarded, instead of leaving the variable
+// uninitialised (the old code read with plain cin >> and then used
+// the value unconditionally).
+static bool readDouble(double& value)
+{
+    if (cin >> value)
+        return true;
+    cout << "Invalid amount!\n";
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    return false;
+}
+
 void budgetDecision() {
-    double income, expenses;
+    double income = 0, expenses = 0;
 
     cout << "\n===== BUDGET DECISION =====\n";
     cout << "Enter monthly income: ";
-    cin >> income;
+    if (!readDouble(income))
+        return;
 
     cout << "Enter monthly expenses: ";
-    cin >> expenses;
+    if (!readDouble(expenses))
+        return;
 
     if (income < 0 || expenses < 0) {
         cout << "Invalid amount!\n";
@@ -34,13 +50,18 @@ void budgetDecision() {
 
 
 void incomeExpenseTracking() {
-    int n;
-    double amount, income = 0, expenses = 0;
-    char type;
+    int n = 0;
+    double amount = 0, income = 0, expenses = 0;
+    char type = 0;
 
     cout << "\n===== INCOME & EXPENSE TRACKING =====\n";
     cout << "How many transactions? ";
-    cin >> n;
+    if (!(cin >> n)) {
+        cout << "Invalid number!\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return;
+    }
 
     if (n <= 0 || n > 100) {
         cout << "Enter a number from 1 to 100.\n";
@@ -53,7 +74,13 @@ void incomeExpenseTracking() {
         cin >> type;
 
         cout << "Enter amount: ";
-        cin >> amount;
+        if (!(cin >> amount)) {
+            cout << "Invalid amount. Try again.\n";
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            i--;
+            continue;
+        }
 
         if (amount < 0 ||
             (type != 'I' && type != 'i' &&
@@ -77,17 +104,20 @@ void incomeExpenseTracking() {
 
 
 void savingsGoal() {
-    double target, current, monthlySaving;
+    double target = 0, current = 0, monthlySaving = 0;
 
     cout << "\n===== SAVINGS GOAL =====\n";
     cout << "Enter savings target: ";
-    cin >> target;
+    if (!readDouble(target))
+        return;
 
     cout << "Current savings: ";
-    cin >> current;
+    if (!readDouble(current))
+        return;
 
     cout << "Expected monthly saving: ";
-    cin >> monthlySaving;
+    if (!readDouble(monthlySaving))
+        return;
 
     if (target <= 0 || current < 0 || monthlySaving <= 0) {
         cout << "Invalid input!\n";

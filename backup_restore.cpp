@@ -43,8 +43,13 @@ void restoreDecisions()
     cout << "Restoring will replace decisions.txt.\n";
     cout << "Continue? (y/n): ";
 
-    char choice;
-    cin >> choice;
+    char choice = 'n';
+    if (!(cin >> choice)) {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        cout << "Restore cancelled.\n";
+        return;
+    }
 
     if (choice != 'y' && choice != 'Y')
     {
