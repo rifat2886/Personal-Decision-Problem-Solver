@@ -30,7 +30,7 @@ int getValidNumber(int minimum, int maximum)
             number >= minimum && number <= maximum)
             return number;
 
-        // FIX (final audit, local only): on end-of-file, the old
+        // FIX (final audit): on end-of-file, the old
         // loop cleared the stream and retried forever, flooding
         // output. Exiting is the only sane response to closed stdin.
         if (std::cin.eof())

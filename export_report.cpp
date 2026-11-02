@@ -6,7 +6,7 @@ using namespace std;
 
 void exportReportTXT()
 {
-    // FIX (final audit, local only): check the source BEFORE opening
+    // FIX (final audit): check the source BEFORE opening
     // the destination. The old order truncated an existing report
     // file even when transactions.txt was missing, then printed an
     // error, leaving an empty report behind.

@@ -176,7 +176,7 @@ summary (38), Savings Goal Calculator (39), Habit Decision (40),
 Habit Streak calculator (41), and Control Panel for history
 management (42).
 
-Multi-Task Daily Decision (43, local only, not yet pushed) restores
+Multi-Task Daily Decision (43) restores
 the multi-task energy/time-budget capability from Sweety's old
 `logic_priority` daily decision: tasks are sorted by deadline
 urgency, then accepted in that order only while their energy and

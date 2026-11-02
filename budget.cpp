@@ -75,7 +75,7 @@ void incomeExpenseTracking() {
 
         cout << "Enter amount: ";
         if (!(cin >> amount)) {
-            // FIX (final audit, local only): on end-of-file, abort
+            // FIX (final audit): on end-of-file, abort
             // instead of retrying forever, as the old code did.
             if (cin.eof()) {
                 cout << "Input closed. Aborting tracking.\n";

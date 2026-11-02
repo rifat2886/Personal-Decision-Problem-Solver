@@ -7,7 +7,7 @@ using namespace std;
 
 void backupDecisions()
 {
-    // FIX (final audit, local only, not pushed): check the source
+    // FIX (final audit): check the source
     // BEFORE opening the backup. The old order created/truncated
     // decisions_backup.txt even when the source was missing, so a
     // later restore could wipe decisions.txt with an empty backup.

@@ -6,7 +6,7 @@
 
 // Restored capability from Sweety's old logic_priority branch
 // (origin/logic-priority, merged PR #13 2026-10-25, files deleted
-// 2026-10-30), integrated locally only, not pushed.
+// 2026-10-30), restored in this branch.
 //
 // Restored ONLY: the multi-task energy/time-budget daily decision
 // algorithm, LogicPriorityDeveloper::daily_decision_maker.
