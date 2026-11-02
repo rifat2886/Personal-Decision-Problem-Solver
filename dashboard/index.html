@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Personal Decision &amp; Problem Solver — Dashboard</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>Personal Decision &amp; Problem Solver</h1>
+    <p>Dashboard — connected to the same data files as the C++ app</p>
+  </div>
+  <div>
+    <span id="who" class="muted"></span>
+    <button class="primary hidden" id="logoutBtn">Logout</button>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <button data-section="auth" class="active">Login / Register</button>
+  <button data-section="overview">Overview</button>
+  <button data-section="daily">Daily Decision</button>
+  <button data-section="tasks">Task Management</button>
+  <button data-section="priority">Priority</button>
+  <button data-section="budget">Budget</button>
+  <button data-section="finance">Income / Expense</button>
+  <button data-section="savings">Savings</button>
+  <button data-section="habits">Habit Tracker</button>
+  <button data-section="reports">Reports</button>
+</nav>
+
+<main>
+  <div id="globalMsg"></div>
+
+  <section id="auth" class="active">
+    <h2>Login / Register</h2>
+    <p class="muted">Uses the same users.txt as the C++ app: first user becomes ADMIN, later users are USER. Usernames cannot contain spaces. Passwords need 8+ characters, a letter and a digit — the same rules as the console app.</p>
+    <div class="card">
+      <h3>Login</h3>
+      <label>Username <input id="loginUser" autocomplete="username"></label>
+      <label>Password <input id="loginPass" type="password" autocomplete="current-password"></label>
+      <button class="primary" id="loginBtn">Login</button>
+      <div id="loginMsg"></div>
+    </div>
+    <div class="card">
+      <h3>Register</h3>
+      <label>Username <input id="regUser" autocomplete="username"></label>
+      <label>Password <input id="regPass" type="password" autocomplete="new-password"></label>
+      <button class="primary" id="regBtn">Register</button>
+      <div id="regMsg"></div>
+    </div>
+  </section>
+
+  <section id="overview">
+    <h2>Overview</h2>
+    <div class="grid" id="overviewCards"></div>
+    <div class="card">
+      <h3>Recent decisions</h3>
+      <div id="overviewDecisions"></div>
+      <button class="primary" id="backupBtn">Backup decisions</button>
+      <button class="primary" id="restoreBtn">Restore from backup</button>
+      <div id="backupMsg"></div>
+    </div>
+  </section>
+
+  <section id="daily">
+    <h2>Daily Decision</h2>
+    <p class="muted">Same logic as the C++ Daily Decision Maker (menu 9), and the result is saved as a Daily decision record.</p>
+    <div class="card">
+      <label>Available time (minutes, 1–1440) <input id="ddAvailable" type="number" min="1" max="1440"></label>
+      <label>Required time (minutes) <input id="ddRequired" type="number" min="1"></label>
+      <label>Urgency (1–10) <input id="ddUrgency" type="number" min="1" max="10"></label>
+      <label>Importance (1–10) <input id="ddImportance" type="number" min="1" max="10"></label>
+      <label>Energy level (1–10) <input id="ddEnergy" type="number" min="1" max="10"></label>
+      <button class="primary" id="ddBtn">Get suggestion</button>
+      <div id="ddMsg"></div>
+    </div>
+    <div class="card">
+      <h3>Multi-Task Daily Decision (menu 43)</h3>
+      <p class="muted">Tasks are sorted by deadline urgency, then accepted only while their energy and time both fit the remaining budgets — the restored Sweety algorithm.</p>
+      <label>Available energy (1–100) <input id="mtEnergy" type="number" min="1" max="100"></label>
+      <label>Available time (minutes, 1–1440) <input id="mtTime" type="number" min="1" max="1440"></label>
+      <div id="mtTasks"></div>
+      <button class="primary" id="mtAdd">Add task row</button>
+      <button class="primary" id="mtBtn">Recommend tasks</button>
+      <div id="mtMsg"></div>
+    </div>
+  </section>
+
+  <section id="tasks">
+    <h2>Task Management</h2>
+    <p class="muted">Tasks are scored exactly like the C++ Task Prioritization: score = urgency × 2 + importance × 3, sorted highest first. Note: the C++ task list is in-memory only, so the dashboard persists tasks in tasks.txt (see dashboard/README.md).</p>
+    <div class="card">
+      <label>Title <input id="taskTitle"></label>
+      <label>Urgency (1–10) <input id="taskUrgency" type="number" min="1" max="10"></label>
+      <label>Importance (1–10) <input id="taskImportance" type="number" min="1" max="10"></label>
+      <label>Deadline (YYYY-MM-DD, optional) <input id="taskDeadline" placeholder="2026-11-20"></label>
+      <button class="primary" id="taskAddBtn">Add task</button>
+      <div id="taskMsg"></div>
+    </div>
+    <div class="card"><div id="taskList"></div></div>
+  </section>
+
+  <section id="priority">
+    <h2>Priority Calculator</h2>
+    <p class="muted">Same formula and levels as the C++ Priority Calculator (menu 10): score = urgency × 2 + importance × 3, out of 50.</p>
+    <div class="card">
+      <label>Urgency (1–10) <input id="prUrgency" type="number" min="1" max="10"></label>
+      <label>Importance (1–10) <input id="prImportance" type="number" min="1" max="10"></label>
+      <button class="primary" id="prBtn">Calculate</button>
+      <div id="prMsg"></div>
+    </div>
+  </section>
+
+  <section id="budget">
+    <h2>Budget Decision</h2>
+    <p class="muted">Same decision as the C++ Budget Decision (menu 37).</p>
+    <div class="card">
+      <label>Monthly income <input id="budIncome" type="number" min="0" step="0.01"></label>
+      <label>Monthly expenses <input id="budExpenses" type="number" min="0" step="0.01"></label>
+      <button class="primary" id="budBtn">Decide</button>
+      <div id="budMsg"></div>
+    </div>
+  </section>
+
+  <section id="finance">
+    <h2>Income / Expense</h2>
+    <p class="muted">Transactions are written to transactions.txt in the C++ format: date|type|category|amount|note.</p>
+    <div class="card">
+      <label>Date <input id="txDate" type="date"></label>
+      <label>Type
+        <select id="txType"><option value="income">income</option><option value="expense">expense</option></select>
+      </label>
+      <label>Category <input id="txCategory"></label>
+      <label>Amount <input id="txAmount" type="number" min="0" step="0.01"></label>
+      <label>Note <input id="txNote"></label>
+      <button class="primary" id="txBtn">Add transaction</button>
+      <div id="txMsg"></div>
+    </div>
+    <div class="card"><div id="txList"></div></div>
+  </section>
+
+  <section id="savings">
+    <h2>Savings</h2>
+    <p class="muted">Goals are stored in savings_goals.txt as name|target|saved, exactly like the C++ app.</p>
+    <div class="card">
+      <label>Goal name <input id="svName"></label>
+      <label>Target amount <input id="svTarget" type="number" min="0" step="0.01"></label>
+      <button class="primary" id="svBtn">Add goal</button>
+      <div id="svMsg"></div>
+    </div>
+    <div class="card">
+      <label>Add to goal (name) <input id="svAddName"></label>
+      <label>Amount <input id="svAddAmount" type="number" min="0" step="0.01"></label>
+      <button class="primary" id="svAddBtn">Add savings</button>
+      <div id="svAddMsg"></div>
+    </div>
+    <div class="card"><div id="svList"></div></div>
+  </section>
+
+  <section id="habits">
+    <h2>Habit Tracker</h2>
+    <p class="muted">Completions go to habit_log.txt as habit|date. The streak is the true consecutive-day streak from the Phase 1 backend fix, not just a total count.</p>
+    <div class="card">
+      <label>Habit name <input id="hbName"></label>
+      <label>Date <input id="hbDate" type="date"></label>
+      <button class="primary" id="hbBtn">Mark done</button>
+      <div id="hbMsg"></div>
+    </div>
+    <div class="card">
+      <label>Check streak for habit <input id="hbCheck"></label>
+      <button class="primary" id="hbCheckBtn">Check streak</button>
+      <div id="hbCheckMsg"></div>
+      <div id="hbList"></div>
+    </div>
+  </section>
+
+  <section id="reports">
+    <h2>Reports</h2>
+    <p class="muted">Weekly reports cover the 7 days ending on the given date; monthly reports cover the given YYYY-MM month — the same filtering as the C++ period reports.</p>
+    <div class="card">
+      <label>Month (YYYY-MM) <input id="repMonth" placeholder="2026-11"></label>
+      <button class="primary" id="repMonthBtn">Monthly report</button>
+      <label>Week end date <input id="repWeek" type="date"></label>
+      <button class="primary" id="repWeekBtn">Weekly report</button>
+      <div id="repMsg"></div>
+    </div>
+  </section>
+</main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
