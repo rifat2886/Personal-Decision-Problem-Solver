@@ -1,4 +1,5 @@
 #include "delete_confirmation.h"
+#include "file_lock.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -24,6 +25,10 @@ void confirmDelete(const string& id)
         return;
     }
 
+    // Lock only after the user confirms, so a dashboard write cannot
+    // interleave with this read-modify-rename, and the lock is not
+    // held while waiting for the user's y/n answer.
+    FileLock lock("decisions.txt");
     ifstream source("decisions.txt");
 
     if (!source)

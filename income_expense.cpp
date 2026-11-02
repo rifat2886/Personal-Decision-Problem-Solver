@@ -1,4 +1,5 @@
 #include "income_expense.h"
+#include "file_lock.h"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -54,6 +55,7 @@ void addTransaction()
     cout << "Enter note: ";
     getline(cin, note);
 
+    FileLock lock(TRANSACTION_FILE);
     ofstream file(TRANSACTION_FILE, ios::app);
 
     if (!file)

@@ -1,6 +1,7 @@
 #ifndef DECISION_STORE_H
 #define DECISION_STORE_H
 
+#include "file_lock.h"
 #include <fstream>
 #include <string>
 
@@ -14,6 +15,10 @@ inline void appendDecisionRecord(const std::string& type,
                                  int priority,
                                  const std::string& title)
 {
+    // Hold the decisions lock for the whole count-then-append, so
+    // a dashboard write cannot interleave and duplicate an id.
+    // The dashboard C++ server uses the same lock file.
+    FileLock lock("decisions.txt");
     std::string safeType = type;
     std::string safeTitle = title;
     for (char& ch : safeType)

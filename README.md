@@ -138,7 +138,17 @@ Personal-Decision-Problem-Solver/
 
 *Note: The structure above shows the logical module grouping. All
 `.cpp` and `.h` files actually live in the repository root directory,
-not in subfolders.*
+not in subfolders. The one real subfolder is `dashboard/` (see below),
+which holds the website dashboard; it does not change the C++ build,
+because `g++ *.cpp` in the root does not pick up `dashboard/` files.*
+
+### Website dashboard
+
+See `dashboard/README.md`. The dashboard is served by a C++ API server
+(`dashboard/cpp_server.cpp`, built separately from the console app),
+with a Python server (`dashboard/server.py`) kept as a fallback. Both
+use the same API and the same data files as the C++ console app, and
+both bind to localhost only.
 
 ## How to Run the Project
 

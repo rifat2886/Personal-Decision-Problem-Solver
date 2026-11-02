@@ -1,5 +1,6 @@
 #include "export_report.h"
 #include "error_handler.h"
+#include "file_lock.h"
 #include <iostream>
 #include <fstream>
 
@@ -11,6 +12,7 @@ void exportReportTXT()
     // the destination. The old order truncated an existing report
     // file even when transactions.txt was missing, then printed an
     // error, leaving an empty report behind.
+    FileLock lock("transactions.txt");
     ifstream source("transactions.txt");
 
     if (!source)
@@ -44,6 +46,7 @@ void exportReportCSV()
 {
     // Same fix as exportReportTXT: do not truncate an existing CSV
     // when the source file is missing.
+    FileLock lock("transactions.txt");
     ifstream source("transactions.txt");
 
     if (!source)

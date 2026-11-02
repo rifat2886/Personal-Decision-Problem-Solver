@@ -1,4 +1,5 @@
 #include "savings_goal.h"
+#include "file_lock.h"
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -28,6 +29,7 @@ void addSavingsGoal()
         return;
     }
 
+    FileLock lock(SAVINGS_FILE);
     ofstream file(SAVINGS_FILE, ios::app);
 
     if (!file)
@@ -60,6 +62,10 @@ void addSavingsAmount()
         return;
     }
 
+    // Hold the savings lock for the whole read-modify-write, so a
+    // dashboard savings-add cannot read the same old value and
+    // overwrite this update (the classic lost-update race).
+    FileLock lock(SAVINGS_FILE);
     ifstream inFile(SAVINGS_FILE);
     ofstream outFile("savings_temp.txt");
 

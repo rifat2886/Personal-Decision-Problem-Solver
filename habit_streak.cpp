@@ -1,5 +1,6 @@
 #include "habit_streak.h"
 #include "error_handler.h"
+#include "file_lock.h"
 #include <algorithm>
 #include <iostream>
 #include <fstream>
@@ -82,6 +83,7 @@ void markHabitDone()
         return;
     }
 
+    FileLock lock(HABIT_FILE);
     ofstream file(HABIT_FILE, ios::app);
 
     if (!file)

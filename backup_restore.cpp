@@ -1,5 +1,6 @@
 #include "backup_restore.h"
 #include "error_handler.h"
+#include "file_lock.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -12,6 +13,7 @@ void backupDecisions()
     // BEFORE opening the backup. The old order created/truncated
     // decisions_backup.txt even when the source was missing, so a
     // later restore could wipe decisions.txt with an empty backup.
+    FileLock lock("decisions.txt");
     ifstream source("decisions.txt");
 
     if (!source)
@@ -69,6 +71,7 @@ void restoreDecisions()
         return;
     }
 
+    FileLock lock("decisions.txt");
     ofstream destination("decisions.txt");
 
     if (!destination)

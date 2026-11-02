@@ -8,6 +8,16 @@ let username = sessionStorage.getItem("pdps_user") || "";
 
 function el(id) { return document.getElementById(id); }
 
+// SECURITY FIX: escape every user-controlled value before it is put
+// into innerHTML. Without this, a decision/task title such as
+// <img src=x onerror=...> would execute in another user's browser
+// (stored XSS), because decisions and tasks are shared in one file.
+function esc(v) {
+  return String(v == null ? "" : v)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 function showMsg(id, text, ok) {
   const box = el(id);
   if (!box) return;
@@ -96,7 +106,7 @@ async function loadOverview() {
     const decisions = await api("/api/decisions");
     el("overviewDecisions").innerHTML = decisions.length ? "<table><tr><th>ID</th><th>Date</th><th>Type</th><th>Priority</th><th>Title</th><th></th></tr>" +
       decisions.slice(-20).reverse().map(d =>
-        `<tr><td>${d.id}</td><td>${d.date}</td><td>${d.type}</td><td>${d.priority}</td><td>${d.title}</td>` +
+        `<tr><td>${esc(d.id)}</td><td>${esc(d.date)}</td><td>${esc(d.type)}</td><td>${d.priority}</td><td>${esc(d.title)}</td>` +
         `<td><button class="primary small danger" onclick="deleteDecision(${d.id})">Delete</button></td></tr>`).join("") + "</table>"
       : "<p class='muted'>No decisions yet. Create one from Daily Decision, Tasks, or Priority.</p>";
   } catch (e) { showMsg("globalMsg", e.message, false); }
@@ -165,7 +175,7 @@ async function loadTasks() {
   try {
     const tasks = await api("/api/tasks");
     el("taskList").innerHTML = tasks.length ? "<table><tr><th>Title</th><th>Score</th><th>Deadline</th><th>Status</th><th></th></tr>" +
-      tasks.map(t => `<tr><td>${t.title}</td><td>${t.score}</td><td>${t.deadline || "Not set"}</td><td>${t.status}</td><td>` +
+      tasks.map(t => `<tr><td>${esc(t.title)}</td><td>${t.score}</td><td>${esc(t.deadline || "Not set")}</td><td>${esc(t.status)}</td><td>` +
         (t.status === "Pending" ? `<button class="primary small" onclick="setTaskStatus(${t.id},'Completed')">Complete</button>` : "") +
         `<button class="primary small danger" onclick="deleteTask(${t.id})">Delete</button></td></tr>`).join("") + "</table>"
       : "<p class='muted'>No tasks yet.</p>";
@@ -216,7 +226,7 @@ async function loadTransactions() {
     const expense = txs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
     el("txList").innerHTML = "<p>Balance: <b>" + (income - expense).toFixed(2) + "</b> (income " + income.toFixed(2) + ", expense " + expense.toFixed(2) + ")</p>" +
       (txs.length ? "<table><tr><th>Date</th><th>Type</th><th>Category</th><th>Amount</th><th>Note</th></tr>" +
-        txs.map(t => `<tr><td>${t.date}</td><td>${t.type}</td><td>${t.category}</td><td>${t.amount}</td><td>${t.note}</td></tr>`).join("") + "</table>"
+        txs.map(t => `<tr><td>${esc(t.date)}</td><td>${esc(t.type)}</td><td>${esc(t.category)}</td><td>${t.amount}</td><td>${esc(t.note)}</td></tr>`).join("") + "</table>"
         : "<p class='muted'>No transactions yet.</p>");
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
@@ -234,7 +244,7 @@ async function loadSavings() {
   try {
     const goals = await api("/api/savings");
     el("svList").innerHTML = goals.length ? "<table><tr><th>Goal</th><th>Target</th><th>Saved</th><th>Remaining</th></tr>" +
-      goals.map(g => `<tr><td>${g.name}</td><td>${g.target}</td><td>${g.saved}</td><td>${(g.target - g.saved).toFixed(2)}</td></tr>`).join("") + "</table>"
+      goals.map(g => `<tr><td>${esc(g.name)}</td><td>${g.target}</td><td>${g.saved}</td><td>${(g.target - g.saved).toFixed(2)}</td></tr>`).join("") + "</table>"
       : "<p class='muted'>No savings goals yet.</p>";
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
@@ -258,7 +268,7 @@ async function loadHabits() {
   try {
     const habits = await api("/api/habits");
     el("hbList").innerHTML = habits.length ? "<table><tr><th>Habit</th><th>Recorded dates</th></tr>" +
-      habits.map(h => `<tr><td>${h.habit}</td><td>${h.dates.join(", ")}</td></tr>`).join("") + "</table>"
+      habits.map(h => `<tr><td>${esc(h.habit)}</td><td>${esc(h.dates.join(", "))}</td></tr>`).join("") + "</table>"
       : "<p class='muted'>No habit records yet.</p>";
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
