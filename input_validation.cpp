@@ -1,4 +1,5 @@
 #include "input_validation.h"
+#include <cstdlib>
 #include <iostream>
 #include <limits>
 
@@ -28,6 +29,15 @@ int getValidNumber(int minimum, int maximum)
         if (std::cin >> number &&
             number >= minimum && number <= maximum)
             return number;
+
+        // FIX (final audit): on end-of-file, the old
+        // loop cleared the stream and retried forever, flooding
+        // output. Exiting is the only sane response to closed stdin.
+        if (std::cin.eof())
+        {
+            std::cout << "\nInput closed. Exiting.\n";
+            std::exit(0);
+        }
 
         std::cout << "Invalid input! Try again.\n";
 
