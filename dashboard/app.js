@@ -1,7 +1,9 @@
 // Personal Decision & Problem Solver — dashboard frontend.
-// All data comes from server.py on the same origin (http://127.0.0.1:8000).
-// There is no demo or fake data: if the server is not running, every
-// section shows its error instead of invented numbers.
+// All data comes from the backend on the same origin
+// (http://127.0.0.1:8000): the C++ server by default, the Python
+// server as a fallback. There is no demo or fake data: if the
+// server is not running, every section shows its error instead of
+// invented numbers.
 
 let token = sessionStorage.getItem("pdps_token") || "";
 let username = sessionStorage.getItem("pdps_user") || "";
@@ -21,14 +23,29 @@ function esc(v) {
 function showMsg(id, text, ok) {
   const box = el(id);
   if (!box) return;
-  box.className = "msg " + (ok ? "ok" : "err");
+  const cls = ok ? "msg-ok" : "msg-err";
+  if (id === "globalMsg") { box.innerHTML = `<div class="msg ${cls}"></div>`; box.firstChild.textContent = text; return; }
+  box.className = "msg " + cls;
   box.textContent = text;
 }
 
 function clearMsg(id) {
   const box = el(id);
-  if (box) { box.className = ""; box.textContent = ""; }
+  if (box) { box.className = ""; box.textContent = ""; box.innerHTML = ""; }
 }
+
+// Theme: light/dark, saved in this browser only (localStorage).
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem("pdps_theme", theme);
+  const btn = el("themeBtn"); if (btn) btn.textContent = theme === "dark" ? "\u2600" : "\u263D";
+  const sel = el("setTheme"); if (sel) sel.value = theme;
+}
+applyTheme(localStorage.getItem("pdps_theme") || "light");
+el("themeBtn").addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+el("menuBtn").addEventListener("click", () => el("sidebar").classList.toggle("open"));
 
 async function api(path, options) {
   const res = await fetch(path, Object.assign({
@@ -51,11 +68,17 @@ function setLoggedIn(name) {
 function showSection(name) {
   document.querySelectorAll("section").forEach(s => s.classList.toggle("active", s.id === name));
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.section === name));
+  el("sidebar").classList.remove("open");
   if (name === "overview") loadOverview();
+  if (name === "history") loadHistory();
   if (name === "tasks") loadTasks();
+  if (name === "taskstatus") loadStatusList();
+  if (name === "deadlines") loadDeadlines();
   if (name === "finance") loadTransactions();
   if (name === "savings") loadSavings();
   if (name === "habits") loadHabits();
+  if (name === "profile") loadProfile();
+  if (name === "settings") loadSettingsBackend();
 }
 
 document.querySelectorAll("nav button").forEach(b => {
@@ -95,20 +118,21 @@ el("regBtn").addEventListener("click", async () => {
 
 // -- overview -------------------------------------------------------
 async function loadOverview() {
+  el("overviewCards").innerHTML = '<div class="loading">Loading overview…</div>';
   try {
     const o = await api("/api/overview");
     el("overviewCards").innerHTML = [
-      ["Decisions", o.decisions], ["Tasks", o.tasks + " (" + o.tasksPending + " pending)"],
-      ["Balance", o.balance.toFixed(2)], ["Income", o.income.toFixed(2)],
-      ["Expense", o.expense.toFixed(2)],
-      ["Savings", o.savingsSaved.toFixed(2) + " / " + o.savingsTarget.toFixed(2) + " (" + o.savingsGoals + " goals)"]
-    ].map(([k, v]) => `<div class="card"><div class="muted">${k}</div><p class="big">${v}</p></div>`).join("");
+      ["Decisions", o.decisions, "records in decisions.txt"], ["Tasks", o.tasks + " (" + o.tasksPending + " pending)", "in tasks.txt"],
+      ["Balance", o.balance.toFixed(2), "income minus expense"], ["Income", o.income.toFixed(2), "total income"],
+      ["Expense", o.expense.toFixed(2), "total expense"],
+      ["Savings", o.savingsSaved.toFixed(2) + " / " + o.savingsTarget.toFixed(2), o.savingsGoals + " goal(s)"]
+    ].map(([k, v, sub]) => `<div class="stat"><div class="label">${k}</div><div class="value">${v}</div><div class="sub">${sub}</div></div>`).join("");
     const decisions = await api("/api/decisions");
     el("overviewDecisions").innerHTML = decisions.length ? "<table><tr><th>ID</th><th>Date</th><th>Type</th><th>Priority</th><th>Title</th><th></th></tr>" +
       decisions.slice(-20).reverse().map(d =>
         `<tr><td>${esc(d.id)}</td><td>${esc(d.date)}</td><td>${esc(d.type)}</td><td>${d.priority}</td><td>${esc(d.title)}</td>` +
-        `<td><button class="primary small danger" onclick="deleteDecision(${d.id})">Delete</button></td></tr>`).join("") + "</table>"
-      : "<p class='muted'>No decisions yet. Create one from Daily Decision, Tasks, or Priority.</p>";
+        `<td><button class="btn btn-danger" onclick="deleteDecision(${d.id})">Delete</button></td></tr>`).join("") + "</table>"
+      : "<div class='empty'>No decisions yet. Create one from Daily Decision, Tasks, or Priority.</div>";
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
 
@@ -172,21 +196,22 @@ el("mtBtn").addEventListener("click", async () => {
 
 // -- tasks ----------------------------------------------------------
 async function loadTasks() {
+  el("taskList").innerHTML = '<div class="loading">Loading tasks…</div>';
   try {
     const tasks = await api("/api/tasks");
     el("taskList").innerHTML = tasks.length ? "<table><tr><th>Title</th><th>Score</th><th>Deadline</th><th>Status</th><th></th></tr>" +
       tasks.map(t => `<tr><td>${esc(t.title)}</td><td>${t.score}</td><td>${esc(t.deadline || "Not set")}</td><td>${esc(t.status)}</td><td>` +
-        (t.status === "Pending" ? `<button class="primary small" onclick="setTaskStatus(${t.id},'Completed')">Complete</button>` : "") +
-        `<button class="primary small danger" onclick="deleteTask(${t.id})">Delete</button></td></tr>`).join("") + "</table>"
-      : "<p class='muted'>No tasks yet.</p>";
+        `<button class="btn btn-primary" onclick="setTaskStatus(${t.id},'Completed')">Complete</button>` +
+        `<button class="btn btn-danger" onclick="deleteTask(${t.id})">Delete</button></td></tr>`).join("") + "</table>"
+      : "<div class='empty'>No tasks yet. Add your first task above.</div>";
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
 async function setTaskStatus(id, status) {
-  try { await api("/api/tasks/" + id, { method: "PATCH", body: JSON.stringify({ status }) }); loadTasks(); }
+  try { await api("/api/tasks/" + id, { method: "PATCH", body: JSON.stringify({ status }) }); loadTasks(); loadStatusList(); }
   catch (e) { showMsg("globalMsg", e.message, false); }
 }
 async function deleteTask(id) {
-  try { await api("/api/tasks/" + id, { method: "DELETE" }); loadTasks(); }
+  try { await api("/api/tasks/" + id, { method: "DELETE" }); loadTasks(); loadStatusList(); }
   catch (e) { showMsg("globalMsg", e.message, false); }
 }
 window.setTaskStatus = setTaskStatus; window.deleteTask = deleteTask;
@@ -227,7 +252,7 @@ async function loadTransactions() {
     el("txList").innerHTML = "<p>Balance: <b>" + (income - expense).toFixed(2) + "</b> (income " + income.toFixed(2) + ", expense " + expense.toFixed(2) + ")</p>" +
       (txs.length ? "<table><tr><th>Date</th><th>Type</th><th>Category</th><th>Amount</th><th>Note</th></tr>" +
         txs.map(t => `<tr><td>${esc(t.date)}</td><td>${esc(t.type)}</td><td>${esc(t.category)}</td><td>${t.amount}</td><td>${esc(t.note)}</td></tr>`).join("") + "</table>"
-        : "<p class='muted'>No transactions yet.</p>");
+        : "<div class='empty'>No transactions yet.</div>");
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
 el("txBtn").addEventListener("click", async () => {
@@ -245,7 +270,7 @@ async function loadSavings() {
     const goals = await api("/api/savings");
     el("svList").innerHTML = goals.length ? "<table><tr><th>Goal</th><th>Target</th><th>Saved</th><th>Remaining</th></tr>" +
       goals.map(g => `<tr><td>${esc(g.name)}</td><td>${g.target}</td><td>${g.saved}</td><td>${(g.target - g.saved).toFixed(2)}</td></tr>`).join("") + "</table>"
-      : "<p class='muted'>No savings goals yet.</p>";
+      : "<div class='empty'>No savings goals yet.</div>";
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
 el("svBtn").addEventListener("click", async () => {
@@ -269,7 +294,7 @@ async function loadHabits() {
     const habits = await api("/api/habits");
     el("hbList").innerHTML = habits.length ? "<table><tr><th>Habit</th><th>Recorded dates</th></tr>" +
       habits.map(h => `<tr><td>${esc(h.habit)}</td><td>${esc(h.dates.join(", "))}</td></tr>`).join("") + "</table>"
-      : "<p class='muted'>No habit records yet.</p>";
+      : "<div class='empty'>No habit records yet.</div>";
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
 el("hbBtn").addEventListener("click", async () => {
@@ -298,10 +323,122 @@ async function showReport(url) {
 el("repMonthBtn").addEventListener("click", () => showReport("/api/reports?month=" + encodeURIComponent(el("repMonth").value.trim())));
 el("repWeekBtn").addEventListener("click", () => showReport("/api/reports?week_end=" + encodeURIComponent(el("repWeek").value)));
 
+
+// -- new sections ---------------------------------------------------
+// Search & History: same decisions.txt, filtered by keyword/type.
+async function loadHistory() {
+  el("histList").innerHTML = '<div class="loading">Searching history…</div>';
+  try {
+    const q = new URLSearchParams({ search: el("histSearch").value.trim(), type: el("histType").value });
+    let ds = await api("/api/decisions?" + q.toString());
+    if (el("histSort").value === "priority") ds = ds.slice().sort((a, b) => b.priority - a.priority);
+    else ds = ds.slice().reverse();
+    el("histList").innerHTML = ds.length ? "<table><tr><th>ID</th><th>Date</th><th>Type</th><th>Priority</th><th>Title</th></tr>" +
+      ds.map(d => `<tr><td>${esc(d.id)}</td><td>${esc(d.date)}</td><td>${esc(d.type)}</td><td>${d.priority}</td><td>${esc(d.title)}</td></tr>`).join("") + "</table>"
+      : "<div class='empty'>No matching decisions. Try a different keyword, or create a decision first.</div>";
+    showMsg("histMsg", ds.length + " matching decision(s).", true);
+  } catch (e) { showMsg("histMsg", e.message, false); }
+}
+el("histBtn").addEventListener("click", loadHistory);
+
+// Task Status: same tasks.txt, status dropdown mirrors task_status.cpp.
+async function loadStatusList() {
+  const box = el("statusList"); if (!box) return;
+  box.innerHTML = '<div class="loading">Loading task statuses…</div>';
+  try {
+    const tasks = await api("/api/tasks");
+    box.innerHTML = tasks.length ? "<table><tr><th>Title</th><th>Score</th><th>Deadline</th><th>Status</th></tr>" +
+      tasks.map(t => `<tr><td>${esc(t.title)}</td><td>${t.score}</td><td>${esc(t.deadline || "Not set")}</td><td><select onchange="setTaskStatus(${t.id}, this.value)">` +
+        ["Pending", "In Progress", "Completed"].map(s => `<option value="${s}"${s === t.status ? " selected" : ""}>${s}</option>`).join("") + "</select></td></tr>").join("") + "</table>"
+      : "<div class='empty'>No tasks yet. Add a task in Task Management first.</div>";
+  } catch (e) { showMsg("globalMsg", e.message, false); }
+}
+
+// Deadline Alerts: mirrors deadline_alert.cpp.
+async function loadDeadlines() {
+  el("dlList").innerHTML = '<div class="loading">Checking deadlines…</div>';
+  try {
+    const today = el("dlDate").value;
+    const ds = await api("/api/deadlines" + (today ? "?today=" + encodeURIComponent(today) : ""));
+    const badge = a => a === "OVERDUE" ? "badge-danger" : a === "DUE TODAY" ? "badge-warn" : a === "UPCOMING" ? "badge" : "badge-warn";
+    el("dlList").innerHTML = ds.length ? "<table><tr><th>Title</th><th>Deadline</th><th>Status</th><th>Alert</th></tr>" +
+      ds.map(d => `<tr><td>${esc(d.title)}</td><td>${esc(d.deadline || "Not set")}</td><td>${esc(d.status)}</td><td><span class="badge ${badge(d.alert)}">${esc(d.alert)}</span></td></tr>`).join("") + "</table>"
+      : "<div class='empty'>No open tasks with deadlines. Completed tasks are skipped, as in the C++ module.</div>";
+    showMsg("dlMsg", ds.length + " open task(s) checked.", true);
+  } catch (e) { showMsg("dlMsg", e.message, false); }
+}
+el("dlBtn").addEventListener("click", loadDeadlines);
+
+// Decision Explanation: mirrors decision_explanation.cpp.
+el("exBtn").addEventListener("click", async () => {
+  try {
+    const r = await api("/api/decision-explanation", { method: "POST", body: JSON.stringify({
+      urgency: +el("exUrgency").value, importance: +el("exImportance").value }) });
+    showMsg("exMsg", r.formula + ". " + r.calculation + ". " + r.explanation + " Recommendation: " + r.recommendation, true);
+  } catch (e) { showMsg("exMsg", e.message, false); }
+});
+
+// Study Planner: mirrors study_planner.cpp (calculated, not saved).
+el("spBtn").addEventListener("click", async () => {
+  try {
+    const r = await api("/api/study-planner", { method: "POST", body: JSON.stringify({
+      subject: el("spSubject").value.trim(), days: +el("spDays").value, hours: +el("spHours").value }) });
+    showMsg("spMsg", "Total planned hours: " + r.totalHours + " (" + r.days + " days x " + r.hoursPerDay + " hour(s) per day).", true);
+    el("spList").innerHTML = "<table><tr><th>Day</th><th>Plan</th></tr>" +
+      r.plan.map(p => `<tr><td>${p.day}</td><td>${esc(p.text)}</td></tr>`).join("") + "</table>";
+  } catch (e) { showMsg("spMsg", e.message, false); }
+});
+
+// Time Allocation: mirrors time_allocation.cpp.
+el("taBtn").addEventListener("click", async () => {
+  try {
+    const r = await api("/api/time-allocation", { method: "POST", body: JSON.stringify({
+      sleep: +el("taSleep").value, study: +el("taStudy").value, work: +el("taWork").value, other: +el("taOther").value }) });
+    const warn = r.warning ? " Warning: " + r.warning : " Remaining: " + r.remaining + " hour(s).";
+    showMsg("taMsg", "Total allocated: " + r.total + " hour(s)." + warn, !r.warning);
+  } catch (e) { showMsg("taMsg", e.message, false); }
+});
+
+// User Profile: mirrors showProfile(); admins also get the user list.
+async function loadProfile() {
+  try {
+    const me = await api("/api/me");
+    el("profileInfo").innerHTML = `<p><b>Username:</b> ${esc(me.username)}</p><p><b>Role:</b> <span class="badge">${esc(me.role)}</span></p>`;
+    try {
+      const users = await api("/api/users");
+      el("profileUsers").innerHTML = "<h3>Registered users (ADMIN only)</h3><table><tr><th>Username</th><th>Role</th></tr>" +
+        users.map(u => `<tr><td>${esc(u.username)}</td><td>${esc(u.role)}</td></tr>`).join("") + "</table>";
+    } catch (e) {
+      el("profileUsers").innerHTML = "<div class='empty'>User list is available to ADMIN only.</div>";
+    }
+  } catch (e) { showMsg("globalMsg", e.message, false); }
+}
+
+// Settings: theme (browser only), backend info, password change.
+async function loadSettingsBackend() {
+  try {
+    const info = await api("/api/info");
+    el("setBackend").innerHTML = `<p><b>Backend:</b> ${esc(info.backend)} (${esc(info.server)})</p><p><b>Shared data files:</b> ${info.dataFiles.map(esc).join(", ")}</p><p class="muted">The dashboard and the C++ console app read and write the same files in the same formats.</p>`;
+  } catch (e) { el("setBackend").innerHTML = "<div class='empty'>Backend info unavailable: " + esc(e.message) + "</div>"; }
+}
+el("setThemeBtn").addEventListener("click", () => {
+  applyTheme(el("setTheme").value);
+  showMsg("setThemeMsg", "Theme saved in this browser.", true);
+});
+el("cpBtn").addEventListener("click", async () => {
+  try {
+    await api("/api/change-password", { method: "POST", body: JSON.stringify({
+      currentPassword: el("cpCurrent").value, newPassword: el("cpNew").value }) });
+    showMsg("cpMsg", "Password changed successfully.", true);
+    el("cpCurrent").value = ""; el("cpNew").value = "";
+  } catch (e) { showMsg("cpMsg", e.message, false); }
+});
+
 // -- init -----------------------------------------------------------
 if (token && username) {
   setLoggedIn(username);
   showSection("overview");
 } else {
   setLoggedIn("");
+  showSection("auth");
 }

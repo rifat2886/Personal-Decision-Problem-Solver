@@ -6,7 +6,9 @@
 // code, not by a Python process.
 //
 // Build (from the repository root):
-//   g++ -std=c++17 -Wall -Wextra -pthread -o cpp_server dashboard/cpp_server.cpp
+//   Linux:   g++ -std=c++17 -Wall -Wextra -pthread -o cpp_server dashboard/cpp_server.cpp
+//   Windows (MinGW): x86_64-w64-mingw32-g++ -std=c++17 -Wall -Wextra -pthread -o cpp_server.exe dashboard/cpp_server.cpp -lws2_32
+//   Windows (MSVC):  cl /std:c++17 /EHsc dashboard\cpp_server.cpp ws2_32.lib
 // Run (from the repository root, so the data files are the same ones
 // the C++ console app reads):
 //   ./cpp_server            # http://127.0.0.1:8000/
@@ -37,37 +39,48 @@
 // - Passwords stay in the C++ plain-text format (users.txt), because
 //   changing it would break existing console users. This server
 //   binds to 127.0.0.1 only and must NOT be exposed to the internet.
-// - Sessions are in-memory random tokens (from /dev/urandom when
-//   available, otherwise random_device), never passwords, never
-//   written to a file, and never returned except at login.
+// - Sessions are in-memory random tokens (random_device plus a
+//   counter), never passwords, never written to a file, and never
+//   returned except at login.
 // - Static serving is limited to index.html, style.css, app.js.
 //   Data files (users.txt, etc.) are never served as static files.
 // - Request bodies are capped at 1 MiB; oversized bodies are rejected.
 // - No command execution, no SQL, no user input passed to a shell.
 
+#ifdef _MSC_VER
+#pragma comment(lib, "ws2_32")
+#endif
 #include <algorithm>
-#include <arpa/inet.h>
 #include <atomic>
 #include <chrono>
-#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-#include <fcntl.h>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <mutex>
-#include <netinet/in.h>
+#include <random>
 #include <sstream>
 #include <string>
-#include <sys/file.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
 #include <thread>
-#include <unistd.h>
 #include <vector>
+#ifdef _WIN32
+#include <process.h>
+#include <winsock2.h>
+#include <windows.h>
+#include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>
+#include <csignal>
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <sys/file.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#endif
 
 using namespace std;
 
@@ -123,7 +136,12 @@ static bool validMonth(const string& m) {
     int mo = stoi(m.substr(5, 2)); return mo >= 1 && mo <= 12;
 }
 static string todayStr() {
-    time_t t = time(nullptr); struct tm tmv; localtime_r(&t, &tmv);
+    time_t t = time(nullptr); struct tm tmv;
+#ifdef _WIN32
+    localtime_s(&tmv, &t);
+#else
+    localtime_r(&t, &tmv);
+#endif
     char buf[32]; snprintf(buf, sizeof(buf), "%04d-%02d-%02d", tmv.tm_year + 1900, tmv.tm_mon + 1, tmv.tm_mday);
     return buf;
 }
@@ -207,8 +225,29 @@ static bool appendLine(const string& path, const string& line) {
 }
 static bool fileExists(const string& path) { struct stat st; return stat(path.c_str(), &st) == 0; }
 
-// RAII flock on "<datafile>.lock" in the data directory.
+// RAII lock on "<datafile>.lock" in the data directory.
+// Same protocol as file_lock.h in the repository root: POSIX flock
+// on Linux/macOS, LockFileEx on Windows.
 struct FileLock {
+#ifdef _WIN32
+    HANDLE handle = INVALID_HANDLE_VALUE;
+    explicit FileLock(const string& dataFile) {
+        string lockPath = joinPath(g_dataDir, dataFile + ".lock");
+        handle = CreateFileA(lockPath.c_str(), GENERIC_READ | GENERIC_WRITE,
+                             0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (handle != INVALID_HANDLE_VALUE) {
+            OVERLAPPED ov = {};
+            LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK, 0, MAXDWORD, MAXDWORD, &ov);
+        }
+    }
+    ~FileLock() {
+        if (handle != INVALID_HANDLE_VALUE) {
+            OVERLAPPED ov = {};
+            UnlockFileEx(handle, 0, MAXDWORD, MAXDWORD, &ov);
+            CloseHandle(handle);
+        }
+    }
+#else
     int fd = -1;
     explicit FileLock(const string& dataFile) {
         string lockPath = joinPath(g_dataDir, dataFile + ".lock");
@@ -216,6 +255,7 @@ struct FileLock {
         if (fd >= 0) flock(fd, LOCK_EX);
     }
     ~FileLock() { if (fd >= 0) { flock(fd, LOCK_UN); close(fd); } }
+#endif
     FileLock(const FileLock&) = delete; FileLock& operator=(const FileLock&) = delete;
 };
 
@@ -304,10 +344,12 @@ static string priorityLevel(int score) {
     return "LOW";
 }
 static string makeToken() {
+    // Cross-platform: random_device (backed by the OS CSPRNG on
+    // both Windows and Linux) plus a process-wide counter, so two
+    // tokens can never collide even if random_device repeats.
     unsigned char bytes[16];
-    int fd = open("/dev/urandom", O_RDONLY);
-    if (fd >= 0) { ssize_t got = read(fd, bytes, sizeof(bytes)); close(fd); if (got != 16) { for (auto& b : bytes) b = (unsigned char)(rand() & 0xff); } }
-    else { for (auto& b : bytes) b = (unsigned char)(rand() & 0xff); }
+    static random_device rd;
+    for (auto& b : bytes) b = (unsigned char)(rd() & 0xff);
     unsigned long long ctr = ++g_tokenCounter;
     char buf[64]; snprintf(buf, sizeof(buf), "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%llx",
         bytes[0],bytes[1],bytes[2],bytes[3],bytes[4],bytes[5],bytes[6],bytes[7],bytes[8],bytes[9],bytes[10],bytes[11],bytes[12],bytes[13],bytes[14],bytes[15], ctr);
@@ -335,16 +377,25 @@ static map<string, string> parseQuery(const string& q) {
     }
     return out;
 }
-static void sendAll(int fd, const string& data) {
-    size_t sent = 0; while (sent < data.size()) { ssize_t n = send(fd, data.data() + sent, data.size() - sent, 0); if (n <= 0) break; sent += (size_t)n; }
+// Cross-platform socket type: SOCKET on Windows, int on POSIX.
+#ifdef _WIN32
+using SocketFd = SOCKET;
+static void closeSocket(SocketFd fd) { closesocket(fd); }
+#else
+using SocketFd = int;
+static void closeSocket(SocketFd fd) { close(fd); }
+#endif
+
+static void sendAll(SocketFd fd, const string& data) {
+    size_t sent = 0; while (sent < data.size()) { auto n = send(fd, data.data() + sent, (int)(data.size() - sent), 0); if (n <= 0) break; sent += (size_t)n; }
 }
-static void sendResponse(int fd, int status, const string& ctype, const string& body) {
+static void sendResponse(SocketFd fd, int status, const string& ctype, const string& body) {
     string reason = status == 200 ? "OK" : status == 201 ? "Created" : status == 400 ? "Bad Request" : status == 401 ? "Unauthorized" : status == 404 ? "Not Found" : status == 413 ? "Payload Too Large" : "Error";
     ostringstream os; os << "HTTP/1.1 " << status << " " << reason << "\r\nContent-Type: " << ctype << "\r\nContent-Length: " << body.size() << "\r\nConnection: close\r\n\r\n" << body;
     sendAll(fd, os.str());
 }
-static void sendJson(int fd, int status, const string& body) { sendResponse(fd, status, "application/json", body); }
-static void sendErr(int fd, int status, const string& msg) { sendJson(fd, status, "{\"error\":" + jsonStr(msg) + "}"); }
+static void sendJson(SocketFd fd, int status, const string& body) { sendResponse(fd, status, "application/json", body); }
+static void sendErr(SocketFd fd, int status, const string& msg) { sendJson(fd, status, "{\"error\":" + jsonStr(msg) + "}"); }
 
 static string getSessionUser(const Request& req) {
     if (req.auth.rfind("Bearer ", 0) != 0) return "";
@@ -394,7 +445,7 @@ static string habitStreakJson(const string& habit) {
     return "{\"habit\":" + jsonStr(habit) + ",\"total\":" + to_string(total) + ",\"streak\":" + to_string(streak) + ",\"latest\":" + jsonStr(dates.back()) + "}";
 }
 
-static void handleApi(int fd, const Request& req, const string& path, const map<string, string>& query) {
+static void handleApi(SocketFd fd, const Request& req, const string& path, const map<string, string>& query) {
     string method = req.method;
     // ---- register / login / logout (no token needed) ----
     if (path == "/api/register" && method == "POST") {
@@ -564,8 +615,8 @@ static void handleApi(int fd, const Request& req, const string& path, const map<
             vector<Task> kept; for (auto& t : tasks) if (t.id != id) kept.push_back(t);
             saveTasks(kept); return sendJson(fd, 200, "{\"deleted\":" + jsonStr(id) + "}");
         }
-        string status; if (!jsonStringField(req.body, "status", status) || (status != "Pending" && status != "Completed"))
-            return sendErr(fd, 400, "Status must be Pending or Completed.");
+        string status; if (!jsonStringField(req.body, "status", status) || (status != "Pending" && status != "In Progress" && status != "Completed"))
+            return sendErr(fd, 400, "Status must be Pending, In Progress, or Completed.");
         found->status = status; Task copy = *found; saveTasks(tasks);
         return sendJson(fd, 200, taskJson(copy));
     }
@@ -680,11 +731,104 @@ static void handleApi(int fd, const Request& req, const string& path, const map<
         return sendJson(fd, 200, "{\"restored\":" + to_string(lines.size()) + "}");
     }
 
+    // ---- new sections (all mirror the console modules of the same name) ----
+    if (path == "/api/info" && method == "GET")
+        return sendJson(fd, 200, "{\"backend\":\"C++\",\"server\":\"cpp_server.cpp\",\"dataFiles\":[\"users.txt\",\"decisions.txt\",\"tasks.txt\",\"transactions.txt\",\"savings_goals.txt\",\"habit_log.txt\"]}");
+    if (path == "/api/users" && method == "GET") {
+        // Mirrors admin.cpp: username and role only, never passwords.
+        if (role != "ADMIN") return sendErr(fd, 403, "Only an ADMIN can list users.");
+        auto users = loadUsers(); string out = "[";
+        bool first = true; for (auto& kv : users) { if (!first) out += ","; first = false; out += "{\"username\":" + jsonStr(kv.first) + ",\"role\":" + jsonStr(kv.second.second) + "}"; }
+        return sendJson(fd, 200, out + "]");
+    }
+    if (path == "/api/change-password" && method == "POST") {
+        string cur, nw;
+        jsonStringField(req.body, "currentPassword", cur); jsonStringField(req.body, "newPassword", nw);
+        auto users = loadUsers(); auto it = users.find(user);
+        if (it == users.end() || it->second.first != cur) return sendErr(fd, 400, "Wrong current password.");
+        bool letter = false, digit = false;
+        for (char c : nw) { if (isalpha((unsigned char)c)) letter = true; if (isdigit((unsigned char)c)) digit = true; }
+        if (nw.size() < 8 || !letter || !digit) return sendErr(fd, 400, "Password must be 8+ characters with a letter and a digit.");
+        FileLock lock("users.txt");
+        // Re-read under the lock so a concurrent register cannot be lost.
+        auto fresh = loadUsers(); if (fresh.count(user) && fresh[user].first != cur) return sendErr(fd, 400, "Wrong current password.");
+        vector<string> lines;
+        for (auto& kv : fresh) lines.push_back(kv.first + " " + (kv.first == user ? nw : kv.second.first) + " " + kv.second.second);
+        writeLines(joinPath(g_dataDir, "users.txt"), lines);
+        return sendJson(fd, 200, "{\"ok\":true}");
+    }
+    if (path == "/api/study-planner" && method == "POST") {
+        // Mirrors study_planner.cpp: days 1-365, hours 1-24, total = days*hours.
+        string subject; double dv; long long days = -1, hours = -1;
+        jsonStringField(req.body, "subject", subject);
+        if (jsonNumberField(req.body, "days", dv)) days = (long long)dv;
+        if (jsonNumberField(req.body, "hours", dv)) hours = (long long)dv;
+        if (trimStr(subject).empty() || days < 1 || days > 365 || hours < 1 || hours > 24)
+            return sendErr(fd, 400, "A plan needs a subject, days 1-365, hours 1-24.");
+        ostringstream os; os << "{\"subject\":" << jsonStr(subject) << ",\"days\":" << days << ",\"hoursPerDay\":" << hours << ",\"totalHours\":" << (days * hours) << ",\"plan\":[";
+        for (long long d = 1; d <= days; d++) { if (d > 1) os << ","; os << "{\"day\":" << d << ",\"text\":" << jsonStr("Day " + to_string(d) + ": " + subject + " - " + to_string(hours) + " hour(s)") << "}"; }
+        return sendJson(fd, 200, os.str() + "]}");
+    }
+    if (path == "/api/time-allocation" && method == "POST") {
+        // Mirrors time_allocation.cpp: each 0-24, total, remaining or warning.
+        double dv; long long sleepH = -1, studyH = -1, workH = -1, otherH = -1;
+        if (jsonNumberField(req.body, "sleep", dv)) sleepH = (long long)dv;
+        if (jsonNumberField(req.body, "study", dv)) studyH = (long long)dv;
+        if (jsonNumberField(req.body, "work", dv)) workH = (long long)dv;
+        if (jsonNumberField(req.body, "other", dv)) otherH = (long long)dv;
+        if (sleepH < 0 || sleepH > 24 || studyH < 0 || studyH > 24 || workH < 0 || workH > 24 || otherH < 0 || otherH > 24)
+            return sendErr(fd, 400, "Each value must be 0-24 hours.");
+        long long total = sleepH + studyH + workH + otherH;
+        ostringstream os; os << "{\"sleep\":" << sleepH << ",\"study\":" << studyH << ",\"work\":" << workH << ",\"other\":" << otherH << ",\"total\":" << total;
+        if (total > 24) os << ",\"remaining\":null,\"warning\":\"Total exceeds 24 hours!\"";
+        else os << ",\"remaining\":" << (24 - total) << ",\"warning\":null";
+        return sendJson(fd, 200, os.str() + "}");
+    }
+    if (path == "/api/decision-explanation" && method == "POST") {
+        // Mirrors decision_explanation.cpp: score = urgency*2 + importance*3.
+        double dv; long long urgency = -1, importance = -1;
+        if (jsonNumberField(req.body, "urgency", dv)) urgency = (long long)dv;
+        if (jsonNumberField(req.body, "importance", dv)) importance = (long long)dv;
+        if (urgency < 1 || urgency > 10 || importance < 1 || importance > 10)
+            return sendErr(fd, 400, "Urgency and importance must be 1-10.");
+        long long score = urgency * 2 + importance * 3;
+        string level, rec;
+        if (score >= 40) { level = "Very high priority."; rec = "Complete this task first."; }
+        else if (score >= 30) { level = "High priority."; rec = "Schedule it soon."; }
+        else if (score >= 20) { level = "Medium priority."; rec = "Plan it after higher-priority tasks."; }
+        else { level = "Low priority based on this score."; rec = "Schedule it when time is available."; }
+        ostringstream os; os << "{\"urgency\":" << urgency << ",\"importance\":" << importance << ",\"score\":" << score
+            << ",\"formula\":\"Formula: (Urgency x 2) + (Importance x 3)\""
+            << ",\"calculation\":\"Calculation: (" << urgency << " x 2) + (" << importance << " x 3) = " << score << "/50\""
+            << ",\"explanation\":" << jsonStr(level) << ",\"recommendation\":" << jsonStr(rec) << "}";
+        return sendJson(fd, 200, os.str());
+    }
+    if (path == "/api/deadlines" && method == "GET") {
+        // Mirrors deadline_alert.cpp: string comparison on YYYY-MM-DD,
+        // Completed tasks skipped, malformed deadlines flagged.
+        string today; auto ti = query.find("today"); if (ti != query.end()) today = ti->second; else today = todayStr();
+        if (!validDate(today)) return sendErr(fd, 400, "Today must be a real YYYY-MM-DD date.");
+        auto tasks = loadTasks(); string out = "[";
+        bool first = true;
+        for (auto& t : tasks) {
+            if (t.status == "Completed") continue;
+            string alert;
+            if (t.deadline.size() != 10 || t.deadline[4] != '-' || t.deadline[7] != '-') alert = "CHECK";
+            else if (t.deadline < today) alert = "OVERDUE";
+            else if (t.deadline == today) alert = "DUE TODAY";
+            else alert = "UPCOMING";
+            if (!first) out += ",";
+            first = false;
+            out += "{\"id\":" + jsonStr(t.id) + ",\"title\":" + jsonStr(t.title) + ",\"deadline\":" + jsonStr(t.deadline) + ",\"status\":" + jsonStr(t.status) + ",\"alert\":" + jsonStr(alert) + "}";
+        }
+        return sendJson(fd, 200, out + "]");
+    }
+
     return sendErr(fd, 404, "Unknown API endpoint.");
 }
 
 // ---------------------------------------------------------------- connections
-static void serveStatic(int fd, const string& path) {
+static void serveStatic(SocketFd fd, const string& path) {
     string name;
     if (path == "/" || path == "/index.html") name = "index.html";
     else if (path == "/style.css") name = "style.css";
@@ -697,16 +841,16 @@ static void serveStatic(int fd, const string& path) {
     sendResponse(fd, 200, ctype, body);
 }
 
-static void handleConnection(int clientFd) {
+static void handleConnection(SocketFd clientFd) {
     // Read headers (cap: 64 KiB of headers).
     string raw; char buf[4096];
     while (raw.find("\r\n\r\n") == string::npos && raw.size() < 65536) {
-        ssize_t n = recv(clientFd, buf, sizeof(buf), 0);
-        if (n <= 0) { close(clientFd); return; }
+        auto n = recv(clientFd, buf, sizeof(buf), 0);
+        if (n <= 0) { closeSocket(clientFd); return; }
         raw.append(buf, (size_t)n);
     }
     size_t headerEnd = raw.find("\r\n\r\n");
-    if (headerEnd == string::npos) { close(clientFd); return; }
+    if (headerEnd == string::npos) { closeSocket(clientFd); return; }
     string head = raw.substr(0, headerEnd);
     string body = raw.substr(headerEnd + 4);
     istringstream hs(head); string method, target, version;
@@ -722,9 +866,9 @@ static void handleConnection(int clientFd) {
     long long contentLength = 0;
     auto ci = headers.find("content-length");
     if (ci != headers.end()) { try { contentLength = stoll(ci->second); } catch (...) { contentLength = 0; } }
-    if (contentLength < 0 || contentLength > 1048576) { sendErr(clientFd, 413, "Request body too large (max 1 MiB)."); close(clientFd); return; }
+    if (contentLength < 0 || contentLength > 1048576) { sendErr(clientFd, 413, "Request body too large (max 1 MiB)."); closeSocket(clientFd); return; }
     while ((long long)body.size() < contentLength) {
-        ssize_t n = recv(clientFd, buf, sizeof(buf), 0);
+        auto n = recv(clientFd, buf, sizeof(buf), 0);
         if (n <= 0) break;
         body.append(buf, (size_t)n);
     }
@@ -744,7 +888,7 @@ static void handleConnection(int clientFd) {
     } else {
         sendErr(clientFd, 404, "Not found.");
     }
-    close(clientFd);
+    closeSocket(clientFd);
 }
 
 int main(int argc, char** argv) {
@@ -767,21 +911,33 @@ int main(int argc, char** argv) {
     else if (fileExists("index.html")) g_staticDir = ".";
     else g_staticDir = "dashboard";
 
-    srand((unsigned)(time(nullptr) ^ getpid()));
-    int serverFd = socket(AF_INET, SOCK_STREAM, 0);
+#ifdef _WIN32
+    WSADATA wsa; if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) { cerr << "WSAStartup failed.\n"; return 1; }
+#endif
+    SocketFd serverFd = socket(AF_INET, SOCK_STREAM, 0);
+#ifdef _WIN32
+    if (serverFd == INVALID_SOCKET) { cerr << "Could not create socket.\n"; WSACleanup(); return 1; }
+#else
     if (serverFd < 0) { cerr << "Could not create socket.\n"; return 1; }
-    int opt = 1; setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+#endif
+    int opt = 1; setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
     sockaddr_in addr{}; addr.sin_family = AF_INET; addr.sin_port = htons((uint16_t)port);
-    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);  // 127.0.0.1 only, never 0.0.0.0
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");  // loopback only, never 0.0.0.0
     if (bind(serverFd, (sockaddr*)&addr, sizeof(addr)) < 0) { cerr << "Could not bind to 127.0.0.1:" << port << " (is another server running?).\n"; return 1; }
     if (listen(serverFd, 32) < 0) { cerr << "Could not listen.\n"; return 1; }
     cout << "Dashboard (C++ backend): http://127.0.0.1:" << port << "/\n";
     cout << "Data directory (same files as the C++ app): " << g_dataDir << "\n";
     cout << "Press Ctrl+C to stop. This server binds to localhost only.\n" << flush;
+#ifndef _WIN32
     signal(SIGPIPE, SIG_IGN);
+#endif
     while (true) {
-        int clientFd = accept(serverFd, nullptr, nullptr);
+        SocketFd clientFd = accept(serverFd, nullptr, nullptr);
+#ifdef _WIN32
+        if (clientFd == INVALID_SOCKET) continue;
+#else
         if (clientFd < 0) continue;
+#endif
         thread(handleConnection, clientFd).detach();
     }
     return 0;

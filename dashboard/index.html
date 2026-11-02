@@ -3,67 +3,116 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Personal Decision & Problem Solver — dashboard connected to the same data files as the C++ app.">
 <title>Personal Decision &amp; Problem Solver — Dashboard</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
-  <div>
-    <h1>Personal Decision &amp; Problem Solver</h1>
-    <p>Dashboard — connected to the same data files as the C++ app</p>
+<header class="topbar">
+  <button class="iconbtn" id="menuBtn" aria-label="Toggle navigation">&#9776;</button>
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">PD</span>
+    <div>
+      <strong>Personal Decision &amp; Problem Solver</strong>
+      <span class="brand-sub">Dashboard &middot; same data files as the C++ app</span>
+    </div>
   </div>
-  <div>
-    <span id="who" class="muted"></span>
-    <button class="primary hidden" id="logoutBtn">Logout</button>
+  <div class="topbar-actions">
+    <button class="iconbtn" id="themeBtn" title="Toggle light / dark mode" aria-label="Toggle light / dark mode">&#9788;</button>
+    <span id="who" class="who"></span>
+    <button class="btn btn-primary hidden" id="logoutBtn">Logout</button>
   </div>
 </header>
 
 <div class="layout">
-<nav>
-  <button data-section="auth" class="active">Login / Register</button>
-  <button data-section="overview">Overview</button>
-  <button data-section="daily">Daily Decision</button>
-  <button data-section="tasks">Task Management</button>
-  <button data-section="priority">Priority</button>
-  <button data-section="budget">Budget</button>
-  <button data-section="finance">Income / Expense</button>
-  <button data-section="savings">Savings</button>
-  <button data-section="habits">Habit Tracker</button>
-  <button data-section="reports">Reports</button>
+<nav class="sidebar" id="sidebar" aria-label="Main navigation">
+  <div class="nav-group">Main</div>
+  <button data-section="auth">&#128272; Login / Register</button>
+  <button data-section="overview">&#128202; Overview</button>
+  <button data-section="history">&#128269; Search &amp; History</button>
+  <div class="nav-group">Decisions</div>
+  <button data-section="daily">&#127919; Daily Decision</button>
+  <button data-section="tasks">&#9989; Task Management</button>
+  <button data-section="taskstatus">&#8635; Task Status</button>
+  <button data-section="priority">&#11088; Priority</button>
+  <button data-section="explanation">&#128161; Decision Explanation</button>
+  <button data-section="deadlines">&#9200; Deadline Alerts</button>
+  <div class="nav-group">Finance</div>
+  <button data-section="budget">&#128176; Budget</button>
+  <button data-section="finance">&#128200; Income / Expense</button>
+  <button data-section="savings">&#127919; Savings</button>
+  <div class="nav-group">Learning</div>
+  <button data-section="study">&#128218; Study Planner</button>
+  <button data-section="timealloc">&#128338; Time Allocation</button>
+  <div class="nav-group">Personal</div>
+  <button data-section="habits">&#127793; Habit Tracker</button>
+  <button data-section="reports">&#128203; Reports</button>
+  <button data-section="profile">&#128100; User Profile</button>
+  <button data-section="settings">&#9881; Settings</button>
 </nav>
 
 <main>
-  <div id="globalMsg"></div>
+  <div id="globalMsg" role="status"></div>
 
   <section id="auth" class="active">
-    <h2>Login / Register</h2>
-    <p class="muted">Uses the same users.txt as the C++ app: first user becomes ADMIN, later users are USER. Usernames cannot contain spaces. Passwords need 8+ characters, a letter and a digit — the same rules as the console app.</p>
-    <div class="card">
-      <h3>Login</h3>
-      <label>Username <input id="loginUser" autocomplete="username"></label>
-      <label>Password <input id="loginPass" type="password" autocomplete="current-password"></label>
-      <button class="primary" id="loginBtn">Login</button>
-      <div id="loginMsg"></div>
-    </div>
-    <div class="card">
-      <h3>Register</h3>
-      <label>Username <input id="regUser" autocomplete="username"></label>
-      <label>Password <input id="regPass" type="password" autocomplete="new-password"></label>
-      <button class="primary" id="regBtn">Register</button>
-      <div id="regMsg"></div>
+    <h2>Welcome back</h2>
+    <p class="muted">Log in or register. Uses the same users.txt as the C++ app: the first user becomes ADMIN, later users are USER. Usernames cannot contain spaces. Passwords need 8+ characters, a letter and a digit — the same rules as the console app.</p>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Login</h3>
+        <label>Username <input id="loginUser" autocomplete="username"></label>
+        <label>Password <input id="loginPass" type="password" autocomplete="current-password"></label>
+        <button class="btn btn-primary" id="loginBtn">Login</button>
+        <div id="loginMsg"></div>
+      </div>
+      <div class="card">
+        <h3>Register</h3>
+        <label>Username <input id="regUser" autocomplete="username"></label>
+        <label>Password <input id="regPass" type="password" autocomplete="new-password"></label>
+        <button class="btn btn-primary" id="regBtn">Register</button>
+        <div id="regMsg"></div>
+      </div>
     </div>
   </section>
 
   <section id="overview">
     <h2>Overview</h2>
-    <div class="grid" id="overviewCards"></div>
+    <p class="muted">A live summary of your decisions, tasks, money and habits.</p>
+    <div class="grid cards" id="overviewCards"></div>
     <div class="card">
       <h3>Recent decisions</h3>
       <div id="overviewDecisions"></div>
-      <button class="primary" id="backupBtn">Backup decisions</button>
-      <button class="primary" id="restoreBtn">Restore from backup</button>
+      <div class="actions">
+        <button class="btn btn-primary" id="backupBtn">Backup decisions</button>
+        <button class="btn btn-secondary" id="restoreBtn">Restore from backup</button>
+      </div>
       <div id="backupMsg"></div>
     </div>
+  </section>
+
+  <section id="history">
+    <h2>Search &amp; History</h2>
+    <p class="muted">Searches the same decisions.txt the C++ app reads (menu 28–32: history, search, filter, sort). Type a keyword to filter; sort by priority to see what matters most.</p>
+    <div class="card">
+      <label>Search decisions <input id="histSearch" placeholder="Search by title or type…"></label>
+      <label>Type
+        <select id="histType">
+          <option value="">All types</option>
+          <option value="Daily">Daily</option>
+          <option value="MultiTask">MultiTask</option>
+          <option value="Problem">Problem</option>
+        </select>
+      </label>
+      <label>Sort
+        <select id="histSort">
+          <option value="newest">Newest first</option>
+          <option value="priority">Highest priority first</option>
+        </select>
+      </label>
+      <button class="btn btn-primary" id="histBtn">Search history</button>
+      <div id="histMsg"></div>
+    </div>
+    <div class="card"><div id="histList"></div></div>
   </section>
 
   <section id="daily">
@@ -75,7 +124,7 @@
       <label>Urgency (1–10) <input id="ddUrgency" type="number" min="1" max="10"></label>
       <label>Importance (1–10) <input id="ddImportance" type="number" min="1" max="10"></label>
       <label>Energy level (1–10) <input id="ddEnergy" type="number" min="1" max="10"></label>
-      <button class="primary" id="ddBtn">Get suggestion</button>
+      <button class="btn btn-primary" id="ddBtn">Get suggestion</button>
       <div id="ddMsg"></div>
     </div>
     <div class="card">
@@ -84,8 +133,10 @@
       <label>Available energy (1–100) <input id="mtEnergy" type="number" min="1" max="100"></label>
       <label>Available time (minutes, 1–1440) <input id="mtTime" type="number" min="1" max="1440"></label>
       <div id="mtTasks"></div>
-      <button class="primary" id="mtAdd">Add task row</button>
-      <button class="primary" id="mtBtn">Recommend tasks</button>
+      <div class="actions">
+        <button class="btn btn-secondary" id="mtAdd">Add task row</button>
+        <button class="btn btn-primary" id="mtBtn">Recommend tasks</button>
+      </div>
       <div id="mtMsg"></div>
     </div>
   </section>
@@ -98,10 +149,16 @@
       <label>Urgency (1–10) <input id="taskUrgency" type="number" min="1" max="10"></label>
       <label>Importance (1–10) <input id="taskImportance" type="number" min="1" max="10"></label>
       <label>Deadline (YYYY-MM-DD, optional) <input id="taskDeadline" placeholder="2026-11-20"></label>
-      <button class="primary" id="taskAddBtn">Add task</button>
+      <button class="btn btn-primary" id="taskAddBtn">Add task</button>
       <div id="taskMsg"></div>
     </div>
     <div class="card"><div id="taskList"></div></div>
+  </section>
+
+  <section id="taskstatus">
+    <h2>Task Status</h2>
+    <p class="muted">Same statuses as the C++ Task Status Manager: Pending, In Progress, Completed. Changing a status here updates the same tasks.txt that Task Management uses.</p>
+    <div class="card"><div id="statusList"></div></div>
   </section>
 
   <section id="priority">
@@ -110,9 +167,31 @@
     <div class="card">
       <label>Urgency (1–10) <input id="prUrgency" type="number" min="1" max="10"></label>
       <label>Importance (1–10) <input id="prImportance" type="number" min="1" max="10"></label>
-      <button class="primary" id="prBtn">Calculate</button>
+      <button class="btn btn-primary" id="prBtn">Calculate</button>
       <div id="prMsg"></div>
     </div>
+  </section>
+
+  <section id="explanation">
+    <h2>Decision Explanation</h2>
+    <p class="muted">Same explanation as the C++ Decision Explanation module: the formula, the exact calculation, and what the score means.</p>
+    <div class="card">
+      <label>Urgency (1–10) <input id="exUrgency" type="number" min="1" max="10"></label>
+      <label>Importance (1–10) <input id="exImportance" type="number" min="1" max="10"></label>
+      <button class="btn btn-primary" id="exBtn">Explain</button>
+      <div id="exMsg"></div>
+    </div>
+  </section>
+
+  <section id="deadlines">
+    <h2>Deadline Alerts</h2>
+    <p class="muted">Same alerts as the C++ Deadline Alert module: OVERDUE, DUE TODAY, UPCOMING. Completed tasks are skipped. Leave the date blank to use today.</p>
+    <div class="card">
+      <label>Today's date (optional) <input id="dlDate" type="date"></label>
+      <button class="btn btn-primary" id="dlBtn">Check deadlines</button>
+      <div id="dlMsg"></div>
+    </div>
+    <div class="card"><div id="dlList"></div></div>
   </section>
 
   <section id="budget">
@@ -121,7 +200,7 @@
     <div class="card">
       <label>Monthly income <input id="budIncome" type="number" min="0" step="0.01"></label>
       <label>Monthly expenses <input id="budExpenses" type="number" min="0" step="0.01"></label>
-      <button class="primary" id="budBtn">Decide</button>
+      <button class="btn btn-primary" id="budBtn">Decide</button>
       <div id="budMsg"></div>
     </div>
   </section>
@@ -137,7 +216,7 @@
       <label>Category <input id="txCategory"></label>
       <label>Amount <input id="txAmount" type="number" min="0" step="0.01"></label>
       <label>Note <input id="txNote"></label>
-      <button class="primary" id="txBtn">Add transaction</button>
+      <button class="btn btn-primary" id="txBtn">Add transaction</button>
       <div id="txMsg"></div>
     </div>
     <div class="card"><div id="txList"></div></div>
@@ -149,16 +228,42 @@
     <div class="card">
       <label>Goal name <input id="svName"></label>
       <label>Target amount <input id="svTarget" type="number" min="0" step="0.01"></label>
-      <button class="primary" id="svBtn">Add goal</button>
+      <button class="btn btn-primary" id="svBtn">Add goal</button>
       <div id="svMsg"></div>
     </div>
     <div class="card">
       <label>Add to goal (name) <input id="svAddName"></label>
       <label>Amount <input id="svAddAmount" type="number" min="0" step="0.01"></label>
-      <button class="primary" id="svAddBtn">Add savings</button>
+      <button class="btn btn-primary" id="svAddBtn">Add savings</button>
       <div id="svAddMsg"></div>
     </div>
     <div class="card"><div id="svList"></div></div>
+  </section>
+
+  <section id="study">
+    <h2>Study Planner</h2>
+    <p class="muted">Same plan as the C++ Study Planner: one line per day, total hours = days × hours per day. This plan is calculated, not saved — like the console module.</p>
+    <div class="card">
+      <label>Subject <input id="spSubject" placeholder="Mathematics"></label>
+      <label>Number of days (1–365) <input id="spDays" type="number" min="1" max="365"></label>
+      <label>Study hours per day (1–24) <input id="spHours" type="number" min="1" max="24"></label>
+      <button class="btn btn-primary" id="spBtn">Create plan</button>
+      <div id="spMsg"></div>
+    </div>
+    <div class="card"><div id="spList"></div></div>
+  </section>
+
+  <section id="timealloc">
+    <h2>Time Allocation</h2>
+    <p class="muted">Same check as the C++ Time Allocation module: the four values must each be 0–24, and the total is compared with 24 hours.</p>
+    <div class="card">
+      <label>Sleep hours <input id="taSleep" type="number" min="0" max="24"></label>
+      <label>Study hours <input id="taStudy" type="number" min="0" max="24"></label>
+      <label>Work hours <input id="taWork" type="number" min="0" max="24"></label>
+      <label>Other activity hours <input id="taOther" type="number" min="0" max="24"></label>
+      <button class="btn btn-primary" id="taBtn">Check allocation</button>
+      <div id="taMsg"></div>
+    </div>
   </section>
 
   <section id="habits">
@@ -167,12 +272,12 @@
     <div class="card">
       <label>Habit name <input id="hbName"></label>
       <label>Date <input id="hbDate" type="date"></label>
-      <button class="primary" id="hbBtn">Mark done</button>
+      <button class="btn btn-primary" id="hbBtn">Mark done</button>
       <div id="hbMsg"></div>
     </div>
     <div class="card">
       <label>Check streak for habit <input id="hbCheck"></label>
-      <button class="primary" id="hbCheckBtn">Check streak</button>
+      <button class="btn btn-primary" id="hbCheckBtn">Check streak</button>
       <div id="hbCheckMsg"></div>
       <div id="hbList"></div>
     </div>
@@ -183,10 +288,41 @@
     <p class="muted">Weekly reports cover the 7 days ending on the given date; monthly reports cover the given YYYY-MM month — the same filtering as the C++ period reports.</p>
     <div class="card">
       <label>Month (YYYY-MM) <input id="repMonth" placeholder="2026-11"></label>
-      <button class="primary" id="repMonthBtn">Monthly report</button>
+      <button class="btn btn-primary" id="repMonthBtn">Monthly report</button>
       <label>Week end date <input id="repWeek" type="date"></label>
-      <button class="primary" id="repWeekBtn">Weekly report</button>
+      <button class="btn btn-primary" id="repWeekBtn">Weekly report</button>
       <div id="repMsg"></div>
+    </div>
+  </section>
+
+  <section id="profile">
+    <h2>User Profile</h2>
+    <p class="muted">Same information as the C++ Profile screen: username and role. Admins also see the registered user list (usernames and roles only, never passwords).</p>
+    <div class="card"><div id="profileInfo"></div></div>
+    <div class="card"><div id="profileUsers"></div></div>
+  </section>
+
+  <section id="settings">
+    <h2>Settings</h2>
+    <p class="muted">Theme is saved in this browser only. Password change uses the same rules as the C++ password change: current password must match, new password needs 8+ characters, a letter and a digit.</p>
+    <div class="card">
+      <h3>Appearance</h3>
+      <label>Theme
+        <select id="setTheme"><option value="light">Light</option><option value="dark">Dark</option></select>
+      </label>
+      <button class="btn btn-secondary" id="setThemeBtn">Save theme</button>
+      <div id="setThemeMsg"></div>
+    </div>
+    <div class="card">
+      <h3>Backend</h3>
+      <div id="setBackend"></div>
+    </div>
+    <div class="card">
+      <h3>Change password</h3>
+      <label>Current password <input id="cpCurrent" type="password" autocomplete="current-password"></label>
+      <label>New password <input id="cpNew" type="password" autocomplete="new-password"></label>
+      <button class="btn btn-primary" id="cpBtn">Change password</button>
+      <div id="cpMsg"></div>
     </div>
   </section>
 </main>

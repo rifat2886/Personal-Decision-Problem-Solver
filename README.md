@@ -148,7 +148,11 @@ See `dashboard/README.md`. The dashboard is served by a C++ API server
 (`dashboard/cpp_server.cpp`, built separately from the console app),
 with a Python server (`dashboard/server.py`) kept as a fallback. Both
 use the same API and the same data files as the C++ console app, and
-both bind to localhost only.
+both bind to localhost only. The C++ server and the console app are
+cross-platform C++17: on Windows 11 they build natively with MinGW-w64
+or MSVC (Winsock and LockFileEx instead of POSIX sockets and flock);
+WSL is not required. See `dashboard/README.md` for the Windows build
+commands and the honest build-vs-runtime status.
 
 ## How to Run the Project
 

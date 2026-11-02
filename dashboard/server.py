@@ -583,8 +583,8 @@ class Handler(BaseHTTPRequestHandler):
             if body is None:
                 return self.send_error_json(400, "Invalid JSON.")
             status = body.get("status")
-            if status not in ("Pending", "Completed"):
-                return self.send_error_json(400, "Status must be Pending or Completed.")
+            if status not in ("Pending", "In Progress", "Completed"):
+                return self.send_error_json(400, "Status must be Pending, In Progress, or Completed.")
             found["status"] = status
             save_tasks(data_dir, tasks)
             return self.send_json(200, found)
@@ -728,6 +728,92 @@ class Handler(BaseHTTPRequestHandler):
             lines = read_lines(data_dir, "decisions_backup.txt")
             write_lines(data_dir, "decisions.txt", lines)
             return self.send_json(200, {"restored": len(lines)})
+
+        # ---- new sections (mirror the console modules of the same name) ----
+        if path == "/api/info" and method == "GET":
+            return self.send_json(200, {"backend": "Python", "server": "server.py (fallback)",
+                                        "dataFiles": ["users.txt", "decisions.txt", "tasks.txt", "transactions.txt", "savings_goals.txt", "habit_log.txt"]})
+        if path == "/api/users" and method == "GET":
+            if role != "ADMIN":
+                return self.send_error_json(403, "Only an ADMIN can list users.")
+            users = load_users(data_dir)
+            return self.send_json(200, [{"username": u, "role": v["role"]} for u, v in users.items()])
+        if path == "/api/change-password" and method == "POST":
+            body = self.read_json()
+            if body is None:
+                return self.send_error_json(400, "Invalid JSON.")
+            users = load_users(data_dir)
+            if user not in users or users[user]["password"] != body.get("currentPassword"):
+                return self.send_error_json(400, "Wrong current password.")
+            new_pw = body.get("newPassword", "")
+            if len(new_pw) < 8 or not any(c.isalpha() for c in new_pw) or not any(c.isdigit() for c in new_pw):
+                return self.send_error_json(400, "Password must be 8+ characters with a letter and a digit.")
+            lines = [f"{u} {new_pw if u == user else v['password']} {v['role']}" for u, v in users.items()]
+            write_lines(data_dir, "users.txt", lines)
+            return self.send_json(200, {"ok": True})
+        if path == "/api/study-planner" and method == "POST":
+            body = self.read_json()
+            if body is None:
+                return self.send_error_json(400, "Invalid JSON.")
+            subject = (body.get("subject") or "").strip()
+            days, hours = body.get("days"), body.get("hours")
+            if not subject or not isinstance(days, int) or not isinstance(hours, int) or not 1 <= days <= 365 or not 1 <= hours <= 24:
+                return self.send_error_json(400, "A plan needs a subject, days 1-365, hours 1-24.")
+            return self.send_json(200, {"subject": subject, "days": days, "hoursPerDay": hours, "totalHours": days * hours,
+                                        "plan": [{"day": d, "text": f"Day {d}: {subject} - {hours} hour(s)"} for d in range(1, days + 1)]})
+        if path == "/api/time-allocation" and method == "POST":
+            body = self.read_json()
+            if body is None:
+                return self.send_error_json(400, "Invalid JSON.")
+            vals = {}
+            for k in ("sleep", "study", "work", "other"):
+                v = body.get(k)
+                if not isinstance(v, int) or not 0 <= v <= 24:
+                    return self.send_error_json(400, "Each value must be 0-24 hours.")
+                vals[k] = v
+            total = sum(vals.values())
+            return self.send_json(200, {**vals, "total": total,
+                                        "remaining": None if total > 24 else 24 - total,
+                                        "warning": "Total exceeds 24 hours!" if total > 24 else None})
+        if path == "/api/decision-explanation" and method == "POST":
+            body = self.read_json()
+            if body is None:
+                return self.send_error_json(400, "Invalid JSON.")
+            urgency, importance = body.get("urgency"), body.get("importance")
+            if not isinstance(urgency, int) or not isinstance(importance, int) or not 1 <= urgency <= 10 or not 1 <= importance <= 10:
+                return self.send_error_json(400, "Urgency and importance must be 1-10.")
+            score = urgency * 2 + importance * 3
+            if score >= 40:
+                level, rec = "Very high priority.", "Complete this task first."
+            elif score >= 30:
+                level, rec = "High priority.", "Schedule it soon."
+            elif score >= 20:
+                level, rec = "Medium priority.", "Plan it after higher-priority tasks."
+            else:
+                level, rec = "Low priority based on this score.", "Schedule it when time is available."
+            return self.send_json(200, {"urgency": urgency, "importance": importance, "score": score,
+                                        "formula": "Formula: (Urgency x 2) + (Importance x 3)",
+                                        "calculation": f"Calculation: ({urgency} x 2) + ({importance} x 3) = {score}/50",
+                                        "explanation": level, "recommendation": rec})
+        if path == "/api/deadlines" and method == "GET":
+            today = (query.get("today") or [datetime.date.today().isoformat()])[0]
+            if not valid_date(today):
+                return self.send_error_json(400, "Today must be a real YYYY-MM-DD date.")
+            out = []
+            for t in load_tasks(data_dir):
+                if t["status"] == "Completed":
+                    continue
+                dl = t["deadline"]
+                if len(dl) != 10 or dl[4] != "-" or dl[7] != "-":
+                    alert = "CHECK"
+                elif dl < today:
+                    alert = "OVERDUE"
+                elif dl == today:
+                    alert = "DUE TODAY"
+                else:
+                    alert = "UPCOMING"
+                out.append({"id": t["id"], "title": t["title"], "deadline": dl, "status": t["status"], "alert": alert})
+            return self.send_json(200, out)
 
         return self.send_error_json(404, "Unknown API endpoint.")
 
