@@ -1,4 +1,5 @@
 #include "registration.h"
+#include "file_lock.h"
 #include "password_validation.h"
 #include "input_validation.h"
 
@@ -8,6 +9,9 @@
 
 bool registerUser()
 {
+    // Hold the users lock for the whole register flow, so a
+    // dashboard register/change-password cannot interleave.
+    FileLock lock("users.txt");
     std::string username, password;
 
     std::cout << "Enter username: ";

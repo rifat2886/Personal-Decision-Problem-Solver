@@ -815,6 +815,121 @@ class Handler(BaseHTTPRequestHandler):
                 out.append({"id": t["id"], "title": t["title"], "deadline": dl, "status": t["status"], "alert": alert})
             return self.send_json(200, out)
 
+        # ---- team-completion endpoints (mirror the console modules) ----
+        if path == "/api/compare-options" and method == "POST":
+            body = self.read_json()
+            if body is None:
+                return self.send_error_json(400, "Invalid JSON.")
+            try:
+                n1, n2 = (body.get("name1") or "").strip(), (body.get("name2") or "").strip()
+                b1, c1, r1 = body["benefit1"], body["cost1"], body["risk1"]
+                b2, c2, r2 = body["benefit2"], body["cost2"], body["risk2"]
+            except Exception:
+                return self.send_error_json(400, "Two options need names and benefit/cost/risk 1-10.")
+            if not n1 or not n2 or any(not isinstance(v, int) or not 1 <= v <= 10 for v in (b1, c1, r1, b2, c2, r2)):
+                return self.send_error_json(400, "Two options need names and benefit/cost/risk 1-10.")
+            s1, s2 = b1 * 3 - c1 - r1, b2 * 3 - c2 - r2
+            return self.send_json(200, {"name1": n1, "score1": s1, "name2": n2, "score2": s2,
+                                        "suggested": n1 if s1 > s2 else n2 if s2 > s1 else None, "equal": s1 == s2})
+        if path == "/api/admin" and method == "GET":
+            if role != "ADMIN":
+                return self.send_error_json(403, "Only an ADMIN can view the admin panel.")
+            users = load_users(data_dir)
+            admins = sum(1 for v in users.values() if v["role"] == "ADMIN")
+            return self.send_json(200, {"total": len(users), "admins": admins, "users": len(users) - admins,
+                                        "list": [{"username": u, "role": v["role"]} for u, v in users.items()]})
+        if path == "/api/export" and method == "GET":
+            fmt = (query.get("format") or ["txt"])[0]
+            if fmt not in ("txt", "csv"):
+                return self.send_error_json(400, "Format must be txt or csv.")
+            import os as _os
+            if not _os.path.exists(_os.path.join(data_dir, "transactions.txt")):
+                return self.send_error_json(400, "No transactions file found to export.")
+            lines = read_lines(data_dir, "transactions.txt")
+            if fmt == "txt":
+                content = "PERSONAL FINANCIAL REPORT\n========================\n\n" + "".join(l + "\n" for l in lines)
+                with open(_os.path.join(data_dir, "financial_report.txt"), "w", encoding="utf-8") as f:
+                    f.write(content)
+                filename = "financial_report.txt"
+            else:
+                out = ["Date,Type,Category,Amount,Note"]
+                for l in lines:
+                    parts = l.split("|")
+                    if len(parts) >= 5:
+                        out.append(f"{parts[0]},{parts[1]},{parts[2]},{parts[3]},\"{parts[4]}\"")
+                content = "\n".join(out) + "\n"
+                with open(_os.path.join(data_dir, "financial_report.csv"), "w", encoding="utf-8") as f:
+                    f.write(content)
+                filename = "financial_report.csv"
+            return self.send_json(200, {"format": fmt, "filename": filename, "content": content})
+        if path == "/api/problem-solver" and method == "POST":
+            body = self.read_json()
+            if body is None:
+                return self.send_error_json(400, "Invalid JSON.")
+            problem = (body.get("problem") or "").strip()
+            difficulty, time_m = body.get("difficulty"), body.get("time")
+            if not problem or not isinstance(difficulty, int) or not 1 <= difficulty <= 5 or not isinstance(time_m, int) or time_m <= 0:
+                return self.send_error_json(400, "A problem needs a name, difficulty 1-5, and time > 0 minutes.")
+            if difficulty <= 2 and time_m >= 15:
+                suggestion = "Solve the problem step by step."
+            elif difficulty >= 4:
+                suggestion = "Divide the problem into smaller tasks."
+            elif time_m < 15:
+                suggestion = "Make a short and simple plan."
+            else:
+                suggestion = "Plan your work and start solving."
+            rec = append_decision(data_dir, "Problem", difficulty, f"Problem: {problem} - {suggestion}")
+            return self.send_json(200, {"suggestion": suggestion, "record": rec})
+        if path == "/api/daily-summary" and method == "POST":
+            body = self.read_json()
+            if body is None:
+                return self.send_error_json(400, "Invalid JSON.")
+            income, expenses = body.get("income"), body.get("expenses")
+            completed, planned = body.get("habitsCompleted"), body.get("habitsPlanned")
+            if (not isinstance(income, (int, float)) or income < 0 or not isinstance(expenses, (int, float)) or expenses < 0
+                    or not isinstance(completed, int) or completed < 0 or not isinstance(planned, int) or planned <= 0 or completed > planned):
+                return self.send_error_json(400, "Need income/expenses >= 0, planned > 0, and completed 0..planned.")
+            balance = income - expenses
+            rate = completed * 100.0 / planned
+            line = f"Income: {income:.2f}, Expenses: {expenses:.2f}, Balance: {balance:.2f}, Habit completion: {rate:.2f}%"
+            append_line(data_dir, "daily_report.txt", line)
+            return self.send_json(200, {"income": income, "expenses": expenses, "balance": balance, "habitRate": rate})
+        if path == "/api/habit-decision" and method == "POST":
+            body = self.read_json()
+            if body is None:
+                return self.send_error_json(400, "Invalid JSON.")
+            completed, planned = body.get("completed"), body.get("planned")
+            if not isinstance(planned, int) or planned <= 0 or not isinstance(completed, int) or completed < 0 or completed > planned:
+                return self.send_error_json(400, "Need planned > 0 and completed 0..planned.")
+            pct = completed * 100.0 / planned
+            msg = ("Excellent! You completed all planned habits." if completed == planned else
+                   "Good progress! Keep going." if pct >= 50 else "Try making a simpler plan tomorrow.")
+            return self.send_json(200, {"percentage": pct, "message": msg})
+        if path == "/api/habit-streak-calc" and method == "POST":
+            body = self.read_json()
+            if body is None:
+                return self.send_error_json(400, "Invalid JSON.")
+            prev, today = body.get("previousDays"), body.get("completedToday")
+            if not isinstance(prev, int) or prev < 0 or today not in (0, 1):
+                return self.send_error_json(400, "Need previousDays >= 0 and completedToday 0 or 1.")
+            streak = prev + 1 if today == 1 else 0
+            return self.send_json(200, {"streak": streak, "message": "" if today == 1 else "Start a new streak tomorrow!"})
+        if path == "/api/savings-calculator" and method == "POST":
+            body = self.read_json()
+            if body is None:
+                return self.send_error_json(400, "Invalid JSON.")
+            target, current, monthly = body.get("target"), body.get("current"), body.get("monthly")
+            if (not isinstance(target, (int, float)) or target <= 0 or not isinstance(current, (int, float)) or current < 0
+                    or not isinstance(monthly, (int, float)) or monthly <= 0):
+                return self.send_error_json(400, "Need target > 0, current >= 0, monthly > 0.")
+            if current >= target:
+                return self.send_json(200, {"remaining": 0, "months": 0, "message": "Congratulations! Your goal is complete."})
+            remaining = target - current
+            months = int((remaining + monthly - 0.01) / monthly)
+            return self.send_json(200, {"remaining": remaining, "months": months, "message": ""})
+        if path == "/api/error-log" and method == "GET":
+            return self.send_json(200, read_lines(data_dir, "error_log.txt"))
+
         return self.send_error_json(404, "Unknown API endpoint.")
 
 

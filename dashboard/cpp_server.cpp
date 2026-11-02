@@ -58,6 +58,7 @@
 #include <cstring>
 #include <ctime>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <mutex>
@@ -733,7 +734,7 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
 
     // ---- new sections (all mirror the console modules of the same name) ----
     if (path == "/api/info" && method == "GET")
-        return sendJson(fd, 200, "{\"backend\":\"C++\",\"server\":\"cpp_server.cpp\",\"dataFiles\":[\"users.txt\",\"decisions.txt\",\"tasks.txt\",\"transactions.txt\",\"savings_goals.txt\",\"habit_log.txt\"]}");
+        return sendJson(fd, 200, "{\"backend\":\"C++\",\"server\":\"cpp_server.cpp\",\"dataFiles\":[\"users.txt\",\"decisions.txt\",\"tasks.txt\",\"transactions.txt\",\"savings_goals.txt\",\"habit_log.txt\",\"daily_report.txt\",\"financial_report.txt\",\"financial_report.csv\",\"error_log.txt\"]}");
     if (path == "/api/users" && method == "GET") {
         // Mirrors admin.cpp: username and role only, never passwords.
         if (role != "ADMIN") return sendErr(fd, 403, "Only an ADMIN can list users.");
@@ -821,6 +822,139 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
             first = false;
             out += "{\"id\":" + jsonStr(t.id) + ",\"title\":" + jsonStr(t.title) + ",\"deadline\":" + jsonStr(t.deadline) + ",\"status\":" + jsonStr(t.status) + ",\"alert\":" + jsonStr(alert) + "}";
         }
+        return sendJson(fd, 200, out + "]");
+    }
+
+    // ---- team-completion endpoints (mirror the console modules of the same name) ----
+    if (path == "/api/compare-options" && method == "POST") {
+        // Mirrors compare_options.cpp: score = benefit*3 - cost - risk, each 1-10.
+        string n1, n2; double dv; long long b1=-1,c1=-1,r1=-1,b2=-1,c2=-1,r2=-1;
+        jsonStringField(req.body, "name1", n1); jsonStringField(req.body, "name2", n2);
+        if (jsonNumberField(req.body, "benefit1", dv)) b1=(long long)dv;
+        if (jsonNumberField(req.body, "cost1", dv)) c1=(long long)dv;
+        if (jsonNumberField(req.body, "risk1", dv)) r1=(long long)dv;
+        if (jsonNumberField(req.body, "benefit2", dv)) b2=(long long)dv;
+        if (jsonNumberField(req.body, "cost2", dv)) c2=(long long)dv;
+        if (jsonNumberField(req.body, "risk2", dv)) r2=(long long)dv;
+        if (trimStr(n1).empty() || trimStr(n2).empty() || b1<1||b1>10||c1<1||c1>10||r1<1||r1>10||b2<1||b2>10||c2<1||c2>10||r2<1||r2>10)
+            return sendErr(fd, 400, "Two options need names and benefit/cost/risk 1-10.");
+        long long s1 = b1*3 - c1 - r1, s2 = b2*3 - c2 - r2;
+        string suggested = s1 > s2 ? n1 : s2 > s1 ? n2 : "";
+        ostringstream os; os << "{\"name1\":" << jsonStr(n1) << ",\"score1\":" << s1 << ",\"name2\":" << jsonStr(n2) << ",\"score2\":" << s2
+            << ",\"suggested\":" << (suggested.empty() ? string("null") : jsonStr(suggested)) << ",\"equal\":" << (s1==s2 ? "true" : "false") << "}";
+        return sendJson(fd, 200, os.str());
+    }
+    if (path == "/api/admin" && method == "GET") {
+        // Mirrors admin.cpp: username and role only, never passwords.
+        if (role != "ADMIN") return sendErr(fd, 403, "Only an ADMIN can view the admin panel.");
+        auto users = loadUsers(); int admins = 0; string out = "[";
+        bool first = true; for (auto& kv : users) { if (kv.second.second == "ADMIN") admins++; if (!first) out += ","; first = false; out += "{\"username\":" + jsonStr(kv.first) + ",\"role\":" + jsonStr(kv.second.second) + "}"; }
+        ostringstream os; os << "{\"total\":" << users.size() << ",\"admins\":" << admins << ",\"users\":" << (users.size() - admins) << ",\"list\":" << out << "]}";
+        return sendJson(fd, 200, os.str());
+    }
+    if (path == "/api/export" && method == "GET") {
+        // Mirrors export_report.cpp: TXT = header + raw lines,
+        // CSV = header + pipe-to-comma conversion (note quoted).
+        // Also writes financial_report.txt/.csv in the data dir,
+        // so the console and dashboard share the exported files.
+        string format = "txt"; auto fi = query.find("format"); if (fi != query.end()) format = fi->second;
+        if (format != "txt" && format != "csv") return sendErr(fd, 400, "Format must be txt or csv.");
+        FileLock lock("transactions.txt");
+        auto lines = readLines(joinPath(g_dataDir, "transactions.txt"));
+        if (!fileExists(joinPath(g_dataDir, "transactions.txt"))) return sendErr(fd, 400, "No transactions file found to export.");
+        string content;
+        if (format == "txt") {
+            content = "PERSONAL FINANCIAL REPORT\n========================\n\n";
+            for (auto& ln : lines) content += ln + "\n";
+            writeLines(joinPath(g_dataDir, "financial_report.txt"), {content});
+            // writeLines adds a trailing newline per line; rewrite exactly:
+            { ofstream out(joinPath(g_dataDir, "financial_report.txt"), ios::binary); out << content; }
+        } else {
+            content = "Date,Type,Category,Amount,Note\n";
+            for (auto& ln : lines) {
+                auto parts = splitPipe(ln); if (parts.size() < 5) continue;
+                content += parts[0] + "," + parts[1] + "," + parts[2] + "," + parts[3] + ",\"" + parts[4] + "\"\n";
+            }
+            { ofstream out(joinPath(g_dataDir, "financial_report.csv"), ios::binary); out << content; }
+        }
+        return sendJson(fd, 200, "{\"format\":" + jsonStr(format) + ",\"filename\":" + jsonStr(format == "txt" ? "financial_report.txt" : "financial_report.csv") + ",\"content\":" + jsonStr(content) + "}");
+    }
+    if (path == "/api/problem-solver" && method == "POST") {
+        // Mirrors problem.cpp: difficulty 1-5, time > 0, suggestion branches,
+        // saved as a Problem decision record.
+        string problem; double dv; long long difficulty = -1, timeM = -1;
+        jsonStringField(req.body, "problem", problem);
+        if (jsonNumberField(req.body, "difficulty", dv)) difficulty = (long long)dv;
+        if (jsonNumberField(req.body, "time", dv)) timeM = (long long)dv;
+        if (trimStr(problem).empty() || difficulty < 1 || difficulty > 5 || timeM <= 0)
+            return sendErr(fd, 400, "A problem needs a name, difficulty 1-5, and time > 0 minutes.");
+        string suggestion;
+        if (difficulty <= 2 && timeM >= 15) suggestion = "Solve the problem step by step.";
+        else if (difficulty >= 4) suggestion = "Divide the problem into smaller tasks.";
+        else if (timeM < 15) suggestion = "Make a short and simple plan.";
+        else suggestion = "Plan your work and start solving.";
+        Decision rec = appendDecision("Problem", (int)difficulty, "Problem: " + problem + " - " + suggestion);
+        return sendJson(fd, 200, "{\"suggestion\":" + jsonStr(suggestion) + ",\"record\":" + decisionJson(rec) + "}");
+    }
+    if (path == "/api/daily-summary" && method == "POST") {
+        // Mirrors report.cpp generateReport(): balance + habit rate,
+        // appended to daily_report.txt (locked, same format).
+        double income = -1, expenses = -1; double dv; long long completed = -1, planned = -1;
+        if (jsonNumberField(req.body, "income", dv)) income = dv;
+        if (jsonNumberField(req.body, "expenses", dv)) expenses = dv;
+        if (jsonNumberField(req.body, "habitsCompleted", dv)) completed = (long long)dv;
+        if (jsonNumberField(req.body, "habitsPlanned", dv)) planned = (long long)dv;
+        if (income < 0 || expenses < 0 || completed < 0 || planned <= 0 || completed > planned)
+            return sendErr(fd, 400, "Need income/expenses >= 0, planned > 0, and completed 0..planned.");
+        double balance = income - expenses; double rate = completed * 100.0 / planned;
+        ostringstream line; line << fixed << setprecision(2) << "Income: " << income << ", Expenses: " << expenses << ", Balance: " << balance << ", Habit completion: " << rate << "%";
+        { FileLock lock("daily_report.txt"); appendLine(joinPath(g_dataDir, "daily_report.txt"), line.str()); }
+        ostringstream os; os << fixed << setprecision(2) << "{\"income\":" << income << ",\"expenses\":" << expenses << ",\"balance\":" << balance << ",\"habitRate\":" << rate << "}";
+        return sendJson(fd, 200, os.str());
+    }
+    if (path == "/api/habit-decision" && method == "POST") {
+        // Mirrors habit.cpp habitDecision(): percentage + message, no file save.
+        double dv; long long completed = -1, planned = -1;
+        if (jsonNumberField(req.body, "completed", dv)) completed = (long long)dv;
+        if (jsonNumberField(req.body, "planned", dv)) planned = (long long)dv;
+        if (planned <= 0 || completed < 0 || completed > planned)
+            return sendErr(fd, 400, "Need planned > 0 and completed 0..planned.");
+        double pct = completed * 100.0 / planned;
+        string msg = completed == planned ? "Excellent! You completed all planned habits." : pct >= 50 ? "Good progress! Keep going." : "Try making a simpler plan tomorrow.";
+        ostringstream os; os << fixed << setprecision(2) << "{\"percentage\":" << pct << ",\"message\":" << jsonStr(msg) << "}";
+        return sendJson(fd, 200, os.str());
+    }
+    if (path == "/api/habit-streak-calc" && method == "POST") {
+        // Mirrors habit.cpp habitStreak(): previous days + today yes/no.
+        double dv; long long prev = -1, today = -1;
+        if (jsonNumberField(req.body, "previousDays", dv)) prev = (long long)dv;
+        if (jsonNumberField(req.body, "completedToday", dv)) today = (long long)dv;
+        if (prev < 0 || (today != 0 && today != 1))
+            return sendErr(fd, 400, "Need previousDays >= 0 and completedToday 0 or 1.");
+        long long streak = today == 1 ? prev + 1 : 0;
+        string msg = today == 1 ? "" : "Start a new streak tomorrow!";
+        return sendJson(fd, 200, "{\"streak\":" + to_string(streak) + ",\"message\":" + jsonStr(msg) + "}");
+    }
+    if (path == "/api/savings-calculator" && method == "POST") {
+        // Mirrors budget.cpp savingsGoal(): remaining + months estimate.
+        double target = -1, current = -1, monthly = -1, dv;
+        if (jsonNumberField(req.body, "target", dv)) target = dv;
+        if (jsonNumberField(req.body, "current", dv)) current = dv;
+        if (jsonNumberField(req.body, "monthly", dv)) monthly = dv;
+        if (target <= 0 || current < 0 || monthly <= 0)
+            return sendErr(fd, 400, "Need target > 0, current >= 0, monthly > 0.");
+        if (current >= target) return sendJson(fd, 200, "{\"remaining\":0,\"months\":0,\"message\":\"Congratulations! Your goal is complete.\"}");
+        double remaining = target - current;
+        long long months = (long long)((remaining + monthly - 0.01) / monthly);
+        ostringstream os; os << fixed << setprecision(2) << "{\"remaining\":" << remaining << ",\"months\":" << months << ",\"message\":\"\"}";
+        return sendJson(fd, 200, os.str());
+    }
+    if (path == "/api/error-log" && method == "GET") {
+        // Mirrors menu 33 (showErrorLog): error_log.txt lines only.
+        // Log messages never contain passwords (see error_handler.cpp).
+        auto lines = readLines(joinPath(g_dataDir, "error_log.txt"));
+        string out = "["; bool first = true;
+        for (auto& ln : lines) { if (!first) out += ","; first = false; out += jsonStr(ln); }
         return sendJson(fd, 200, out + "]");
     }
 

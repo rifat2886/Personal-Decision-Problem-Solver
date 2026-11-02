@@ -1,5 +1,6 @@
 #include "password_change.h"
 #include "password_validation.h"
+#include "file_lock.h"
 
 #include <iostream>
 #include <fstream>
@@ -8,6 +9,9 @@
 
 bool changePassword(const std::string& currentUser)
 {
+    // Hold the users lock for the whole change flow, so a
+    // dashboard register/change-password cannot interleave.
+    FileLock lock("users.txt");
     std::ifstream input("users.txt");
 
     if (!input)

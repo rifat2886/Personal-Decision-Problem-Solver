@@ -35,6 +35,7 @@
   <button data-section="tasks">&#9989; Task Management</button>
   <button data-section="taskstatus">&#8635; Task Status</button>
   <button data-section="priority">&#11088; Priority</button>
+  <button data-section="compare">&#9878; Compare Options</button>
   <button data-section="explanation">&#128161; Decision Explanation</button>
   <button data-section="deadlines">&#9200; Deadline Alerts</button>
   <div class="nav-group">Finance</div>
@@ -47,7 +48,9 @@
   <div class="nav-group">Personal</div>
   <button data-section="habits">&#127793; Habit Tracker</button>
   <button data-section="reports">&#128203; Reports</button>
+  <button data-section="problem">&#129504; Problem Solver</button>
   <button data-section="profile">&#128100; User Profile</button>
+  <button data-section="admin">&#128272; Admin Panel</button>
   <button data-section="settings">&#9881; Settings</button>
 </nav>
 
@@ -113,6 +116,12 @@
       <div id="histMsg"></div>
     </div>
     <div class="card"><div id="histList"></div></div>
+    <div class="card">
+      <h3>Error Log (menu 33)</h3>
+      <p class="muted">Same as the C++ Show Error Log: lines from error_log.txt. Log messages never contain passwords.</p>
+      <button class="btn btn-secondary" id="elBtn">Show error log</button>
+      <div id="elList"></div>
+    </div>
   </section>
 
   <section id="daily">
@@ -238,6 +247,15 @@
       <div id="svAddMsg"></div>
     </div>
     <div class="card"><div id="svList"></div></div>
+    <div class="card">
+      <h3>Savings Goal Calculator (menu 39)</h3>
+      <p class="muted">Same as the C++ Savings Goal calculator: remaining amount and estimated months. Not saved as a goal — a calculation, like the console module.</p>
+      <label>Savings target <input id="scTarget" type="number" min="0" step="0.01"></label>
+      <label>Current savings <input id="scCurrent" type="number" min="0" step="0.01"></label>
+      <label>Expected monthly saving <input id="scMonthly" type="number" min="0" step="0.01"></label>
+      <button class="btn btn-primary" id="scBtn">Calculate</button>
+      <div id="scMsg"></div>
+    </div>
   </section>
 
   <section id="study">
@@ -281,6 +299,22 @@
       <div id="hbCheckMsg"></div>
       <div id="hbList"></div>
     </div>
+    <div class="card">
+      <h3>Habit Decision (menu 40)</h3>
+      <p class="muted">Same as the C++ Habit Decision: completion percentage and message. Not saved — a calculation, like the console module.</p>
+      <label>Habits completed today <input id="hdCompleted" type="number" min="0"></label>
+      <label>Habits planned today <input id="hdPlanned" type="number" min="1"></label>
+      <button class="btn btn-primary" id="hdBtn">Decide</button>
+      <div id="hdMsg"></div>
+    </div>
+    <div class="card">
+      <h3>Habit Streak Calculator (menu 41)</h3>
+      <p class="muted">Same as the C++ Habit Streak calculator: previous consecutive days plus today (yes/no). This is different from the true streak above, which is computed from habit_log.txt dates.</p>
+      <label>Previous consecutive days <input id="hsPrev" type="number" min="0"></label>
+      <label>Completed today? <select id="hsToday"><option value="1">Yes</option><option value="0">No</option></select></label>
+      <button class="btn btn-primary" id="hsBtn">Calculate streak</button>
+      <div id="hsMsg"></div>
+    </div>
   </section>
 
   <section id="reports">
@@ -293,6 +327,61 @@
       <button class="btn btn-primary" id="repWeekBtn">Weekly report</button>
       <div id="repMsg"></div>
     </div>
+    <div class="card">
+      <h3>Daily Summary Report (menu 36)</h3>
+      <p class="muted">Same as the C++ Daily Summary: balance = income − expenses, habit rate = completed × 100 / planned, appended to daily_report.txt.</p>
+      <label>Total income <input id="dsIncome" type="number" min="0" step="0.01"></label>
+      <label>Total expenses <input id="dsExpenses" type="number" min="0" step="0.01"></label>
+      <label>Habits completed today <input id="dsCompleted" type="number" min="0"></label>
+      <label>Habits planned today <input id="dsPlanned" type="number" min="1"></label>
+      <button class="btn btn-primary" id="dsBtn">Create daily summary</button>
+      <div id="dsMsg"></div>
+    </div>
+    <div class="card">
+      <h3>Export TXT / CSV (menus 26–27)</h3>
+      <p class="muted">Same content as the C++ TXT/CSV export of transactions.txt, and the same files (financial_report.txt / .csv) are written in the data directory. Download starts in your browser.</p>
+      <div class="actions">
+        <button class="btn btn-primary" id="exTxtBtn">Download TXT report</button>
+        <button class="btn btn-primary" id="exCsvBtn">Download CSV report</button>
+      </div>
+      <div id="exMsg"></div>
+    </div>
+  </section>
+
+
+  <section id="compare">
+    <h2>Compare Options</h2>
+    <p class="muted">Same formula as the C++ Compare Options (menu 12, Nuriya): score = benefit × 3 − cost − risk, each 1–10. This comparison is not saved as a decision, like the console module.</p>
+    <div class="card">
+      <label>Option 1 name <input id="cpName1"></label>
+      <label>Benefit (1–10) <input id="cpBenefit1" type="number" min="1" max="10"></label>
+      <label>Cost (1–10) <input id="cpCost1" type="number" min="1" max="10"></label>
+      <label>Risk (1–10) <input id="cpRisk1" type="number" min="1" max="10"></label>
+      <label>Option 2 name <input id="cpName2"></label>
+      <label>Benefit (1–10) <input id="cpBenefit2" type="number" min="1" max="10"></label>
+      <label>Cost (1–10) <input id="cpCost2" type="number" min="1" max="10"></label>
+      <label>Risk (1–10) <input id="cpRisk2" type="number" min="1" max="10"></label>
+      <button class="btn btn-primary" id="cpBtn">Compare</button>
+      <div id="cpMsg"></div>
+    </div>
+  </section>
+
+  <section id="problem">
+    <h2>Problem Solver</h2>
+    <p class="muted">Same logic as the C++ Problem Solver (menu 35, Sweety): difficulty 1–5 and available time decide the suggestion, and it is saved as a Problem decision record.</p>
+    <div class="card">
+      <label>Problem name <input id="psName"></label>
+      <label>Difficulty (1–5) <input id="psDifficulty" type="number" min="1" max="5"></label>
+      <label>Available time (minutes) <input id="psTime" type="number" min="1"></label>
+      <button class="btn btn-primary" id="psBtn">Solve</button>
+      <div id="psMsg"></div>
+    </div>
+  </section>
+
+  <section id="admin">
+    <h2>Admin Panel</h2>
+    <p class="muted">Same information as the C++ Admin Panel (menu 5, Rifat): registered users with username and role only. Never passwords. Only an ADMIN can open this section; other users see an access message.</p>
+    <div class="card"><div id="adminInfo"></div></div>
   </section>
 
   <section id="profile">

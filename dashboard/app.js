@@ -78,6 +78,7 @@ function showSection(name) {
   if (name === "savings") loadSavings();
   if (name === "habits") loadHabits();
   if (name === "profile") loadProfile();
+  if (name === "admin") loadAdmin();
   if (name === "settings") loadSettingsBackend();
 }
 
@@ -432,6 +433,94 @@ el("cpBtn").addEventListener("click", async () => {
     showMsg("cpMsg", "Password changed successfully.", true);
     el("cpCurrent").value = ""; el("cpNew").value = "";
   } catch (e) { showMsg("cpMsg", e.message, false); }
+});
+
+
+// -- team-completion sections ---------------------------------------
+// Compare Options (Nuriya, menu 12): not saved, like the console.
+el("cpBtn").addEventListener("click", async () => {
+  try {
+    const r = await api("/api/compare-options", { method: "POST", body: JSON.stringify({
+      name1: el("cpName1").value.trim(), benefit1: +el("cpBenefit1").value, cost1: +el("cpCost1").value, risk1: +el("cpRisk1").value,
+      name2: el("cpName2").value.trim(), benefit2: +el("cpBenefit2").value, cost2: +el("cpCost2").value, risk2: +el("cpRisk2").value }) });
+    const sug = r.equal ? "Both options have equal scores." : "Suggested option: " + r.suggested;
+    showMsg("cpMsg", r.name1 + " Score: " + r.score1 + " | " + r.name2 + " Score: " + r.score2 + ". " + sug, true);
+  } catch (e) { showMsg("cpMsg", e.message, false); }
+});
+
+// Problem Solver (Sweety, menu 35): saved as a Problem record.
+el("psBtn").addEventListener("click", async () => {
+  try {
+    const r = await api("/api/problem-solver", { method: "POST", body: JSON.stringify({
+      problem: el("psName").value.trim(), difficulty: +el("psDifficulty").value, time: +el("psTime").value }) });
+    showMsg("psMsg", "Suggestion: " + r.suggestion + " (saved as decision " + r.record.id + ")", true);
+  } catch (e) { showMsg("psMsg", e.message, false); }
+});
+
+// Admin Panel (Rifat, menu 5): usernames + roles only.
+async function loadAdmin() {
+  try {
+    const a = await api("/api/admin");
+    el("adminInfo").innerHTML = `<p><b>Total users:</b> ${a.total} (${a.admins} ADMIN, ${a.users} USER)</p><table><tr><th>Username</th><th>Role</th></tr>` +
+      a.list.map(u => `<tr><td>${esc(u.username)}</td><td>${esc(u.role)}</td></tr>`).join("") + "</table>";
+  } catch (e) {
+    el("adminInfo").innerHTML = "<div class='empty'>Admin panel is available to ADMIN only. (" + esc(e.message) + ")</div>";
+  }
+}
+
+// Daily Summary (Sweety, menu 36) + Export (menus 26-27), in Reports.
+el("dsBtn").addEventListener("click", async () => {
+  try {
+    const r = await api("/api/daily-summary", { method: "POST", body: JSON.stringify({
+      income: +el("dsIncome").value, expenses: +el("dsExpenses").value,
+      habitsCompleted: +el("dsCompleted").value, habitsPlanned: +el("dsPlanned").value }) });
+    showMsg("dsMsg", "Balance: " + r.balance.toFixed(2) + " | Habit completion: " + r.habitRate.toFixed(2) + "%. Saved to daily_report.txt.", true);
+  } catch (e) { showMsg("dsMsg", e.message, false); }
+});
+async function downloadExport(fmt, filename) {
+  try {
+    const r = await api("/api/export?format=" + fmt);
+    const blob = new Blob([r.content], { type: fmt === "csv" ? "text/csv" : "text/plain" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = r.filename || filename;
+    a.click(); URL.revokeObjectURL(a.href);
+    showMsg("exMsg", "Exported " + (r.filename || filename) + ".", true);
+  } catch (e) { showMsg("exMsg", e.message, false); }
+}
+el("exTxtBtn").addEventListener("click", () => downloadExport("txt", "financial_report.txt"));
+el("exCsvBtn").addEventListener("click", () => downloadExport("csv", "financial_report.csv"));
+
+// Habit Decision (menu 40) + Streak Calculator (menu 41), in Habits.
+el("hdBtn").addEventListener("click", async () => {
+  try {
+    const r = await api("/api/habit-decision", { method: "POST", body: JSON.stringify({
+      completed: +el("hdCompleted").value, planned: +el("hdPlanned").value }) });
+    showMsg("hdMsg", "Today's completion: " + r.percentage.toFixed(2) + "%. " + r.message, true);
+  } catch (e) { showMsg("hdMsg", e.message, false); }
+});
+el("hsBtn").addEventListener("click", async () => {
+  try {
+    const r = await api("/api/habit-streak-calc", { method: "POST", body: JSON.stringify({
+      previousDays: +el("hsPrev").value, completedToday: +el("hsToday").value }) });
+    showMsg("hsMsg", "Current streak: " + r.streak + " day(s). " + r.message, true);
+  } catch (e) { showMsg("hsMsg", e.message, false); }
+});
+
+// Savings Calculator (menu 39), in Savings.
+el("scBtn").addEventListener("click", async () => {
+  try {
+    const r = await api("/api/savings-calculator", { method: "POST", body: JSON.stringify({
+      target: +el("scTarget").value, current: +el("scCurrent").value, monthly: +el("scMonthly").value }) });
+    showMsg("scMsg", r.message ? r.message : "Amount remaining: " + r.remaining.toFixed(2) + " | Estimated time: " + r.months + " month(s).", true);
+  } catch (e) { showMsg("scMsg", e.message, false); }
+});
+
+// Error Log (menu 33), in History.
+el("elBtn").addEventListener("click", async () => {
+  try {
+    const lines = await api("/api/error-log");
+    el("elList").innerHTML = lines.length ? "<table><tr><th>Log line</th></tr>" + lines.map(l => `<tr><td>${esc(l)}</td></tr>`).join("") + "</table>"
+      : "<div class='empty'>No errors logged yet.</div>";
+  } catch (e) { el("elList").innerHTML = "<div class='empty'>" + esc(e.message) + "</div>"; }
 });
 
 // -- init -----------------------------------------------------------

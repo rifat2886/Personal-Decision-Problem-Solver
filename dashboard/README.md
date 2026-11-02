@@ -312,3 +312,21 @@ Checked and fixed, or inherited and documented:
 - Passwords remain plain text (inherited from the C++ format).
 - There is no email verification, password reset, or admin user
   management in the dashboard beyond what users.txt already allows.
+
+
+## Team completion (all three members)
+
+This round added the dashboard/API coverage that was missing before:
+
+- **Compare Options (Nuriya, menu 12)** — new Compare Options section, `POST /api/compare-options`, formula benefit×3 − cost − risk, not saved (like the console).
+- **Admin Panel (Rifat, menu 5)** — new Admin Panel section, `GET /api/admin` (ADMIN only, username + role only, never passwords).
+- **Problem Solver (Sweety, menu 35)** — new Problem Solver section, `POST /api/problem-solver`, saved as a Problem decision record.
+- **Daily Summary (Sweety, menu 36)** — card in Reports, `POST /api/daily-summary`, appended to daily_report.txt (locked, same format).
+- **Export TXT/CSV (Sweety, menus 26–27)** — card in Reports, `GET /api/export?format=txt|csv`, writes the same financial_report.txt/.csv files as the console and returns the content for download.
+- **Habit Decision (menu 40) and Habit Streak Calculator (menu 41)** — cards in Habits, `POST /api/habit-decision` and `POST /api/habit-streak-calc` (calculations, not saved, like the console).
+- **Savings Goal Calculator (menu 39)** — card in Savings, `POST /api/savings-calculator` (remaining + months, same formula).
+- **Error Log (Nuriya, menu 33)** — card in History, `GET /api/error-log` (error_log.txt lines only; log messages never contain passwords).
+
+Console lock fixes in this round (no data-format changes): registration and password change now hold the users.txt lock for the whole flow, and the daily summary append holds the daily_report.txt lock. The C++ server change-password endpoint already locked users.txt.
+
+Known minor inconsistencies (not hidden): the C++ server writes decision records with today's date while the console writes "-"; both are valid in the id|date|type|priority|title format and Search/Filter/Sort read both. The Python fallback writes transaction amounts as e.g. 5000.0 where the C++ server writes 5000; both parse to the same amount. The Python fallback still does not join the flock/LockFileEx protocol, so the no-corruption guarantee applies to the C++ server + console, not to concurrent Python-server + console use.
