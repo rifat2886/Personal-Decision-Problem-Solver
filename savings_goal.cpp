@@ -1,5 +1,6 @@
 #include "savings_goal.h"
 #include "file_lock.h"
+#include "data_owner.h"
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -38,7 +39,7 @@ void addSavingsGoal()
         return;
     }
 
-    file << name << "|" << target << "|0\n";
+    file << name << "|" << target << "|0|" << g_currentUser << "\n";
     cout << "Savings goal added successfully!\n";
 }
 
@@ -79,6 +80,7 @@ void addSavingsAmount()
     {
         size_t first = line.find('|');
         size_t second = line.find('|', first + 1);
+        size_t third = (second == string::npos) ? string::npos : line.find('|', second + 1);
 
         if (first == string::npos || second == string::npos)
         {
@@ -87,9 +89,17 @@ void addSavingsAmount()
         }
 
         goalName = line.substr(0, first);
+        string owner = (third == string::npos) ? "" : line.substr(third + 1);
+        // Other users' and legacy (multi-user) records are preserved
+        // verbatim and never modified here.
+        if (!ownerVisibleFor(owner))
+        {
+            outFile << line << '\n';
+            continue;
+        }
         try {
             target = stod(line.substr(first + 1, second - first - 1));
-            saved = stod(line.substr(second + 1));
+            saved = stod(line.substr(second + 1, (third == string::npos ? string::npos : third - second - 1)));
         } catch (...) {
             // Preserve a malformed line instead of crashing.
             outFile << line << '\n';
@@ -102,7 +112,7 @@ void addSavingsAmount()
             found = true;
         }
 
-        outFile << goalName << "|" << target << "|" << saved << '\n';
+        outFile << goalName << "|" << target << "|" << saved << "|" << (owner.empty() ? g_currentUser : owner) << '\n';
     }
 
     inFile.close();
@@ -144,6 +154,7 @@ void showSavingsGoals()
     string line;
     while (getline(file, line))
     {
+        if (!lineVisibleFor(line, 3)) continue;
         size_t first = line.find('|');
         if (first == string::npos)
             continue;
