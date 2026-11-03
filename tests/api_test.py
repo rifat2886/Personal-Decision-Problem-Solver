@@ -1,1 +1,236 @@
-IyEvdXNyL2Jpbi9lbnYgcHl0aG9uMwoiIiJBdXRvbWF0ZWQgQVBJIHJlZ3Jlc3Npb24gdGVzdCBmb3IgdGhlIGRhc2hib2FyZCBzZXJ2ZXIuCgpSdW5zIHRoZSBzZXJ2ZXIgKEMrKyBvciBQeXRob24gZmFsbGJhY2spIGluIGEgZnJlc2ggdGVtcG9yYXJ5IGRhdGEKZGlyZWN0b3J5LCB0aGVuIGV4ZXJjaXNlcyB0aGUgQVBJIGVuZCB0byBlbmQuIE5vIHJlYWwgcGFzc3dvcmRzIGFyZQp1c2VkOyBhbGwgdGVzdCBhY2NvdW50cyBhcmUgY3JlYXRlZCBpbnNpZGUgdGhlIHRlbXBvcmFyeSBkaXJlY3RvcnkKYW5kIGRlbGV0ZWQgd2l0aCBpdC4KClVzYWdlOgogICAgcHl0aG9uMyB0ZXN0cy9hcGlfdGVzdC5weSAtLXNlcnZlci1jbWQgInBhdGgvdG8vY3BwX3NlcnZlciIgLS1wb3J0IDgxMjMKICAgIHB5dGhvbjMgdGVzdHMvYXBpX3Rlc3QucHkgLS1zZXJ2ZXItY21kICJweXRob24zIGRhc2hib2FyZC9zZXJ2ZXIucHkiIC0tcG9ydCA4MTI0CgpFeGl0IGNvZGUgMCA9IGFsbCBjaGVja3MgcGFzc2VkLCAxID0gYXQgbGVhc3Qgb25lIGNoZWNrIGZhaWxlZC4KIiIiCmltcG9ydCBhcmdwYXJzZQppbXBvcnQganNvbgppbXBvcnQgb3MKaW1wb3J0IHNodXRpbAppbXBvcnQgc3VicHJvY2VzcwppbXBvcnQgc3lzCmltcG9ydCB0ZW1wZmlsZQppbXBvcnQgdGhyZWFkaW5nCmltcG9ydCB0aW1lCmltcG9ydCB1cmxsaWIuZXJyb3IKaW1wb3J0IHVybGxpYi5yZXF1ZXN0CgpQQVNTID0gMApGQUlMID0gMAoKCmRlZiBjaGVjayhuYW1lLCBjb25kLCBkZXRhaWw9IiIpOgogICAgZ2xvYmFsIFBBU1MsIEZBSUwKICAgIGlmIGNvbmQ6CiAgICAgICAgUEFTUyArPSAxCiAgICAgICAgcHJpbnQoZiIgIFBBU1Mge25hbWV9IikKICAgIGVsc2U6CiAgICAgICAgRkFJTCArPSAxCiAgICAgICAgcHJpbnQoZiIgIEZBSUwge25hbWV9IHtkZXRhaWx9IikKCgpkZWYgcmVxKHBvcnQsIG1ldGhvZCwgcGF0aCwgdG9rZW49Tm9uZSwgYm9keT1Ob25lKToKICAgIHVybCA9IGYiaHR0cDovLzEyNy4wLjAuMTp7cG9ydH17cGF0aH0iCiAgICBkYXRhID0ganNvbi5kdW1wcyhib2R5KS5lbmNvZGUoKSBpZiBib2R5IGlzIG5vdCBOb25lIGVsc2UgTm9uZQogICAgciA9IHVybGxpYi5yZXF1ZXN0LlJlcXVlc3QodXJsLCBkYXRhPWRhdGEsIG1ldGhvZD1tZXRob2QpCiAgICBpZiBib2R5IGlzIG5vdCBOb25lOgogICAgICAgIHIuYWRkX2hlYWRlcigiQ29udGVudC1UeXBlIiwgImFwcGxpY2F0aW9uL2pzb24iKQogICAgaWYgdG9rZW46CiAgICAgICAgci5hZGRfaGVhZGVyKCJBdXRob3JpemF0aW9uIiwgZiJCZWFyZXIge3Rva2VufSIpCiAgICB0cnk6CiAgICAgICAgd2l0aCB1cmxsaWIucmVxdWVzdC51cmxvcGVuKHIsIHRpbWVvdXQ9MTApIGFzIHJlc3A6CiAgICAgICAgICAgIHJhdyA9IHJlc3AucmVhZCgpIG9yIGIie30iCiAgICAgICAgICAgIHRyeToKICAgICAgICAgICAgICAgIHJldHVybiByZXNwLnN0YXR1cywganNvbi5sb2FkcyhyYXcpCiAgICAgICAgICAgIGV4Y2VwdCBFeGNlcHRpb246CiAgICAgICAgICAgICAgICByZXR1cm4gcmVzcC5zdGF0dXMsIHt9CiAgICBleGNlcHQgdXJsbGliLmVycm9yLkhUVFBFcnJvciBhcyBlOgogICAgICAgIHRyeToKICAgICAgICAgICAgcmV0dXJuIGUuY29kZSwganNvbi5sb2FkcyhlLnJlYWQoKSBvciBiInt9IikKICAgICAgICBleGNlcHQgRXhjZXB0aW9uOgogICAgICAgICAgICByZXR1cm4gZS5jb2RlLCB7fQogICAgZXhjZXB0IEV4Y2VwdGlvbiBhcyBlOgogICAgICAgIHJldHVybiAwLCB7ImVycm9yIjogc3RyKGUpfQoKCmRlZiBtYWluKCk6CiAgICBhcCA9IGFyZ3BhcnNlLkFyZ3VtZW50UGFyc2VyKCkKICAgIGFwLmFkZF9hcmd1bWVudCgiLS1zZXJ2ZXItY21kIiwgcmVxdWlyZWQ9VHJ1ZSkKICAgIGFwLmFkZF9hcmd1bWVudCgiLS1wb3J0IiwgdHlwZT1pbnQsIGRlZmF1bHQ9ODEyMykKICAgIGFyZ3MgPSBhcC5wYXJzZV9hcmdzKCkKICAgIHRtcCA9IHRlbXBmaWxlLm1rZHRlbXAocHJlZml4PSJwZHBzLWFwaS10ZXN0LSIpCiAgICBwcmludChmImRhdGEgZGlyOiB7dG1wfSIpCiAgICAjIE9sZC1mb3JtYXQgcGxhaW50ZXh0IGFjY291bnQsIHRvIHRlc3QgYmFja3dhcmQtY29tcGF0aWJsZSBtaWdyYXRpb24uCiAgICB3aXRoIG9wZW4ob3MucGF0aC5qb2luKHRtcCwgInVzZXJzLnR4dCIpLCAidyIpIGFzIGY6CiAgICAgICAgZi53cml0ZSgib2xkdXNlciBPbGRQYXNzMTIzIEFETUlOXG4iKQogICAgY21kID0gYXJncy5zZXJ2ZXJfY21kLnNwbGl0KCkgKyBbIi0tcG9ydCIsIHN0cihhcmdzLnBvcnQpLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIi0tZGF0YS1kaXIiLCB0bXBdCiAgICBwcm9jID0gc3VicHJvY2Vzcy5Qb3BlbihjbWQsIHN0ZG91dD1zdWJwcm9jZXNzLlBJUEUsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICBzdGRlcnI9c3VicHJvY2Vzcy5TVERPVVQsIHRleHQ9VHJ1ZSkKICAgIHRyeToKICAgICAgICAjIFdhaXQgZm9yIHNlcnZlciB0byBhY2NlcHQgY29ubmVjdGlvbnMuCiAgICAgICAgZm9yIF8gaW4gcmFuZ2UoMzApOgogICAgICAgICAgICAjIEFueSBIVFRQIHJlc3BvbnNlIChldmVuIGEgNDA0IGZvciBhIG1pc3Npbmcgc3RhdGljIGZpbGUKICAgICAgICAgICAgIyBpbiB0aGUgdGVtcCBkYXRhIGRpcikgcHJvdmVzIHRoZSBzZXJ2ZXIgaXMgbGlzdGVuaW5nLgogICAgICAgICAgICBzdGF0dXMsIF8gPSByZXEoYXJncy5wb3J0LCAiR0VUIiwgIi8iKQogICAgICAgICAgICBpZiBzdGF0dXMgIT0gMDoKICAgICAgICAgICAgICAgIGJyZWFrCiAgICAgICAgICAgIHRpbWUuc2xlZXAoMC41KQogICAgICAgIGVsc2U6CiAgICAgICAgICAgIHByaW50KCJGQUlMIHNlcnZlciBkaWQgbm90IHN0YXJ0IikKICAgICAgICAgICAgcmV0dXJuIDEKCiAgICAgICAgcG9ydCA9IGFyZ3MucG9ydAogICAgICAgICMgMS4gT2xkIHBsYWludGV4dCBhY2NvdW50IGxvZ3MgaW4sIHRoZW4gaXMgbWlncmF0ZWQgdG8gYSBoYXNoLgogICAgICAgIHN0YXR1cywgYm9keSA9IHJlcShwb3J0LCAiUE9TVCIsICIvYXBpL2xvZ2luIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgYm9keT17InVzZXJuYW1lIjogIm9sZHVzZXIiLCAicGFzc3dvcmQiOiAiT2xkUGFzczEyMyJ9KQogICAgICAgIGNoZWNrKCJvbGQtcGxhaW50ZXh0IGxvZ2luIiwgc3RhdHVzID09IDIwMCBhbmQgInRva2VuIiBpbiBib2R5LCBzdHIoYm9keSkpCiAgICAgICAgdG9rZW5fb2xkID0gYm9keS5nZXQoInRva2VuIiwgIiIpCiAgICAgICAgd2l0aCBvcGVuKG9zLnBhdGguam9pbih0bXAsICJ1c2Vycy50eHQiKSkgYXMgZjoKICAgICAgICAgICAgdXNlcnNfbGluZSA9IGYucmVhZCgpCiAgICAgICAgY2hlY2soIm9sZCBhY2NvdW50IG1pZ3JhdGVkIHRvIGhhc2giLAogICAgICAgICAgICAgICJPbGRQYXNzMTIzIiBub3QgaW4gdXNlcnNfbGluZSBhbmQgInBia2RmMiQxMDAwMDAkIiBpbiB1c2Vyc19saW5lLAogICAgICAgICAgICAgIHVzZXJzX2xpbmVbOjgwXSkKICAgICAgICBzdGF0dXMsIGJvZHkgPSByZXEocG9ydCwgIlBPU1QiLCAiL2FwaS9sb2dpbiIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgIGJvZHk9eyJ1c2VybmFtZSI6ICJvbGR1c2VyIiwgInBhc3N3b3JkIjogIk9sZFBhc3MxMjMifSkKICAgICAgICBjaGVjaygiaGFzaGVkIGxvZ2luIiwgc3RhdHVzID09IDIwMCBhbmQgInRva2VuIiBpbiBib2R5LCBzdHIoYm9keSkpCiAgICAgICAgdG9rZW5fb2xkID0gYm9keS5nZXQoInRva2VuIiwgdG9rZW5fb2xkKQoKICAgICAgICAjIDIuIE5ldyByZWdpc3RyYXRpb24gaXMgaGFzaGVkLCBzZWNvbmQgdXNlciBpcyBVU0VSLCBhZG1pbiBsaXN0LgogICAgICAgIHN0YXR1cywgYm9keSA9IHJlcShwb3J0LCAiUE9TVCIsICIvYXBpL3JlZ2lzdGVyIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgYm9keT17InVzZXJuYW1lIjogIm5ld3VzZXIiLCAicGFzc3dvcmQiOiAiTmV3UGFzczEyMyJ9KQogICAgICAgIGNoZWNrKCJyZWdpc3RlciBuZXd1c2VyIiwgc3RhdHVzID09IDIwMSBhbmQgYm9keS5nZXQoInJvbGUiKSA9PSAiVVNFUiIsIHN0cihib2R5KSkKICAgICAgICB3aXRoIG9wZW4ob3MucGF0aC5qb2luKHRtcCwgInVzZXJzLnR4dCIpKSBhcyBmOgogICAgICAgICAgICBjaGVjaygibmV3IGFjY291bnQgaGFzaGVkIiwKICAgICAgICAgICAgICAgICAgIk5ld1Bhc3MxMjMiIG5vdCBpbiBmLnJlYWQoKSkKICAgICAgICBzdGF0dXMsIGJvZHkgPSByZXEocG9ydCwgIlBPU1QiLCAiL2FwaS9sb2dpbiIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgIGJvZHk9eyJ1c2VybmFtZSI6ICJuZXd1c2VyIiwgInBhc3N3b3JkIjogIk5ld1Bhc3MxMjMifSkKICAgICAgICBjaGVjaygibmV3dXNlciBsb2dpbiIsIHN0YXR1cyA9PSAyMDAgYW5kICJ0b2tlbiIgaW4gYm9keSwgc3RyKGJvZHkpKQogICAgICAgIHRva2VuX25ldyA9IGJvZHkuZ2V0KCJ0b2tlbiIsICIiKQogICAgICAgIHN0YXR1cywgYm9keSA9IHJlcShwb3J0LCAiR0VUIiwgIi9hcGkvYWRtaW4iLCB0b2tlbj10b2tlbl9uZXcpCiAgICAgICAgY2hlY2soIm5vbi1hZG1pbiBhZG1pbiBlbmRwb2ludCA0MDMiLCBzdGF0dXMgPT0gNDAzLCBzdHIoYm9keSkpCiAgICAgICAgc3RhdHVzLCBib2R5ID0gcmVxKHBvcnQsICJHRVQiLCAiL2FwaS9hZG1pbiIsIHRva2VuPXRva2VuX29sZCkKICAgICAgICBjaGVjaygiYWRtaW4gZW5kcG9pbnQgZm9yIEFETUlOIiwgc3RhdHVzID09IDIwMCwgc3RyKGJvZHkpKQoKICAgICAgICAjIDMuIFJhdGUgbGltaXRpbmc6IDUgd3JvbmcgbG9naW5zLCB0aGVuIDQyOS4KICAgICAgICBmb3IgXyBpbiByYW5nZSg1KToKICAgICAgICAgICAgcmVxKHBvcnQsICJQT1NUIiwgIi9hcGkvbG9naW4iLAogICAgICAgICAgICAgICAgYm9keT17InVzZXJuYW1lIjogIm5ld3VzZXIiLCAicGFzc3dvcmQiOiAiV3JvbmcxMjM0In0pCiAgICAgICAgc3RhdHVzLCBfID0gcmVxKHBvcnQsICJQT1NUIiwgIi9hcGkvbG9naW4iLAogICAgICAgICAgICAgICAgICAgICAgICBib2R5PXsidXNlcm5hbWUiOiAibmV3dXNlciIsICJwYXNzd29yZCI6ICJXcm9uZzEyMzQifSkKICAgICAgICBjaGVjaygicmF0ZSBsaW1pdGluZyA0MjkiLCBzdGF0dXMgPT0gNDI5LCBzdHIoc3RhdHVzKSkKCiAgICAgICAgIyA0LiBDb3JlIGZlYXR1cmVzICh1c2luZyB0aGUgQURNSU4gdG9rZW4pLgogICAgICAgIHQgPSB0b2tlbl9vbGQKICAgICAgICBzdGF0dXMsIGJvZHkgPSByZXEocG9ydCwgIlBPU1QiLCAiL2FwaS9kYWlseS1kZWNpc2lvbiIsIHRva2VuPXQsCiAgICAgICAgICAgICAgICAgICAgICAgICAgIGJvZHk9eyJhdmFpbGFibGVUaW1lIjogMTIwLCAicmVxdWlyZWRUaW1lIjogNjAsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJ1cmdlbmN5IjogOSwgImltcG9ydGFuY2UiOiA5LCAiZW5lcmd5IjogOH0pCiAgICAgICAgY2hlY2soImRhaWx5IGRlY2lzaW9uIiwgc3RhdHVzIGluICgyMDAsIDIwMSksIHN0cihib2R5KSkKICAgICAgICBzdGF0dXMsIGJvZHkgPSByZXEocG9ydCwgIlBPU1QiLCAiL2FwaS9wcmlvcml0eSIsIHRva2VuPXQsCiAgICAgICAgICAgICAgICAgICAgICAgICAgIGJvZHk9eyJ1cmdlbmN5IjogMTAsICJpbXBvcnRhbmNlIjogMTB9KQogICAgICAgIGNoZWNrKCJwcmlvcml0eSA1MCIsIHN0YXR1cyA9PSAyMDAgYW5kIGJvZHkuZ2V0KCJzY29yZSIpID09IDUwLCBzdHIoYm9keSkpCiAgICAgICAgc3RhdHVzLCBib2R5ID0gcmVxKHBvcnQsICJQT1NUIiwgIi9hcGkvdGFza3MiLCB0b2tlbj10LAogICAgICAgICAgICAgICAgICAgICAgICAgICBib2R5PXsidGl0bGUiOiAiVGFza0EiLCAidXJnZW5jeSI6IDgsICJpbXBvcnRhbmNlIjogOCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgImRlYWRsaW5lIjogIjIwMjYtMTEtMjAifSkKICAgICAgICBjaGVjaygidGFzayBjcmVhdGUiLCBzdGF0dXMgaW4gKDIwMCwgMjAxKSwgc3RyKGJvZHkpKQogICAgICAgIHRhc2tfaWQgPSBib2R5LmdldCgiaWQiKQogICAgICAgIGlmIHRhc2tfaWQgaXMgbm90IE5vbmU6CiAgICAgICAgICAgIHN0YXR1cywgYm9keSA9IHJlcShwb3J0LCAiUEFUQ0giLCBmIi9hcGkvdGFza3Mve3Rhc2tfaWR9IiwgdG9rZW49dCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGJvZHk9eyJzdGF0dXMiOiAiSW4gUHJvZ3Jlc3MifSkKICAgICAgICAgICAgY2hlY2soInRhc2sgUEFUQ0ggSW4gUHJvZ3Jlc3MiLCBzdGF0dXMgPT0gMjAwLCBzdHIoYm9keSkpCiAgICAgICAgc3RhdHVzLCBib2R5ID0gcmVxKHBvcnQsICJHRVQiLCAiL2FwaS9kZWFkbGluZXM/dG9kYXk9MjAyNi0xMS0xMCIsIHRva2VuPXQpCiAgICAgICAgY2hlY2soImRlYWRsaW5lcyBVUENPTUlORyIsIHN0YXR1cyA9PSAyMDAgYW5kCiAgICAgICAgICAgICAgYW55KCJUYXNrQSIgaW4gc3RyKGQpIGZvciBkIGluIChib2R5IGlmIGlzaW5zdGFuY2UoYm9keSwgbGlzdCkgZWxzZSBbXSkpLCBzdHIoYm9keSlbOjIwMF0pCiAgICAgICAgc3RhdHVzLCBib2R5ID0gcmVxKHBvcnQsICJQT1NUIiwgIi9hcGkvZGVjaXNpb24tZXhwbGFuYXRpb24iLCB0b2tlbj10LAogICAgICAgICAgICAgICAgICAgICAgICAgICBib2R5PXsidXJnZW5jeSI6IDksICJpbXBvcnRhbmNlIjogOX0pCiAgICAgICAgY2hlY2soImRlY2lzaW9uIGV4cGxhbmF0aW9uIDQ1Iiwgc3RhdHVzID09IDIwMCBhbmQgYm9keS5nZXQoInNjb3JlIikgPT0gNDUsIHN0cihib2R5KSkKICAgICAgICBzdGF0dXMsIGJvZHkgPSByZXEocG9ydCwgIlBPU1QiLCAiL2FwaS9jb21wYXJlLW9wdGlvbnMiLCB0b2tlbj10LAogICAgICAgICAgICAgICAgICAgICAgICAgICBib2R5PXsibmFtZTEiOiAiQWxwaGEiLCAiYmVuZWZpdDEiOiA4LCAiY29zdDEiOiAzLCAicmlzazEiOiAyLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAibmFtZTIiOiAiQmV0YSIsICJiZW5lZml0MiI6IDUsICJjb3N0MiI6IDQsICJyaXNrMiI6IDZ9KQogICAgICAgIGNoZWNrKCJjb21wYXJlIEFscGhhIHdpbnMiLCBzdGF0dXMgPT0gMjAwIGFuZCBib2R5LmdldCgic3VnZ2VzdGVkIikgPT0gIkFscGhhIiwgc3RyKGJvZHkpKQogICAgICAgIHN0YXR1cywgYm9keSA9IHJlcShwb3J0LCAiUE9TVCIsICIvYXBpL211bHRpLXRhc2siLCB0b2tlbj10LAogICAgICAgICAgICAgICAgICAgICAgICAgICBib2R5PXsiYXZhaWxhYmxlRW5lcmd5IjogNSwgImF2YWlsYWJsZVRpbWUiOiAzLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAidGFza3MiOiBbeyJuYW1lIjogIkFzc2lnbm1lbnQiLCAiZGVhZGxpbmVVcmdlbmN5IjogNSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiZW5lcmd5IjogMywgInRpbWUiOiAyfV19KQogICAgICAgIGNoZWNrKCJtdWx0aS10YXNrIEFzc2lnbm1lbnQiLCBzdGF0dXMgPT0gMjAwIGFuZAogICAgICAgICAgICAgIGFueSh4LmdldCgibmFtZSIpID09ICJBc3NpZ25tZW50IiBmb3IgeCBpbiBib2R5LmdldCgicmVjb21tZW5kZWQiLCBbXSkpLCBzdHIoYm9keSkpCiAgICAgICAgc3RhdHVzLCBib2R5ID0gcmVxKHBvcnQsICJHRVQiLCAiL2FwaS9idWRnZXQ/aW5jb21lPTUwMDAmZXhwZW5zZXM9MTIwMCIsIHRva2VuPXQpCiAgICAgICAgY2hlY2soImJ1ZGdldCByZW1haW5pbmcgMzgwMCIsIHN0YXR1cyA9PSAyMDAgYW5kIGJvZHkuZ2V0KCJyZW1haW5pbmciKSA9PSAzODAwLCBzdHIoYm9keSkpCiAgICAgICAgc3RhdHVzLCBib2R5ID0gcmVxKHBvcnQsICJQT1NUIiwgIi9hcGkvdHJhbnNhY3Rpb25zIiwgdG9rZW49dCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgYm9keT17InR5cGUiOiAiaW5jb21lIiwgImNhdGVnb3J5IjogIlNhbGFyeSIsICJhbW91bnQiOiA1MDAwLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAibm90ZSI6ICJOb3YiLCAiZGF0ZSI6ICIyMDI2LTExLTAxIn0pCiAgICAgICAgY2hlY2soInRyYW5zYWN0aW9uIGFkZCIsIHN0YXR1cyBpbiAoMjAwLCAyMDEpLCBzdHIoYm9keSkpCiAgICAgICAgc3RhdHVzLCBib2R5ID0gcmVxKHBvcnQsICJQT1NUIiwgIi9hcGkvc2F2aW5ncyIsIHRva2VuPXQsCiAgICAgICAgICAgICAgICAgICAgICAgICAgIGJvZHk9eyJuYW1lIjogIkxhcHRvcCIsICJ0YXJnZXQiOiAxMDAwMH0pCiAgICAgICAgY2hlY2soInNhdmluZ3MgZ29hbCIsIHN0YXR1cyBpbiAoMjAwLCAyMDEpLCBzdHIoYm9keSkpCiAgICAgICAgIyBDb25jdXJyZW50IHNhdmluZ3MgYWRkczogMTAgeCAxMDAgbXVzdCB0b3RhbCAxMDAwLCBubyBsb3N0IHVwZGF0ZS4KICAgICAgICBkZWYgYWRkX3NhdmluZ3MoKToKICAgICAgICAgICAgcmVxKHBvcnQsICJQT1NUIiwgIi9hcGkvc2F2aW5ncy9hZGQiLCB0b2tlbj10LAogICAgICAgICAgICAgICAgYm9keT17Im5hbWUiOiAiTGFwdG9wIiwgImFtb3VudCI6IDEwMH0pCiAgICAgICAgdGhyZWFkcyA9IFt0aHJlYWRpbmcuVGhyZWFkKHRhcmdldD1hZGRfc2F2aW5ncykgZm9yIF8gaW4gcmFuZ2UoMTApXQogICAgICAgIGZvciB0aCBpbiB0aHJlYWRzOgogICAgICAgICAgICB0aC5zdGFydCgpCiAgICAgICAgZm9yIHRoIGluIHRocmVhZHM6CiAgICAgICAgICAgIHRoLmpvaW4oKQogICAgICAgIHN0YXR1cywgYm9keSA9IHJlcShwb3J0LCAiR0VUIiwgIi9hcGkvc2F2aW5ncyIsIHRva2VuPXQpCiAgICAgICAgc2F2ZWQgPSBOb25lCiAgICAgICAgZm9yIGcgaW4gKGJvZHkgaWYgaXNpbnN0YW5jZShib2R5LCBsaXN0KSBlbHNlIFtdKToKICAgICAgICAgICAgaWYgZy5nZXQoIm5hbWUiKSA9PSAiTGFwdG9wIjoKICAgICAgICAgICAgICAgIHNhdmVkID0gZy5nZXQoInNhdmVkIikKICAgICAgICBjaGVjaygiY29uY3VycmVudCBzYXZpbmdzID0gMTAwMCIsIHNhdmVkID09IDEwMDAsIHN0cihib2R5KSkKICAgICAgICBzdGF0dXMsIGJvZHkgPSByZXEocG9ydCwgIlBPU1QiLCAiL2FwaS9oYWJpdHMiLCB0b2tlbj10LAogICAgICAgICAgICAgICAgICAgICAgICAgICBib2R5PXsiaGFiaXQiOiAiUmVhZGluZyIsICJkYXRlIjogIjIwMjYtMTEtMDMifSkKICAgICAgICBjaGVjaygiaGFiaXQgbWFyayIsIHN0YXR1cyBpbiAoMjAwLCAyMDEpLCBzdHIoYm9keSkpCiAgICAgICAgc3RhdHVzLCBib2R5ID0gcmVxKHBvcnQsICJQT1NUIiwgIi9hcGkvaGFiaXQtc3RyZWFrLWNhbGMiLCB0b2tlbj10LAogICAgICAgICAgICAgICAgICAgICAgICAgICBib2R5PXsicHJldmlvdXNEYXlzIjogNSwgImNvbXBsZXRlZFRvZGF5IjogMX0pCiAgICAgICAgY2hlY2soInN0cmVhayBjYWxjIiwgc3RhdHVzID09IDIwMCwgc3RyKGJvZHkpKQogICAgICAgIHN0YXR1cywgYm9keSA9IHJlcShwb3J0LCAiUE9TVCIsICIvYXBpL3N0dWR5LXBsYW5uZXIiLCB0b2tlbj10LAogICAgICAgICAgICAgICAgICAgICAgICAgICBib2R5PXsic3ViamVjdCI6ICJNYXRoIiwgImRheXMiOiAzLCAiaG91cnMiOiAyfSkKICAgICAgICBjaGVjaygic3R1ZHkgcGxhbm5lciA2aCIsIHN0YXR1cyA9PSAyMDAgYW5kIGJvZHkuZ2V0KCJ0b3RhbEhvdXJzIikgPT0gNiwgc3RyKGJvZHkpKQogICAgICAgIHN0YXR1cywgYm9keSA9IHJlcShwb3J0LCAiUE9TVCIsICIvYXBpL3RpbWUtYWxsb2NhdGlvbiIsIHRva2VuPXQsCiAgICAgICAgICAgICAgICAgICAgICAgICAgIGJvZHk9eyJzdHVkeSI6IDcsICJ3b3JrIjogNywgInNsZWVwIjogNywgIm90aGVyIjogMH0pCiAgICAgICAgY2hlY2soInRpbWUgYWxsb2NhdGlvbiIsIHN0YXR1cyA9PSAyMDAsIHN0cihib2R5KSkKICAgICAgICBzdGF0dXMsIGJvZHkgPSByZXEocG9ydCwgIkdFVCIsICIvYXBpL3JlcG9ydHM/bW9udGg9MjAyNi0xMSIsIHRva2VuPXQpCiAgICAgICAgY2hlY2soIm1vbnRobHkgcmVwb3J0Iiwgc3RhdHVzID09IDIwMCwgc3RyKGJvZHkpWzoyMDBdKQogICAgICAgIHN0YXR1cywgYm9keSA9IHJlcShwb3J0LCAiR0VUIiwgIi9hcGkvZGVjaXNpb25zP3NlYXJjaD1EYWlseSIsIHRva2VuPXQpCiAgICAgICAgY2hlY2soInNlYXJjaCBmaW5kcyBEYWlseSIsIHN0YXR1cyA9PSAyMDAsIHN0cihib2R5KVs6MjAwXSkKICAgICAgICBzdGF0dXMsIGJvZHkgPSByZXEocG9ydCwgIlBPU1QiLCAiL2FwaS9iYWNrdXAiLCB0b2tlbj10KQogICAgICAgIGNoZWNrKCJiYWNrdXAiLCBzdGF0dXMgPT0gMjAwLCBzdHIoYm9keSkpCiAgICAgICAgc3RhdHVzLCBib2R5ID0gcmVxKHBvcnQsICJHRVQiLCAiL2FwaS9leHBvcnQ/Zm9ybWF0PWNzdiIsIHRva2VuPXQpCiAgICAgICAgY2hlY2soImV4cG9ydCBjc3YiLCBzdGF0dXMgPT0gMjAwLCBzdHIoYm9keSlbOjIwMF0pCiAgICAgICAgc3RhdHVzLCBib2R5ID0gcmVxKHBvcnQsICJHRVQiLCAiL2FwaS9vdmVydmlldyIsIHRva2VuPXQpCiAgICAgICAgY2hlY2soIm92ZXJ2aWV3Iiwgc3RhdHVzID09IDIwMCwgc3RyKGJvZHkpWzoyMDBdKQogICAgICAgIHN0YXR1cywgYm9keSA9IHJlcShwb3J0LCAiR0VUIiwgIi9hcGkvaW5mbyIsIHRva2VuPXQpCiAgICAgICAgY2hlY2soImluZm8gYmFja2VuZCIsIHN0YXR1cyA9PSAyMDAgYW5kICJiYWNrZW5kIiBpbiBib2R5LCBzdHIoYm9keSkpCiAgICAgICAgc3RhdHVzLCBib2R5ID0gcmVxKHBvcnQsICJHRVQiLCAiL2FwaS9vdmVydmlldyIpCiAgICAgICAgY2hlY2soInVuYXV0aGVudGljYXRlZCBvdmVydmlldyA0MDEiLCBzdGF0dXMgPT0gNDAxLCBzdHIoc3RhdHVzKSkKICAgICAgICBzdGF0dXMsIGJvZHkgPSByZXEocG9ydCwgIkdFVCIsICIvdXNlcnMudHh0IikKICAgICAgICBjaGVjaygic3RhdGljIC91c2Vycy50eHQgNDA0Iiwgc3RhdHVzID09IDQwNCwgc3RyKHN0YXR1cykpCiAgICAgICAgc3RhdHVzLCBib2R5ID0gcmVxKHBvcnQsICJHRVQiLCAiLyIpCiAgICAgICAgY2hlY2soImxhbmRpbmcgcGFnZSAyMDAiLCBzdGF0dXMgPT0gMjAwLCBzdHIoc3RhdHVzKSkKICAgICAgICBzdGF0dXMsIGJvZHkgPSByZXEocG9ydCwgIlBPU1QiLCAiL2FwaS9sb2dvdXQiLCB0b2tlbj10KQogICAgICAgIGNoZWNrKCJsb2dvdXQiLCBzdGF0dXMgPT0gMjAwLCBzdHIoYm9keSkpCiAgICAgICAgc3RhdHVzLCBib2R5ID0gcmVxKHBvcnQsICJHRVQiLCAiL2FwaS9vdmVydmlldyIsIHRva2VuPXQpCiAgICAgICAgY2hlY2soInRva2VuIGludmFsaWQgYWZ0ZXIgbG9nb3V0Iiwgc3RhdHVzID09IDQwMSwgc3RyKHN0YXR1cykpCiAgICBmaW5hbGx5OgogICAgICAgIHByb2MudGVybWluYXRlKCkKICAgICAgICB0cnk6CiAgICAgICAgICAgIHByb2Mud2FpdCh0aW1lb3V0PTUpCiAgICAgICAgZXhjZXB0IEV4Y2VwdGlvbjoKICAgICAgICAgICAgcHJvYy5raWxsKCkKICAgICAgICBzaHV0aWwucm10cmVlKHRtcCwgaWdub3JlX2Vycm9ycz1UcnVlKQogICAgcHJpbnQoZiJcbmFwaV90ZXN0OiB7UEFTU30gcGFzc2VkLCB7RkFJTH0gZmFpbGVkIikKICAgIHJldHVybiAxIGlmIEZBSUwgZWxzZSAwCgoKaWYgX19uYW1lX18gPT0gIl9fbWFpbl9fIjoKICAgIHN5cy5leGl0KG1haW4oKSkK
+#!/usr/bin/env python3
+"""Automated API regression test for the dashboard server.
+
+Runs the server (C++ or Python fallback) in a fresh temporary data
+directory, then exercises the API end to end. No real passwords are
+used; all test accounts are created inside the temporary directory
+and deleted with it.
+
+Usage:
+    python3 tests/api_test.py --server-cmd "path/to/cpp_server" --port 8123
+    python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8124
+
+Exit code 0 = all checks passed, 1 = at least one check failed.
+"""
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import urllib.error
+import urllib.request
+
+PASS = 0
+FAIL = 0
+
+
+def check(name, cond, detail=""):
+    global PASS, FAIL
+    if cond:
+        PASS += 1
+        print(f"  PASS {name}")
+    else:
+        FAIL += 1
+        print(f"  FAIL {name} {detail}")
+
+
+def req(port, method, path, token=None, body=None):
+    url = f"http://127.0.0.1:{port}{path}"
+    data = json.dumps(body).encode() if body is not None else None
+    r = urllib.request.Request(url, data=data, method=method)
+    if body is not None:
+        r.add_header("Content-Type", "application/json")
+    if token:
+        r.add_header("Authorization", f"Bearer {token}")
+    try:
+        with urllib.request.urlopen(r, timeout=10) as resp:
+            raw = resp.read() or b"{}"
+            try:
+                return resp.status, json.loads(raw)
+            except Exception:
+                return resp.status, {}
+    except urllib.error.HTTPError as e:
+        try:
+            return e.code, json.loads(e.read() or b"{}")
+        except Exception:
+            return e.code, {}
+    except Exception as e:
+        return 0, {"error": str(e)}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--server-cmd", required=True)
+    ap.add_argument("--port", type=int, default=8123)
+    args = ap.parse_args()
+    tmp = tempfile.mkdtemp(prefix="pdps-api-test-")
+    print(f"data dir: {tmp}")
+    # Old-format plaintext account, to test backward-compatible migration.
+    with open(os.path.join(tmp, "users.txt"), "w") as f:
+        f.write("olduser OldPass123 ADMIN\n")
+    cmd = args.server_cmd.split() + ["--port", str(args.port),
+                                     "--data-dir", tmp]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, text=True)
+    try:
+        # Wait for server to accept connections.
+        for _ in range(30):
+            # Any HTTP response (even a 404 for a missing static file
+            # in the temp data dir) proves the server is listening.
+            status, _ = req(args.port, "GET", "/")
+            if status != 0:
+                break
+            time.sleep(0.5)
+        else:
+            print("FAIL server did not start")
+            return 1
+
+        port = args.port
+        # 1. Old plaintext account logs in, then is migrated to a hash.
+        status, body = req(port, "POST", "/api/login",
+                           body={"username": "olduser", "password": "OldPass123"})
+        check("old-plaintext login", status == 200 and "token" in body, str(body))
+        token_old = body.get("token", "")
+        with open(os.path.join(tmp, "users.txt")) as f:
+            users_line = f.read()
+        check("old account migrated to hash",
+              "OldPass123" not in users_line and "pbkdf2$100000$" in users_line,
+              users_line[:80])
+        status, body = req(port, "POST", "/api/login",
+                           body={"username": "olduser", "password": "OldPass123"})
+        check("hashed login", status == 200 and "token" in body, str(body))
+        token_old = body.get("token", token_old)
+
+        # 2. New registration is hashed, second user is USER, admin list.
+        status, body = req(port, "POST", "/api/register",
+                           body={"username": "newuser", "password": "NewPass123"})
+        check("register newuser", status == 201 and body.get("role") == "USER", str(body))
+        with open(os.path.join(tmp, "users.txt")) as f:
+            check("new account hashed",
+                  "NewPass123" not in f.read())
+        status, body = req(port, "POST", "/api/login",
+                           body={"username": "newuser", "password": "NewPass123"})
+        check("newuser login", status == 200 and "token" in body, str(body))
+        token_new = body.get("token", "")
+        status, body = req(port, "GET", "/api/admin", token=token_new)
+        check("non-admin admin endpoint 403", status == 403, str(body))
+        status, body = req(port, "GET", "/api/admin", token=token_old)
+        check("admin endpoint for ADMIN", status == 200, str(body))
+
+        # 3. Rate limiting: 5 wrong logins, then 429.
+        for _ in range(5):
+            req(port, "POST", "/api/login",
+                body={"username": "newuser", "password": "Wrong1234"})
+        status, _ = req(port, "POST", "/api/login",
+                        body={"username": "newuser", "password": "Wrong1234"})
+        check("rate limiting 429", status == 429, str(status))
+
+        # 4. Core features (using the ADMIN token).
+        t = token_old
+        status, body = req(port, "POST", "/api/daily-decision", token=t,
+                           body={"availableTime": 120, "requiredTime": 60,
+                                 "urgency": 9, "importance": 9, "energy": 8})
+        check("daily decision", status in (200, 201), str(body))
+        status, body = req(port, "POST", "/api/priority", token=t,
+                           body={"urgency": 10, "importance": 10})
+        check("priority 50", status == 200 and body.get("score") == 50, str(body))
+        status, body = req(port, "POST", "/api/tasks", token=t,
+                           body={"title": "TaskA", "urgency": 8, "importance": 8,
+                                 "deadline": "2026-11-20"})
+        check("task create", status in (200, 201), str(body))
+        task_id = body.get("id")
+        if task_id is not None:
+            status, body = req(port, "PATCH", f"/api/tasks/{task_id}", token=t,
+                               body={"status": "In Progress"})
+            check("task PATCH In Progress", status == 200, str(body))
+        status, body = req(port, "GET", "/api/deadlines?today=2026-11-10", token=t)
+        check("deadlines UPCOMING", status == 200 and
+              any("TaskA" in str(d) for d in (body if isinstance(body, list) else [])), str(body)[:200])
+        status, body = req(port, "POST", "/api/decision-explanation", token=t,
+                           body={"urgency": 9, "importance": 9})
+        check("decision explanation 45", status == 200 and body.get("score") == 45, str(body))
+        status, body = req(port, "POST", "/api/compare-options", token=t,
+                           body={"name1": "Alpha", "benefit1": 8, "cost1": 3, "risk1": 2,
+                                 "name2": "Beta", "benefit2": 5, "cost2": 4, "risk2": 6})
+        check("compare Alpha wins", status == 200 and body.get("suggested") == "Alpha", str(body))
+        status, body = req(port, "POST", "/api/multi-task", token=t,
+                           body={"availableEnergy": 5, "availableTime": 3,
+                                 "tasks": [{"name": "Assignment", "deadlineUrgency": 5,
+                                            "energy": 3, "time": 2}]})
+        check("multi-task Assignment", status == 200 and
+              any(x.get("name") == "Assignment" for x in body.get("recommended", [])), str(body))
+        status, body = req(port, "GET", "/api/budget?income=5000&expenses=1200", token=t)
+        check("budget remaining 3800", status == 200 and body.get("remaining") == 3800, str(body))
+        status, body = req(port, "POST", "/api/transactions", token=t,
+                           body={"type": "income", "category": "Salary", "amount": 5000,
+                                 "note": "Nov", "date": "2026-11-01"})
+        check("transaction add", status in (200, 201), str(body))
+        status, body = req(port, "POST", "/api/savings", token=t,
+                           body={"name": "Laptop", "target": 10000})
+        check("savings goal", status in (200, 201), str(body))
+        # Concurrent savings adds: 10 x 100 must total 1000, no lost update.
+        def add_savings():
+            req(port, "POST", "/api/savings/add", token=t,
+                body={"name": "Laptop", "amount": 100})
+        threads = [threading.Thread(target=add_savings) for _ in range(10)]
+        for th in threads:
+            th.start()
+        for th in threads:
+            th.join()
+        status, body = req(port, "GET", "/api/savings", token=t)
+        saved = None
+        for g in (body if isinstance(body, list) else []):
+            if g.get("name") == "Laptop":
+                saved = g.get("saved")
+        check("concurrent savings = 1000", saved == 1000, str(body))
+        status, body = req(port, "POST", "/api/habits", token=t,
+                           body={"habit": "Reading", "date": "2026-11-03"})
+        check("habit mark", status in (200, 201), str(body))
+        status, body = req(port, "POST", "/api/habit-streak-calc", token=t,
+                           body={"previousDays": 5, "completedToday": 1})
+        check("streak calc", status == 200, str(body))
+        status, body = req(port, "POST", "/api/study-planner", token=t,
+                           body={"subject": "Math", "days": 3, "hours": 2})
+        check("study planner 6h", status == 200 and body.get("totalHours") == 6, str(body))
+        status, body = req(port, "POST", "/api/time-allocation", token=t,
+                           body={"study": 7, "work": 7, "sleep": 7, "other": 0})
+        check("time allocation", status == 200, str(body))
+        status, body = req(port, "GET", "/api/reports?month=2026-11", token=t)
+        check("monthly report", status == 200, str(body)[:200])
+        status, body = req(port, "GET", "/api/decisions?search=Daily", token=t)
+        check("search finds Daily", status == 200, str(body)[:200])
+        status, body = req(port, "POST", "/api/backup", token=t)
+        check("backup", status == 200, str(body))
+        status, body = req(port, "GET", "/api/export?format=csv", token=t)
+        check("export csv", status == 200, str(body)[:200])
+        status, body = req(port, "GET", "/api/overview", token=t)
+        check("overview", status == 200, str(body)[:200])
+        status, body = req(port, "GET", "/api/info", token=t)
+        check("info backend", status == 200 and "backend" in body, str(body))
+        status, body = req(port, "GET", "/api/overview")
+        check("unauthenticated overview 401", status == 401, str(status))
+        status, body = req(port, "GET", "/users.txt")
+        check("static /users.txt 404", status == 404, str(status))
+        status, body = req(port, "GET", "/")
+        check("landing page 200", status == 200, str(status))
+        status, body = req(port, "POST", "/api/logout", token=t)
+        check("logout", status == 200, str(body))
+        status, body = req(port, "GET", "/api/overview", token=t)
+        check("token invalid after logout", status == 401, str(status))
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            proc.kill()
+        shutil.rmtree(tmp, ignore_errors=True)
+    print(f"\napi_test: {PASS} passed, {FAIL} failed")
+    return 1 if FAIL else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
