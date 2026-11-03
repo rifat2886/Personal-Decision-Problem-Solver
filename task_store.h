@@ -1,1 +1,162 @@
-I2lmbmRlZiBUQVNLX1NUT1JFX0gKI2RlZmluZSBUQVNLX1NUT1JFX0gKCi8vIFBlcnNpc3RlbnQgdGFzayBzdG9yYWdlLCBzaGFyZWQgYnkgdGhlIGNvbnNvbGUgYXBwIGFuZCB0aGUgZGFzaGJvYXJkLgovLwovLyBGb3JtYXQgKGV4YWN0bHkgdGhlIGRhc2hib2FyZCdzIHRhc2tzLnR4dCBmb3JtYXQsIHVuY2hhbmdlZCk6Ci8vICAgaWR8dGl0bGV8dXJnZW5jeXxpbXBvcnRhbmNlfGRlYWRsaW5lfHN0YXR1cwovLyBUaXRsZXMsIGRlYWRsaW5lcyBhbmQgc3RhdHVzZXMgYXJlIHNhbml0aXNlZCBzbyBhIHVzZXItc3VwcGxpZWQgJ3wnCi8vIGNhbm5vdCBicmVhayB0aGUgZm9ybWF0LiBDb3JydXB0ZWQgbGluZXMgKGZld2VyIHRoYW4gNiBmaWVsZHMsIG9yIGEKLy8gbm9uLW51bWVyaWMgdXJnZW5jeS9pbXBvcnRhbmNlKSBhcmUgc2tpcHBlZCwgbm90IGZhdGFsLgovLwovLyBXaHkgdGhpcyBmaWxlIGV4aXN0czogdGhlIGNvbnNvbGUgdGFzayBtb2R1bGVzIHVzZWQgdG8ga2VlcCB0YXNrcwovLyBvbmx5IGluIHRoZSBpbi1tZW1vcnkgdGFza0xpc3QsIHNvIFRhc2sgU3RhdHVzICgxMykgYW5kIERlYWRsaW5lCi8vIEFsZXJ0ICgxNCkgb25seSB3b3JrZWQgaWYgVGFzayBQcmlvcml0aXphdGlvbiAoMTEpIGhhZCBydW4gaW4gdGhlCi8vIHNhbWUgc2Vzc2lvbiwgYW5kIGRhc2hib2FyZCB0YXNrcyB3ZXJlIGludmlzaWJsZSB0byB0aGUgY29uc29sZS4KLy8gTm93IFRhc2sgUHJpb3JpdGl6YXRpb24gYXBwZW5kcyB0byB0YXNrcy50eHQsIGFuZCBUYXNrIFN0YXR1cyBhbmQKLy8gRGVhZGxpbmUgQWxlcnQgbG9hZCB0YXNrcy50eHQgZmlyc3QsIHNvIGJvdGggaW50ZXJmYWNlcyBzZWUgdGhlCi8vIHNhbWUgdGFza3MuIE5vIGV4aXN0aW5nIHVzZXIgZGF0YSBpcyBsb3N0OiB0YXNrcy50eHQgYWxyZWFkeQovLyBjcmVhdGVkIGJ5IHRoZSBkYXNoYm9hcmQgaXMgcmVhZCBhcy1pcywgYW5kIGluLW1lbW9yeS1vbmx5IHRhc2tzCi8vIGZyb20gb2xkIHNlc3Npb25zIHdlcmUgYWxyZWFkeSBsb3N0IG9uIGV4aXQsIHNvIHRoZXJlIGlzIG5vdGhpbmcKLy8gdG8gbWlncmF0ZS4KCiNpbmNsdWRlICJmaWxlX2xvY2suaCIKI2luY2x1ZGUgInRhc2tfZGF0YS5oIgoKI2luY2x1ZGUgPGZzdHJlYW0+CiNpbmNsdWRlIDxzdHJpbmc+CiNpbmNsdWRlIDx2ZWN0b3I+CgpuYW1lc3BhY2UgcGRwc190YXNrcyB7CgppbmxpbmUgc3RkOjpzdHJpbmcgc2FuaXRpemVGaWVsZChjb25zdCBzdGQ6OnN0cmluZyYgcykgewogICAgc3RkOjpzdHJpbmcgb3V0ID0gczsKICAgIGZvciAoY2hhciYgYyA6IG91dCkKICAgICAgICBpZiAoYyA9PSAnfCcgfHwgYyA9PSAnXG4nIHx8IGMgPT0gJ1xyJykgYyA9ICcvJzsKICAgIHJldHVybiBvdXQ7Cn0KCmlubGluZSBzdGQ6OnZlY3RvcjxzdGQ6OnN0cmluZz4gc3BsaXRQaXBlKGNvbnN0IHN0ZDo6c3RyaW5nJiBsaW5lKSB7CiAgICBzdGQ6OnZlY3RvcjxzdGQ6OnN0cmluZz4gcGFydHM7CiAgICBzdGQ6OnNpemVfdCBzdGFydCA9IDA7CiAgICB3aGlsZSAodHJ1ZSkgewogICAgICAgIHN0ZDo6c2l6ZV90IHBvcyA9IGxpbmUuZmluZCgnfCcsIHN0YXJ0KTsKICAgICAgICBpZiAocG9zID09IHN0ZDo6c3RyaW5nOjpucG9zKSB7CiAgICAgICAgICAgIHBhcnRzLnB1c2hfYmFjayhsaW5lLnN1YnN0cihzdGFydCkpOwogICAgICAgICAgICBicmVhazsKICAgICAgICB9CiAgICAgICAgcGFydHMucHVzaF9iYWNrKGxpbmUuc3Vic3RyKHN0YXJ0LCBwb3MgLSBzdGFydCkpOwogICAgICAgIHN0YXJ0ID0gcG9zICsgMTsKICAgIH0KICAgIHJldHVybiBwYXJ0czsKfQoKLy8gTG9hZCBhbGwgdGFza3MgZnJvbSB0YXNrcy50eHQgKGVtcHR5IGlmIHRoZSBmaWxlIGRvZXMgbm90IGV4aXN0KS4KLy8gQWxzbyBmaWxscyB0aGUgc2hhcmVkIGluLW1lbW9yeSB0YXNrTGlzdCwgZm9yIGNhbGxlcnMgdGhhdCB1c2UgaXQuCmlubGluZSBzdGQ6OnZlY3RvcjxUYXNrPiBsb2FkVGFza3MoKSB7CiAgICBGaWxlTG9jayBsb2NrKCJ0YXNrcy50eHQiKTsKICAgIHN0ZDo6dmVjdG9yPFRhc2s+IHRhc2tzOwogICAgc3RkOjppZnN0cmVhbSBpbnB1dCgidGFza3MudHh0Iik7CiAgICBzdGQ6OnN0cmluZyBsaW5lOwogICAgd2hpbGUgKHN0ZDo6Z2V0bGluZShpbnB1dCwgbGluZSkpIHsKICAgICAgICBpZiAobGluZS5lbXB0eSgpKSBjb250aW51ZTsKICAgICAgICBhdXRvIHBhcnRzID0gc3BsaXRQaXBlKGxpbmUpOwogICAgICAgIGlmIChwYXJ0cy5zaXplKCkgPCA2KSBjb250aW51ZTsKICAgICAgICBUYXNrIHQ7CiAgICAgICAgdC5pZCA9IHBhcnRzWzBdOwogICAgICAgIHQudGl0bGUgPSBwYXJ0c1sxXTsKICAgICAgICB0cnkgewogICAgICAgICAgICB0LnVyZ2VuY3kgPSBzdGQ6OnN0b2kocGFydHNbMl0pOwogICAgICAgICAgICB0LmltcG9ydGFuY2UgPSBzdGQ6OnN0b2kocGFydHNbM10pOwogICAgICAgIH0gY2F0Y2ggKC4uLikgewogICAgICAgICAgICBjb250aW51ZTsKICAgICAgICB9CiAgICAgICAgaWYgKHQudXJnZW5jeSA8IDEgfHwgdC51cmdlbmN5ID4gMTAgfHwgdC5pbXBvcnRhbmNlIDwgMSB8fAogICAgICAgICAgICB0LmltcG9ydGFuY2UgPiAxMCkKICAgICAgICAgICAgY29udGludWU7CiAgICAgICAgdC5kZWFkbGluZSA9IHBhcnRzWzRdOwogICAgICAgIHQuc3RhdHVzID0gcGFydHNbNV07CiAgICAgICAgdGFza3MucHVzaF9iYWNrKHQpOwogICAgfQogICAgdGFza0xpc3QgPSB0YXNrczsKICAgIHJldHVybiB0YXNrczsKfQoKLy8gUmV3cml0ZSB0YXNrcy50eHQgd2l0aCB0aGUgZ2l2ZW4gdGFza3MsIHByZXNlcnZpbmcgaWRzIHdoZXJlIHNldAovLyBhbmQgYXNzaWduaW5nIG5ldyBzZXF1ZW50aWFsIGlkcyB3aGVyZSBlbXB0eS4gSGVsZCB1bmRlciB0aGUgbG9jay4KaW5saW5lIHZvaWQgc2F2ZVRhc2tzKGNvbnN0IHN0ZDo6dmVjdG9yPFRhc2s+JiB0YXNrcykgewogICAgRmlsZUxvY2sgbG9jaygidGFza3MudHh0Iik7CiAgICBzdGQ6Om9mc3RyZWFtIG91dHB1dCgidGFza3MudHh0Iik7CiAgICBpZiAoIW91dHB1dCkgcmV0dXJuOwogICAgaW50IG5leHRJZCA9IDE7CiAgICBmb3IgKGNvbnN0IGF1dG8mIHQgOiB0YXNrcykgewogICAgICAgIHN0ZDo6c3RyaW5nIGlkID0gdC5pZDsKICAgICAgICBpZiAoaWQuZW1wdHkoKSkgewogICAgICAgICAgICBpZCA9IHN0ZDo6dG9fc3RyaW5nKG5leHRJZCk7CiAgICAgICAgfSBlbHNlIHsKICAgICAgICAgICAgdHJ5IHsKICAgICAgICAgICAgICAgIGludCB2ID0gc3RkOjpzdG9pKGlkKTsKICAgICAgICAgICAgICAgIGlmICh2ID49IG5leHRJZCkgbmV4dElkID0gdiArIDE7CiAgICAgICAgICAgIH0gY2F0Y2ggKC4uLikgewogICAgICAgICAgICAgICAgaWQgPSBzdGQ6OnRvX3N0cmluZyhuZXh0SWQpOwogICAgICAgICAgICB9CiAgICAgICAgfQogICAgICAgIG91dHB1dCA8PCBpZCA8PCAnfCcgPDwgc2FuaXRpemVGaWVsZCh0LnRpdGxlKSA8PCAnfCcKICAgICAgICAgICAgICAgPDwgdC51cmdlbmN5IDw8ICd8JyA8PCB0LmltcG9ydGFuY2UgPDwgJ3wnCiAgICAgICAgICAgICAgIDw8IHNhbml0aXplRmllbGQodC5kZWFkbGluZSkgPDwgJ3wnCiAgICAgICAgICAgICAgIDw8IHNhbml0aXplRmllbGQodC5zdGF0dXMpIDw8ICdcbic7CiAgICAgICAgdHJ5IHsKICAgICAgICAgICAgaW50IHYgPSBzdGQ6OnN0b2koaWQpOwogICAgICAgICAgICBpZiAodiA+PSBuZXh0SWQpIG5leHRJZCA9IHYgKyAxOwogICAgICAgIH0gY2F0Y2ggKC4uLikgewogICAgICAgIH0KICAgIH0KfQoKLy8gQXBwZW5kIG5ldyB0YXNrcyB0byB0YXNrcy50eHQsIGFsbG9jYXRpbmcgZnJlc2ggaWRzIGFmdGVyIHRoZQovLyBoaWdoZXN0IGV4aXN0aW5nIGlkLiBVc2VkIGJ5IFRhc2sgUHJpb3JpdGl6YXRpb24uCmlubGluZSB2b2lkIGFwcGVuZFRhc2tzKGNvbnN0IHN0ZDo6dmVjdG9yPFRhc2s+JiBuZXdUYXNrcykgewogICAgRmlsZUxvY2sgbG9jaygidGFza3MudHh0Iik7CiAgICBzdGQ6OnZlY3RvcjxUYXNrPiBleGlzdGluZzsKICAgIHsKICAgICAgICBzdGQ6Omlmc3RyZWFtIGlucHV0KCJ0YXNrcy50eHQiKTsKICAgICAgICBzdGQ6OnN0cmluZyBsaW5lOwogICAgICAgIHdoaWxlIChzdGQ6OmdldGxpbmUoaW5wdXQsIGxpbmUpKSB7CiAgICAgICAgICAgIGlmIChsaW5lLmVtcHR5KCkpIGNvbnRpbnVlOwogICAgICAgICAgICBhdXRvIHBhcnRzID0gc3BsaXRQaXBlKGxpbmUpOwogICAgICAgICAgICBpZiAocGFydHMuc2l6ZSgpIDwgNikgY29udGludWU7CiAgICAgICAgICAgIFRhc2sgdDsKICAgICAgICAgICAgdC5pZCA9IHBhcnRzWzBdOwogICAgICAgICAgICB0LnRpdGxlID0gcGFydHNbMV07CiAgICAgICAgICAgIHRyeSB7CiAgICAgICAgICAgICAgICB0LnVyZ2VuY3kgPSBzdGQ6OnN0b2kocGFydHNbMl0pOwogICAgICAgICAgICAgICAgdC5pbXBvcnRhbmNlID0gc3RkOjpzdG9pKHBhcnRzWzNdKTsKICAgICAgICAgICAgfSBjYXRjaCAoLi4uKSB7CiAgICAgICAgICAgICAgICBjb250aW51ZTsKICAgICAgICAgICAgfQogICAgICAgICAgICB0LmRlYWRsaW5lID0gcGFydHNbNF07CiAgICAgICAgICAgIHQuc3RhdHVzID0gcGFydHNbNV07CiAgICAgICAgICAgIGV4aXN0aW5nLnB1c2hfYmFjayh0KTsKICAgICAgICB9CiAgICB9CiAgICBpbnQgbmV4dElkID0gMTsKICAgIGZvciAoY29uc3QgYXV0byYgdCA6IGV4aXN0aW5nKSB7CiAgICAgICAgdHJ5IHsKICAgICAgICAgICAgaW50IHYgPSBzdGQ6OnN0b2kodC5pZCk7CiAgICAgICAgICAgIGlmICh2ID49IG5leHRJZCkgbmV4dElkID0gdiArIDE7CiAgICAgICAgfSBjYXRjaCAoLi4uKSB7CiAgICAgICAgfQogICAgfQogICAgc3RkOjpvZnN0cmVhbSBvdXRwdXQoInRhc2tzLnR4dCIsIHN0ZDo6aW9zOjphcHApOwogICAgaWYgKCFvdXRwdXQpIHJldHVybjsKICAgIGZvciAoY29uc3QgYXV0byYgdCA6IG5ld1Rhc2tzKSB7CiAgICAgICAgb3V0cHV0IDw8IG5leHRJZCsrIDw8ICd8JyA8PCBzYW5pdGl6ZUZpZWxkKHQudGl0bGUpIDw8ICd8JwogICAgICAgICAgICAgICA8PCB0LnVyZ2VuY3kgPDwgJ3wnIDw8IHQuaW1wb3J0YW5jZSA8PCAnfCcKICAgICAgICAgICAgICAgPDwgc2FuaXRpemVGaWVsZCh0LmRlYWRsaW5lKSA8PCAnfCcKICAgICAgICAgICAgICAgPDwgc2FuaXRpemVGaWVsZCh0LnN0YXR1cykgPDwgJ1xuJzsKICAgIH0KfQoKfSAgLy8gbmFtZXNwYWNlIHBkcHNfdGFza3MKCiNlbmRpZgo=
+#ifndef TASK_STORE_H
+#define TASK_STORE_H
+
+// Persistent task storage, shared by the console app and the dashboard.
+//
+// Format (exactly the dashboard's tasks.txt format, unchanged):
+//   id|title|urgency|importance|deadline|status
+// Titles, deadlines and statuses are sanitised so a user-supplied '|'
+// cannot break the format. Corrupted lines (fewer than 6 fields, or a
+// non-numeric urgency/importance) are skipped, not fatal.
+//
+// Why this file exists: the console task modules used to keep tasks
+// only in the in-memory taskList, so Task Status (13) and Deadline
+// Alert (14) only worked if Task Prioritization (11) had run in the
+// same session, and dashboard tasks were invisible to the console.
+// Now Task Prioritization appends to tasks.txt, and Task Status and
+// Deadline Alert load tasks.txt first, so both interfaces see the
+// same tasks. No existing user data is lost: tasks.txt already
+// created by the dashboard is read as-is, and in-memory-only tasks
+// from old sessions were already lost on exit, so there is nothing
+// to migrate.
+
+#include "file_lock.h"
+#include "task_data.h"
+
+#include <fstream>
+#include <string>
+#include <vector>
+
+namespace pdps_tasks {
+
+inline std::string sanitizeField(const std::string& s) {
+    std::string out = s;
+    for (char& c : out)
+        if (c == '|' || c == '\n' || c == '\r') c = '/';
+    return out;
+}
+
+inline std::vector<std::string> splitPipe(const std::string& line) {
+    std::vector<std::string> parts;
+    std::size_t start = 0;
+    while (true) {
+        std::size_t pos = line.find('|', start);
+        if (pos == std::string::npos) {
+            parts.push_back(line.substr(start));
+            break;
+        }
+        parts.push_back(line.substr(start, pos - start));
+        start = pos + 1;
+    }
+    return parts;
+}
+
+// Load all tasks from tasks.txt (empty if the file does not exist).
+// Also fills the shared in-memory taskList, for callers that use it.
+inline std::vector<Task> loadTasks() {
+    FileLock lock("tasks.txt");
+    std::vector<Task> tasks;
+    std::ifstream input("tasks.txt");
+    std::string line;
+    while (std::getline(input, line)) {
+        if (line.empty()) continue;
+        auto parts = splitPipe(line);
+        if (parts.size() < 6) continue;
+        Task t;
+        t.id = parts[0];
+        t.title = parts[1];
+        try {
+            t.urgency = std::stoi(parts[2]);
+            t.importance = std::stoi(parts[3]);
+        } catch (...) {
+            continue;
+        }
+        if (t.urgency < 1 || t.urgency > 10 || t.importance < 1 ||
+            t.importance > 10)
+            continue;
+        t.deadline = parts[4];
+        t.status = parts[5];
+        tasks.push_back(t);
+    }
+    taskList = tasks;
+    return tasks;
+}
+
+// Rewrite tasks.txt with the given tasks, preserving ids where set
+// and assigning new sequential ids where empty. Held under the lock.
+inline void saveTasks(const std::vector<Task>& tasks) {
+    FileLock lock("tasks.txt");
+    std::ofstream output("tasks.txt");
+    if (!output) return;
+    int nextId = 1;
+    for (const auto& t : tasks) {
+        std::string id = t.id;
+        if (id.empty()) {
+            id = std::to_string(nextId);
+        } else {
+            try {
+                int v = std::stoi(id);
+                if (v >= nextId) nextId = v + 1;
+            } catch (...) {
+                id = std::to_string(nextId);
+            }
+        }
+        output << id << '|' << sanitizeField(t.title) << '|'
+               << t.urgency << '|' << t.importance << '|'
+               << sanitizeField(t.deadline) << '|'
+               << sanitizeField(t.status) << '\n';
+        try {
+            int v = std::stoi(id);
+            if (v >= nextId) nextId = v + 1;
+        } catch (...) {
+        }
+    }
+}
+
+// Append new tasks to tasks.txt, allocating fresh ids after the
+// highest existing id. Used by Task Prioritization.
+inline void appendTasks(const std::vector<Task>& newTasks) {
+    FileLock lock("tasks.txt");
+    std::vector<Task> existing;
+    {
+        std::ifstream input("tasks.txt");
+        std::string line;
+        while (std::getline(input, line)) {
+            if (line.empty()) continue;
+            auto parts = splitPipe(line);
+            if (parts.size() < 6) continue;
+            Task t;
+            t.id = parts[0];
+            t.title = parts[1];
+            try {
+                t.urgency = std::stoi(parts[2]);
+                t.importance = std::stoi(parts[3]);
+            } catch (...) {
+                continue;
+            }
+            t.deadline = parts[4];
+            t.status = parts[5];
+            existing.push_back(t);
+        }
+    }
+    int nextId = 1;
+    for (const auto& t : existing) {
+        try {
+            int v = std::stoi(t.id);
+            if (v >= nextId) nextId = v + 1;
+        } catch (...) {
+        }
+    }
+    std::ofstream output("tasks.txt", std::ios::app);
+    if (!output) return;
+    for (const auto& t : newTasks) {
+        output << nextId++ << '|' << sanitizeField(t.title) << '|'
+               << t.urgency << '|' << t.importance << '|'
+               << sanitizeField(t.deadline) << '|'
+               << sanitizeField(t.status) << '\n';
+    }
+}
+
+}  // namespace pdps_tasks
+
+#endif
