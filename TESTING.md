@@ -10,7 +10,9 @@ g++ -std=c++17 -Wall -Wextra -o project admin.cpp backup_restore.cpp budget.cpp 
 g++ -std=c++17 -Wall -Wextra -pthread -o cpp_server dashboard/cpp_server.cpp
 
 # Console regression (14 checks, fresh temp data dir):
-python3 tests/console_test.py --binary ./project
+# Note: the path must be absolute, because the test runs the binary
+# with a temporary data directory as its working directory.
+python3 tests/console_test.py --binary "$PWD/project"
 
 # API regression, C++ server (36 checks, fresh temp data dir):
 python3 tests/api_test.py --server-cmd "./cpp_server" --port 8123
@@ -47,6 +49,12 @@ the output lists every PASS and FAIL by name.
   dark mode toggles, mobile viewport has no horizontal overflow,
   unauthenticated API access is 401, no JavaScript errors, no
   failed API requests.
+- Topbar title at 375px: the long title previously ran off the
+  viewport (the brand text container could not shrink). Fixed in
+  dashboard/style.css (brand container can shrink, title wraps to
+  two lines under 420px) and verified at 375px, 768px and 1280px:
+  no horizontal overflow at any width and the full title is
+  visible at 375px.
 - Build warnings: `-Wall -Wextra -Wpedantic` with 0 warnings for
   both the console app and the C++ server.
 - Sanitizers (manual, not in CI): the console app was also built
@@ -56,11 +64,21 @@ the output lists every PASS and FAIL by name.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs the same console and API tests on
-real Linux (ubuntu-latest) and real Windows (windows-latest, MinGW)
-runners, plus a server startup/shutdown check and a standalone
-build of Sweety's logic_priority test from its own branch (it has
-its own main(), so it is never built into the production app).
+`.github/workflows/ci.yml` (prepared, see below) runs the same
+console and API tests on real Linux (ubuntu-latest) and real
+Windows (windows-latest, MinGW) runners, plus a server
+startup/shutdown check and a standalone build of Sweety's
+logic_priority test from its own branch (it has its own main(),
+so it is never built into the production app).
+
+STATUS (2026-11-03): the workflow file is NOT on this branch yet,
+because the GitHub App used by Muse lacks the Workflows
+repository permission (403 for `.github/workflows/*` files).
+Therefore GitHub Actions has NOT run and Windows CI is NOT
+TESTED, not passed. The file must be added either after the App
+developer adds Workflows permission and the owner approves it,
+or by the owner pushing the file directly with their own GitHub
+account. Do not report CI as passed until a real run exists.
 
 ## What is NOT tested here
 
