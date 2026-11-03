@@ -1,1 +1,20 @@
-IyEvYmluL3NoCiMgUGVyc29uYWwgRGVjaXNpb24gJiBQcm9ibGVtIFNvbHZlciDigJQgY29uc29sZSBhcHAgbGF1bmNoZXIgKExpbnV4L21hY09TKQojIFJ1bjogLi9zdGFydC1jb25zb2xlLnNoCiMgSXQgYnVpbGRzIHRoZSBjb25zb2xlIGFwcCBpZiBuZWVkZWQsIHRoZW4gcnVucyBpdC4KY2QgIiQoZGlybmFtZSAiJDAiKSIgfHwgZXhpdCAxCmlmIFsgISAteCAuL3Byb2plY3QgXTsgdGhlbgogIGVjaG8gIkJ1aWxkaW5nIHRoZSBjb25zb2xlIGFwcCBmb3IgdGhlIGZpcnN0IHRpbWUsIHBsZWFzZSB3YWl0Li4uIgogIGlmICEgY29tbWFuZCAtdiBnKysgPi9kZXYvbnVsbCAyPiYxOyB0aGVuCiAgICBlY2hvICJFUlJPUjogZysrIHdhcyBub3QgZm91bmQuIEluc3RhbGwgYSBDKysgY29tcGlsZXIgKGZvciBleGFtcGxlOiBzdWRvIGFwdCBpbnN0YWxsIGcrKyksIHRoZW4gcnVuIHRoaXMgc2NyaXB0IGFnYWluLiBTZWUgUlVOLm1kLiIKICAgIGV4aXQgMQogIGZpCiAgZysrIC1zdGQ9YysrMTcgLVdhbGwgLVdleHRyYSAtbyBwcm9qZWN0IGFkbWluLmNwcCBiYWNrdXBfcmVzdG9yZS5jcHAgYnVkZ2V0LmNwcCBjb21wYXJlX29wdGlvbnMuY3BwIGNvbnRyb2wuY3BwIGRhaWx5X2RlY2lzaW9uLmNwcCBkZWFkbGluZV9hbGVydC5jcHAgZGVjaXNpb25fZXhwbGFuYXRpb24uY3BwIGRlbGV0ZV9jb25maXJtYXRpb24uY3BwIGVycm9yX2hhbmRsZXIuY3BwIGV4cG9ydF9yZXBvcnQuY3BwIGZpbHRlcl9zb3J0LmNwcCBoYWJpdC5jcHAgaGFiaXRfc3RyZWFrLmNwcCBoaXN0b3J5LmNwcCBpbmNvbWVfZXhwZW5zZS5jcHAgaW5wdXRfdmFsaWRhdGlvbi5jcHAgbG9naW4uY3BwIGxvZ291dC5jcHAgbWFpbi5jcHAgbXVsdGlfdGFza19kZWNpc2lvbi5jcHAgcGFzc3dvcmRfY2hhbmdlLmNwcCBwYXNzd29yZF92YWxpZGF0aW9uLmNwcCBwZXJpb2RfcmVwb3J0LmNwcCBwcmlvcml0eV9jYWxjdWxhdG9yLmNwcCBwcm9ibGVtLmNwcCBwcm9maWxlLmNwcCByZWdpc3RyYXRpb24uY3BwIHJlcG9ydC5jcHAgc2F2aW5nc19nb2FsLmNwcCBzZWFyY2hfaGlzdG9yeS5jcHAgc3R1ZHlfcGxhbm5lci5jcHAgdGFza19wcmlvcml0aXphdGlvbi5jcHAgdGFza19zdGF0dXMuY3BwIHRpbWVfYWxsb2NhdGlvbi5jcHAgfHwgewogICAgZWNobyAiRVJST1I6IHRoZSBidWlsZCBmYWlsZWQuIFNlZSB0aGUgbWVzc2FnZXMgYWJvdmUsIG9yIFJVTi5tZCB0cm91Ymxlc2hvb3RpbmcuIgogICAgZXhpdCAxCiAgfQogIGVjaG8gIkJ1aWxkIGZpbmlzaGVkLiIKZmkKZWNobyAiU3RhcnRpbmcgdGhlIGNvbnNvbGUgYXBwLi4uIgplY2hvICJGaXJzdCB0aW1lPyBDaG9vc2UgMSB0byBSZWdpc3Rlci4gVGhlIGZpcnN0IGFjY291bnQgeW91IGNyZWF0ZSBiZWNvbWVzIEFETUlOLiIKLi9wcm9qZWN0Cg==
+#!/bin/sh
+# Personal Decision & Problem Solver — console app launcher (Linux/macOS)
+# Run: ./start-console.sh
+# It builds the console app if needed, then runs it.
+cd "$(dirname "$0")" || exit 1
+if [ ! -x ./project ]; then
+  echo "Building the console app for the first time, please wait..."
+  if ! command -v g++ >/dev/null 2>&1; then
+    echo "ERROR: g++ was not found. Install a C++ compiler (for example: sudo apt install g++), then run this script again. See RUN.md."
+    exit 1
+  fi
+  g++ -std=c++17 -Wall -Wextra -o project admin.cpp backup_restore.cpp budget.cpp compare_options.cpp control.cpp daily_decision.cpp deadline_alert.cpp decision_explanation.cpp delete_confirmation.cpp error_handler.cpp export_report.cpp filter_sort.cpp habit.cpp habit_streak.cpp history.cpp income_expense.cpp input_validation.cpp login.cpp logout.cpp main.cpp multi_task_decision.cpp password_change.cpp password_validation.cpp period_report.cpp priority_calculator.cpp problem.cpp profile.cpp registration.cpp report.cpp savings_goal.cpp search_history.cpp study_planner.cpp task_prioritization.cpp task_status.cpp time_allocation.cpp || {
+    echo "ERROR: the build failed. See the messages above, or RUN.md troubleshooting."
+    exit 1
+  }
+  echo "Build finished."
+fi
+echo "Starting the console app..."
+echo "First time? Choose 1 to Register. The first account you create becomes ADMIN."
+./project
