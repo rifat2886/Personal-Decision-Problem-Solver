@@ -209,6 +209,19 @@ def load_users(data_dir):
     return users
 
 
+def owner_visible(owner, user, data_dir):
+    # Per-user isolation (Issue 2): owner field is the last pipe field.
+    # Legacy records (no owner) are never deleted or silently assigned;
+    # they are visible only when users.txt has exactly one user and
+    # that user is the requester. ADMIN does NOT see other users' data.
+    if owner == user:
+        return True
+    if owner:
+        return False
+    users = load_users(data_dir)
+    return len(users) == 1 and user in users
+
+
 def load_decisions(data_dir):
     out = []
     for line in read_lines(data_dir, "decisions.txt"):
@@ -220,18 +233,19 @@ def load_decisions(data_dir):
         except ValueError:
             continue
         out.append({"id": parts[0], "date": parts[1], "type": parts[2],
-                    "priority": priority, "title": "|".join(parts[4:])})
+                    "priority": priority, "title": parts[4],
+                    "owner": parts[5] if len(parts) >= 6 else ""})
     return out
 
 
-def append_decision(data_dir, dtype, priority, title):
+def append_decision(data_dir, dtype, priority, title, owner=""):
     # Hold the decisions lock for the whole count-then-append, so a
     # concurrent console/C++ write cannot duplicate an id.
     with FileLock(data_dir, "decisions.txt"):
-        return _append_decision_locked(data_dir, dtype, priority, title)
+        return _append_decision_locked(data_dir, dtype, priority, title, owner)
 
 
-def _append_decision_locked(data_dir, dtype, priority, title):
+def _append_decision_locked(data_dir, dtype, priority, title, owner=""):
     decisions = load_decisions(data_dir)
     next_id = 1
     for item in decisions:
@@ -240,10 +254,10 @@ def _append_decision_locked(data_dir, dtype, priority, title):
         except ValueError:
             pass
     record = {"id": str(next_id), "date": today_str(), "type": sanitize(dtype),
-              "priority": priority, "title": sanitize(title)}
+              "priority": priority, "title": sanitize(title), "owner": owner}
     append_line(data_dir, "decisions.txt",
                 "|".join([record["id"], record["date"], record["type"],
-                          str(record["priority"]), record["title"]]))
+                          str(record["priority"]), record["title"], record["owner"]]))
     return record
 
 
@@ -258,7 +272,8 @@ def load_transactions(data_dir):
         except ValueError:
             continue
         out.append({"date": parts[0], "type": parts[1], "category": parts[2],
-                    "amount": amount, "note": "|".join(parts[4:])})
+                    "amount": amount, "note": parts[4],
+                    "owner": parts[5] if len(parts) >= 6 else ""})
     return out
 
 
@@ -270,7 +285,8 @@ def load_savings(data_dir):
             continue
         try:
             out.append({"name": parts[0], "target": float(parts[1]),
-                        "saved": float(parts[2])})
+                        "saved": float(parts[2]),
+                        "owner": parts[3] if len(parts) >= 4 else ""})
         except ValueError:
             continue
     return out
@@ -278,7 +294,8 @@ def load_savings(data_dir):
 
 def save_savings(data_dir, goals):
     write_lines(data_dir, "savings_goals.txt",
-                ["|".join([sanitize(g["name"]), str(g["target"]), str(g["saved"])])
+                ["|".join([sanitize(g["name"]), str(g["target"]), str(g["saved"]),
+                           sanitize(g.get("owner", ""))])
                  for g in goals])
 
 
@@ -291,7 +308,8 @@ def load_tasks(data_dir):
         try:
             out.append({"id": parts[0], "title": parts[1],
                         "urgency": int(parts[2]), "importance": int(parts[3]),
-                        "deadline": parts[4], "status": parts[5]})
+                        "deadline": parts[4], "status": parts[5],
+                        "owner": parts[6] if len(parts) >= 7 else ""})
         except ValueError:
             continue
     out.sort(key=lambda t: (-(t["urgency"] * 2 + t["importance"] * 3), t["id"]))
@@ -304,15 +322,19 @@ def save_tasks(data_dir, tasks):
     write_lines(data_dir, "tasks.txt",
                 ["|".join([sanitize(t["id"]), sanitize(t["title"]),
                            str(t["urgency"]), str(t["importance"]),
-                           sanitize(t["deadline"]), sanitize(t["status"])])
+                           sanitize(t["deadline"]), sanitize(t["status"]),
+                           sanitize(t.get("owner", ""))])
                  for t in tasks])
 
 
-def habit_streak(data_dir, habit):
+def habit_streak(data_dir, habit, user=None):
     dates = set()
     total = 0
     for line in read_lines(data_dir, "habit_log.txt"):
         parts = line.split("|")
+        owner = parts[2] if len(parts) >= 3 else ""
+        if user is not None and not owner_visible(owner, user, data_dir):
+            continue
         if len(parts) >= 2 and parts[0] == habit and valid_date(parts[1]):
             total += 1
             dates.add(parts[1])
@@ -513,16 +535,17 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {"username": user, "role": role})
 
         if path == "/api/overview" and method == "GET":
-            decisions = load_decisions(data_dir)
-            transactions = load_transactions(data_dir)
-            savings = load_savings(data_dir)
-            tasks = load_tasks(data_dir)
+            decisions = [d for d in load_decisions(data_dir) if owner_visible(d.get("owner", ""), user, data_dir)]
+            transactions = [x for x in load_transactions(data_dir) if owner_visible(x.get("owner", ""), user, data_dir)]
+            savings = [g for g in load_savings(data_dir) if owner_visible(g.get("owner", ""), user, data_dir)]
+            tasks = [x for x in load_tasks(data_dir) if owner_visible(x.get("owner", ""), user, data_dir)]
             income = sum(t["amount"] for t in transactions if t["type"] == "income")
             expense = sum(t["amount"] for t in transactions if t["type"] == "expense")
             habits = {}
             for line in read_lines(data_dir, "habit_log.txt"):
                 parts = line.split("|")
-                if len(parts) >= 2:
+                owner = parts[2] if len(parts) >= 3 else ""
+                if len(parts) >= 2 and owner_visible(owner, user, data_dir):
                     habits[parts[0]] = habits.get(parts[0], 0) + 1
             return self.send_json(200, {
                 "username": user, "role": role,
@@ -537,7 +560,7 @@ class Handler(BaseHTTPRequestHandler):
             })
 
         if path == "/api/decisions" and method == "GET":
-            decisions = load_decisions(data_dir)
+            decisions = [d for d in load_decisions(data_dir) if owner_visible(d.get("owner", ""), user, data_dir)]
             search = (query.get("search") or [""])[0].lower()
             dtype = (query.get("type") or [""])[0]
             if search:
@@ -556,14 +579,16 @@ class Handler(BaseHTTPRequestHandler):
             title = (body.get("title") or "").strip()
             if priority is None or not title:
                 return self.send_error_json(400, "A decision needs a title and a numeric priority.")
-            return self.send_json(201, append_decision(data_dir, dtype, priority, title))
+            return self.send_json(201, append_decision(data_dir, dtype, priority, title, user))
 
         if path.startswith("/api/decisions/") and method == "DELETE":
             decision_id = path.rsplit("/", 1)[-1]
             lines = read_lines(data_dir, "decisions.txt")
             kept, found = [], False
             for line in lines:
-                if line.split("|", 1)[0] == decision_id:
+                parts = line.split("|")
+                owner = parts[5] if len(parts) >= 6 else ""
+                if parts[0] == decision_id and owner_visible(owner, user, data_dir):
                     found = True
                     continue
                 kept.append(line)
@@ -596,7 +621,7 @@ class Handler(BaseHTTPRequestHandler):
                 suggestion = "Schedule this task for later."
             score = urgency * 2 + importance * 3
             record = append_decision(data_dir, "Daily", score,
-                                     "Daily decision: " + suggestion)
+                                     "Daily decision: " + suggestion, user)
             return self.send_json(200, {"suggestion": suggestion, "score": score,
                                         "record": record})
 
@@ -630,7 +655,7 @@ class Handler(BaseHTTPRequestHandler):
                     remaining_time -= task["time"]
                     recommended.append(task)
                     append_decision(data_dir, "MultiTask", task["deadlineUrgency"] * 5,
-                                    "Multi-task: " + task["name"])
+                                    "Multi-task: " + task["name"], user)
                 else:
                     skipped.append(task)
             return self.send_json(200, {"recommended": recommended, "skipped": skipped,
@@ -650,7 +675,7 @@ class Handler(BaseHTTPRequestHandler):
                                         "level": priority_level(score)})
 
         if path == "/api/tasks" and method == "GET":
-            return self.send_json(200, load_tasks(data_dir))
+            return self.send_json(200, [x for x in load_tasks(data_dir) if owner_visible(x.get("owner", ""), user, data_dir)])
 
         if path == "/api/tasks" and method == "POST":
             body = self.read_json()
@@ -672,7 +697,8 @@ class Handler(BaseHTTPRequestHandler):
                 except ValueError:
                     pass
             task = {"id": str(next_id), "title": title, "urgency": urgency,
-                    "importance": importance, "deadline": deadline, "status": "Pending"}
+                    "importance": importance, "deadline": deadline, "status": "Pending",
+                    "owner": user}
             tasks.append(task)
             save_tasks(data_dir, tasks)
             task["score"] = urgency * 2 + importance * 3
@@ -683,7 +709,7 @@ class Handler(BaseHTTPRequestHandler):
             tasks = load_tasks(data_dir)
             found = None
             for task in tasks:
-                if task["id"] == task_id:
+                if task["id"] == task_id and owner_visible(task.get("owner", ""), user, data_dir):
                     found = task
                     break
             if not found:
@@ -698,6 +724,8 @@ class Handler(BaseHTTPRequestHandler):
             if status not in ("Pending", "In Progress", "Completed"):
                 return self.send_error_json(400, "Status must be Pending, In Progress, or Completed.")
             found["status"] = status
+            if not found.get("owner"):
+                found["owner"] = user
             save_tasks(data_dir, tasks)
             return self.send_json(200, found)
 
@@ -715,7 +743,7 @@ class Handler(BaseHTTPRequestHandler):
                                         "remaining": remaining, "decision": decision})
 
         if path == "/api/transactions" and method == "GET":
-            return self.send_json(200, load_transactions(data_dir))
+            return self.send_json(200, [x for x in load_transactions(data_dir) if owner_visible(x.get("owner", ""), user, data_dir)])
 
         if path == "/api/transactions" and method == "POST":
             body = self.read_json()
@@ -731,12 +759,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_error_json(400, "Need a real date, type income/expense, a category, and an amount >= 0.")
             append_line(data_dir, "transactions.txt",
                         "|".join([date, ttype, sanitize(category),
-                                  str(amount), sanitize(note)]))
+                                  str(amount), sanitize(note), user]))
             return self.send_json(201, {"date": date, "type": ttype,
                                         "category": category, "amount": amount, "note": note})
 
         if path == "/api/savings" and method == "GET":
-            return self.send_json(200, load_savings(data_dir))
+            return self.send_json(200, [g for g in load_savings(data_dir) if owner_visible(g.get("owner", ""), user, data_dir)])
 
         if path == "/api/savings" and method == "POST":
             body = self.read_json()
@@ -747,9 +775,9 @@ class Handler(BaseHTTPRequestHandler):
             if not name or target is None or target <= 0:
                 return self.send_error_json(400, "A goal needs a name and a target > 0.")
             goals = load_savings(data_dir)
-            if any(g["name"] == name for g in goals):
+            if any(g["name"] == name and owner_visible(g.get("owner", ""), user, data_dir) for g in goals):
                 return self.send_error_json(400, "A goal with that name already exists.")
-            goals.append({"name": name, "target": target, "saved": 0})
+            goals.append({"name": name, "target": target, "saved": 0, "owner": user})
             save_savings(data_dir, goals)
             return self.send_json(201, {"name": name, "target": target, "saved": 0})
 
@@ -763,7 +791,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_error_json(400, "Amount must be > 0.")
             goals = load_savings(data_dir)
             for goal in goals:
-                if goal["name"] == name:
+                if goal["name"] == name and owner_visible(goal.get("owner", ""), user, data_dir):
+                    if not goal.get("owner"):
+                        goal["owner"] = user
                     goal["saved"] += amount
                     save_savings(data_dir, goals)
                     return self.send_json(200, goal)
@@ -773,7 +803,8 @@ class Handler(BaseHTTPRequestHandler):
             habits = {}
             for line in read_lines(data_dir, "habit_log.txt"):
                 parts = line.split("|")
-                if len(parts) >= 2:
+                owner = parts[2] if len(parts) >= 3 else ""
+                if len(parts) >= 2 and owner_visible(owner, user, data_dir):
                     habits.setdefault(parts[0], []).append(parts[1])
             return self.send_json(200, [{"habit": name, "dates": sorted(dates)}
                                         for name, dates in sorted(habits.items())])
@@ -786,17 +817,17 @@ class Handler(BaseHTTPRequestHandler):
             date = body.get("date") or today_str()
             if not habit or not valid_date(date):
                 return self.send_error_json(400, "Need a habit name and a real YYYY-MM-DD date.")
-            append_line(data_dir, "habit_log.txt", f"{sanitize(habit)}|{date}")
-            return self.send_json(201, habit_streak(data_dir, habit))
+            append_line(data_dir, "habit_log.txt", f"{sanitize(habit)}|{date}|{user}")
+            return self.send_json(201, habit_streak(data_dir, habit, user))
 
         if path == "/api/habits/streak" and method == "GET":
             habit = (query.get("habit") or [""])[0]
             if not habit:
                 return self.send_error_json(400, "Give a habit name, for example ?habit=Reading.")
-            return self.send_json(200, habit_streak(data_dir, habit))
+            return self.send_json(200, habit_streak(data_dir, habit, user))
 
         if path == "/api/reports" and method == "GET":
-            transactions = load_transactions(data_dir)
+            transactions = [x for x in load_transactions(data_dir) if owner_visible(x.get("owner", ""), user, data_dir)]
             month = (query.get("month") or [""])[0]
             week_end = (query.get("week_end") or [""])[0]
             if month:
@@ -826,7 +857,7 @@ class Handler(BaseHTTPRequestHandler):
                                         "count": len(selected)})
 
         if path == "/api/backup" and method == "POST":
-            lines = read_lines(data_dir, "decisions.txt")
+            lines = [ln for ln in read_lines(data_dir, "decisions.txt") if owner_visible((ln.split("|")[5] if len(ln.split("|")) >= 6 else ""), user, data_dir)]
             # Mirror backup_restore.cpp: refuse to create an empty
             # backup when there is no source file at all.
             if not os.path.exists(os.path.join(data_dir, "decisions.txt")):
@@ -837,8 +868,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/restore" and method == "POST":
             if not os.path.exists(os.path.join(data_dir, "decisions_backup.txt")):
                 return self.send_error_json(400, "No backup file found.")
-            lines = read_lines(data_dir, "decisions_backup.txt")
-            write_lines(data_dir, "decisions.txt", lines)
+            lines = [ln for ln in read_lines(data_dir, "decisions_backup.txt") if owner_visible((ln.split("|")[5] if len(ln.split("|")) >= 6 else ""), user, data_dir)]
+            current = read_lines(data_dir, "decisions.txt")
+            kept = [ln for ln in current if not owner_visible((ln.split("|")[5] if len(ln.split("|")) >= 6 else ""), user, data_dir)]
+            write_lines(data_dir, "decisions.txt", kept + lines)
             return self.send_json(200, {"restored": len(lines)})
 
         # ---- new sections (mirror the console modules of the same name) ----
@@ -912,7 +945,7 @@ class Handler(BaseHTTPRequestHandler):
             if not valid_date(today):
                 return self.send_error_json(400, "Today must be a real YYYY-MM-DD date.")
             out = []
-            for t in load_tasks(data_dir):
+            for t in [x for x in load_tasks(data_dir) if owner_visible(x.get("owner", ""), user, data_dir)]:
                 if t["status"] == "Completed":
                     continue
                 dl = t["deadline"]
@@ -957,7 +990,7 @@ class Handler(BaseHTTPRequestHandler):
             import os as _os
             if not _os.path.exists(_os.path.join(data_dir, "transactions.txt")):
                 return self.send_error_json(400, "No transactions file found to export.")
-            lines = read_lines(data_dir, "transactions.txt")
+            lines = [ln for ln in read_lines(data_dir, "transactions.txt") if owner_visible((ln.split("|")[5] if len(ln.split("|")) >= 6 else ""), user, data_dir)]
             if fmt == "txt":
                 content = "PERSONAL FINANCIAL REPORT\n========================\n\n" + "".join(l + "\n" for l in lines)
                 with open(_os.path.join(data_dir, "financial_report.txt"), "w", encoding="utf-8") as f:
@@ -990,7 +1023,7 @@ class Handler(BaseHTTPRequestHandler):
                 suggestion = "Make a short and simple plan."
             else:
                 suggestion = "Plan your work and start solving."
-            rec = append_decision(data_dir, "Problem", difficulty, f"Problem: {problem} - {suggestion}")
+            rec = append_decision(data_dir, "Problem", difficulty, f"Problem: {problem} - {suggestion}", user)
             return self.send_json(200, {"suggestion": suggestion, "record": rec})
         if path == "/api/daily-summary" and method == "POST":
             body = self.read_json()
@@ -1003,7 +1036,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_error_json(400, "Need income/expenses >= 0, planned > 0, and completed 0..planned.")
             balance = income - expenses
             rate = completed * 100.0 / planned
-            line = f"Income: {income:.2f}, Expenses: {expenses:.2f}, Balance: {balance:.2f}, Habit completion: {rate:.2f}%"
+            line = f"User: {user}, Income: {income:.2f}, Expenses: {expenses:.2f}, Balance: {balance:.2f}, Habit completion: {rate:.2f}%"
             append_line(data_dir, "daily_report.txt", line)
             return self.send_json(200, {"income": income, "expenses": expenses, "balance": balance, "habitRate": rate})
         if path == "/api/habit-decision" and method == "POST":
