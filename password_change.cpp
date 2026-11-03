@@ -1,1 +1,81 @@
-I2luY2x1ZGUgInBhc3N3b3JkX2NoYW5nZS5oIgojaW5jbHVkZSAicGFzc3dvcmRfdmFsaWRhdGlvbi5oIgojaW5jbHVkZSAiZmlsZV9sb2NrLmgiCiNpbmNsdWRlICJwYXNzd29yZF9oYXNoLmgiCgojaW5jbHVkZSA8aW9zdHJlYW0+CiNpbmNsdWRlIDxmc3RyZWFtPgojaW5jbHVkZSA8c3RyaW5nPgojaW5jbHVkZSA8dmVjdG9yPgoKYm9vbCBjaGFuZ2VQYXNzd29yZChjb25zdCBzdGQ6OnN0cmluZyYgY3VycmVudFVzZXIpCnsKICAgIC8vIEhvbGQgdGhlIHVzZXJzIGxvY2sgZm9yIHRoZSB3aG9sZSBjaGFuZ2UgZmxvdywgc28gYQogICAgLy8gZGFzaGJvYXJkIHJlZ2lzdGVyL2NoYW5nZS1wYXNzd29yZCBjYW5ub3QgaW50ZXJsZWF2ZS4KICAgIEZpbGVMb2NrIGxvY2soInVzZXJzLnR4dCIpOwogICAgc3RkOjppZnN0cmVhbSBpbnB1dCgidXNlcnMudHh0Iik7CgogICAgaWYgKCFpbnB1dCkKICAgIHsKICAgICAgICBzdGQ6OmNvdXQgPDwgIlVzZXIgZGF0YWJhc2Ugbm90IGZvdW5kIVxuIjsKICAgICAgICByZXR1cm4gZmFsc2U7CiAgICB9CgogICAgc3RkOjp2ZWN0b3I8c3RkOjpzdHJpbmc+IHJlY29yZHM7CiAgICBzdGQ6OnN0cmluZyB1c2VybmFtZSwgcGFzc3dvcmQsIHJvbGU7CiAgICBzdGQ6OnN0cmluZyBvbGRQYXNzd29yZCwgbmV3UGFzc3dvcmQ7CiAgICBib29sIGZvdW5kID0gZmFsc2U7CgogICAgc3RkOjpjb3V0IDw8ICJFbnRlciBjdXJyZW50IHBhc3N3b3JkOiAiOwogICAgc3RkOjpjaW4gPj4gb2xkUGFzc3dvcmQ7CgogICAgd2hpbGUgKGlucHV0ID4+IHVzZXJuYW1lID4+IHBhc3N3b3JkID4+IHJvbGUpCiAgICB7CiAgICAgICAgaWYgKHVzZXJuYW1lID09IGN1cnJlbnRVc2VyKQogICAgICAgIHsKICAgICAgICAgICAgZm91bmQgPSB0cnVlOwoKICAgICAgICAgICAgaWYgKCFwZHBzX2hhc2g6OnZlcmlmeVBhc3N3b3JkKG9sZFBhc3N3b3JkLCBwYXNzd29yZCkpCiAgICAgICAgICAgIHsKICAgICAgICAgICAgICAgIHN0ZDo6Y291dCA8PCAiV3JvbmcgY3VycmVudCBwYXNzd29yZCFcbiI7CiAgICAgICAgICAgICAgICByZXR1cm4gZmFsc2U7CiAgICAgICAgICAgIH0KCiAgICAgICAgICAgIHN0ZDo6Y291dCA8PCAiRW50ZXIgbmV3IHBhc3N3b3JkOiAiOwogICAgICAgICAgICBzdGQ6OmNpbiA+PiBuZXdQYXNzd29yZDsKCiAgICAgICAgICAgIGlmICghdmFsaWRQYXNzd29yZChuZXdQYXNzd29yZCkpCiAgICAgICAgICAgIHsKICAgICAgICAgICAgICAgIHN0ZDo6Y291dCA8PCAiUGFzc3dvcmQgbmVlZHMgOCsgY2hhcmFjdGVycywgIgogICAgICAgICAgICAgICAgICAgICAgICAgIDw8ICJhIGxldHRlciBhbmQgYSBkaWdpdC5cbiI7CiAgICAgICAgICAgICAgICByZXR1cm4gZmFsc2U7CiAgICAgICAgICAgIH0KCiAgICAgICAgICAgIHBhc3N3b3JkID0gcGRwc19oYXNoOjpoYXNoUGFzc3dvcmQobmV3UGFzc3dvcmQpOwogICAgICAgIH0KCiAgICAgICAgcmVjb3Jkcy5wdXNoX2JhY2sodXNlcm5hbWUgKyAiICIgKyBwYXNzd29yZCArICIgIiArIHJvbGUpOwogICAgfQoKICAgIGlucHV0LmNsb3NlKCk7CgogICAgaWYgKCFmb3VuZCkKICAgIHsKICAgICAgICBzdGQ6OmNvdXQgPDwgIlVzZXIgbm90IGZvdW5kIVxuIjsKICAgICAgICByZXR1cm4gZmFsc2U7CiAgICB9CgogICAgc3RkOjpvZnN0cmVhbSBvdXRwdXQoInVzZXJzLnR4dCIpOwoKICAgIGlmICghb3V0cHV0KQogICAgewogICAgICAgIHN0ZDo6Y291dCA8PCAiQ291bGQgbm90IHVwZGF0ZSBwYXNzd29yZCFcbiI7CiAgICAgICAgcmV0dXJuIGZhbHNlOwogICAgfQoKICAgIGZvciAoY29uc3Qgc3RkOjpzdHJpbmcmIHJlY29yZCA6IHJlY29yZHMpCiAgICAgICAgb3V0cHV0IDw8IHJlY29yZCA8PCAnXG4nOwoKICAgIHN0ZDo6Y291dCA8PCAiUGFzc3dvcmQgY2hhbmdlZCBzdWNjZXNzZnVsbHkhXG4iOwogICAgcmV0dXJuIHRydWU7Cn0=
+#include "password_change.h"
+#include "password_validation.h"
+#include "file_lock.h"
+#include "password_hash.h"
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+
+bool changePassword(const std::string& currentUser)
+{
+    // Hold the users lock for the whole change flow, so a
+    // dashboard register/change-password cannot interleave.
+    FileLock lock("users.txt");
+    std::ifstream input("users.txt");
+
+    if (!input)
+    {
+        std::cout << "User database not found!\n";
+        return false;
+    }
+
+    std::vector<std::string> records;
+    std::string username, password, role;
+    std::string oldPassword, newPassword;
+    bool found = false;
+
+    std::cout << "Enter current password: ";
+    std::cin >> oldPassword;
+
+    while (input >> username >> password >> role)
+    {
+        if (username == currentUser)
+        {
+            found = true;
+
+            if (!pdps_hash::verifyPassword(oldPassword, password))
+            {
+                std::cout << "Wrong current password!\n";
+                return false;
+            }
+
+            std::cout << "Enter new password: ";
+            std::cin >> newPassword;
+
+            if (!validPassword(newPassword))
+            {
+                std::cout << "Password needs 8+ characters, "
+                          << "a letter and a digit.\n";
+                return false;
+            }
+
+            password = pdps_hash::hashPassword(newPassword);
+        }
+
+        records.push_back(username + " " + password + " " + role);
+    }
+
+    input.close();
+
+    if (!found)
+    {
+        std::cout << "User not found!\n";
+        return false;
+    }
+
+    std::ofstream output("users.txt");
+
+    if (!output)
+    {
+        std::cout << "Could not update password!\n";
+        return false;
+    }
+
+    for (const std::string& record : records)
+        output << record << '\n';
+
+    std::cout << "Password changed successfully!\n";
+    return true;
+}
