@@ -188,102 +188,227 @@ int main()
                 break;
 
             case 9:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 dailyDecisionMaker();
                 break;
 
             case 10:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 priorityCalculator();
                 break;
 
             case 11:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 taskPrioritization();
                 break;
 
             case 12:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 compareOptions();
                 break;
 
             case 13:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 taskStatusManager();
                 break;
 
             case 14:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 deadlineAlert();
                 break;
 
             case 15:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 decisionExplanation();
                 break;
 
             case 16:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 addTransaction();
                 break;
 
             case 17:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 showTransactions();
                 break;
 
             case 18:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 showBalance();
                 break;
 
             case 19:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 addSavingsGoal();
                 break;
 
             case 20:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 addSavingsAmount();
                 break;
 
             case 21:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 showSavingsGoals();
                 break;
 
             case 22:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 markHabitDone();
                 break;
 
             case 23:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 showHabitStreak();
                 break;
 
             case 24:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 showWeeklyReport();
                 break;
 
             case 25:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 showMonthlyReport();
                 break;
 
             case 26:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 exportReportTXT();
                 break;
 
             case 27:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 exportReportCSV();
                 break;
 
             case 28:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 searchHistory();
                 break;
 
             case 29:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 filterDecisions();
                 break;
 
             case 30:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 sortDecisions();
                 break;
 
             case 31:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 backupDecisions();
                 break;
 
             case 32:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 restoreDecisions();
                 break;
 
             case 33:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 showErrorLog();
                 break;
 
@@ -305,38 +430,83 @@ int main()
             }
 
             case 35:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 problemSolver();
                 break;
 
             case 36:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 generateReport();
                 break;
 
             case 37:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 budgetDecision();
                 break;
 
             case 38:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 incomeExpenseTracking();
                 break;
 
             case 39:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 savingsGoal();
                 break;
 
             case 40:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 habitDecision();
                 break;
 
             case 41:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 habitStreak();
                 break;
 
             case 42:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 controlPanel();
                 break;
 
             case 43:
+                if (!loggedIn)
+                {
+                    cout << "Please login first.\n";
+                    break;
+                }
                 multiTaskDecision();
                 break;
 
