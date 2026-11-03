@@ -44,6 +44,7 @@
 // Restored multi-task decision (Sweety's logic_priority daily
 // decision, without that class's priority/compare/task methods).
 #include "multi_task_decision.h"
+#include "data_owner.h"
 
 using namespace std;
 
@@ -138,6 +139,7 @@ int main()
                 else if (loginUser(username, isAdmin))
                 {
                     loggedIn = true;
+                    setCurrentUser(username);
                 }
                 else
                 {
@@ -182,7 +184,10 @@ int main()
 
             case 8:
                 if (loggedIn)
+                {
                     logoutUser(username, isAdmin, loggedIn);
+                    clearCurrentUser();
+                }
                 else
                     cout << "You are not logged in.\n";
                 break;
@@ -512,7 +517,10 @@ int main()
 
             case 0:
                 if (loggedIn)
+                {
                     logoutUser(username, isAdmin, loggedIn);
+                    clearCurrentUser();
+                }
 
                 cout << "Thank you for using the system!\n";
                 running = false;
