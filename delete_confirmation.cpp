@@ -1,4 +1,5 @@
 #include "delete_confirmation.h"
+#include "data_owner.h"
 #include "file_lock.h"
 #include <iostream>
 #include <fstream>
@@ -53,7 +54,8 @@ void confirmDelete(const string& id)
         size_t separator = line.find('|');
 
         if (separator != string::npos &&
-            line.substr(0, separator) == id)
+            line.substr(0, separator) == id &&
+            lineVisibleFor(line, 5))
         {
             found = true;
             continue;
