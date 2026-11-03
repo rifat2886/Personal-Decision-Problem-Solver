@@ -1,1 +1,178 @@
-IyEvdXNyL2Jpbi9lbnYgcHl0aG9uMwoiIiJQbGF5d3JpZ2h0IGJyb3dzZXIgdGVzdCBmb3IgdGhlIGRhc2hib2FyZC4KClN0YXJ0cyB0aGUgQysrIHNlcnZlciBmcm9tIHRoZSByZXBvc2l0b3J5IHJvb3QgKHNvIGl0cyBzdGF0aWMgZmlsZXMKcmVzb2x2ZSksIHRoZW4gZHJpdmVzIGEgcmVhbCBDaHJvbWl1bSBicm93c2VyIHRocm91Z2g6IGxhbmRpbmcgcGFnZSwKcmVnaXN0cmF0aW9uLCBsb2dpbiwgZXZlcnkgZGFzaGJvYXJkIHNlY3Rpb24sIGEgZm9ybSBzdWJtaXQsIHRoZW1lCnRvZ2dsZSwgbW9iaWxlIHZpZXdwb3J0LCBhbmQgYW4gdW5hdXRoZW50aWNhdGVkIHByb3RlY3RlZC1zZWN0aW9uCmNoZWNrLiBTY3JlZW5zaG90cyBhcmUgc2F2ZWQgdG8gdGhlIG91dHB1dCBkaXJlY3RvcnkuCgpVc2FnZToKICAgIHB5dGhvbjMgdGVzdHMvYnJvd3Nlcl90ZXN0LnB5IC0tc2VydmVyIC4vY3BwX3NlcnZlciAtLXBvcnQgODEzMCBcCiAgICAgICAgLS1vdXQgc2NyZWVuc2hvdHMKClJlcXVpcmVzOiBwaXAgaW5zdGFsbCBwbGF5d3JpZ2h0LCBwbHVzIGEgQ2hyb21pdW0gYnVpbGQgaW5zdGFsbGVkCnZpYSBgcHl0aG9uMyAtbSBwbGF5d3JpZ2h0IGluc3RhbGwgY2hyb21pdW1gIChvciBhIG1hbnVhbGx5IHBsYWNlZApoZWFkbGVzcy1zaGVsbCBidWlsZCkuIEV4aXQgY29kZSAwID0gYWxsIGNoZWNrcyBwYXNzZWQuCiIiIgppbXBvcnQgYXJncGFyc2UKaW1wb3J0IGpzb24KaW1wb3J0IG9zCmltcG9ydCBzaHV0aWwKaW1wb3J0IHN1YnByb2Nlc3MKaW1wb3J0IHN5cwppbXBvcnQgdGVtcGZpbGUKaW1wb3J0IHRpbWUKClBBU1MgPSAwCkZBSUwgPSAwCkVSUk9SUyA9IFtdCgoKZGVmIGNoZWNrKG5hbWUsIGNvbmQsIGRldGFpbD0iIik6CiAgICBnbG9iYWwgUEFTUywgRkFJTAogICAgaWYgY29uZDoKICAgICAgICBQQVNTICs9IDEKICAgICAgICBwcmludChmIiAgUEFTUyB7bmFtZX0iKQogICAgZWxzZToKICAgICAgICBGQUlMICs9IDEKICAgICAgICBwcmludChmIiAgRkFJTCB7bmFtZX0ge2RldGFpbH0iKQoKCmRlZiBtYWluKCk6CiAgICBhcCA9IGFyZ3BhcnNlLkFyZ3VtZW50UGFyc2VyKCkKICAgIGFwLmFkZF9hcmd1bWVudCgiLS1zZXJ2ZXIiLCBkZWZhdWx0PSIuL2NwcF9zZXJ2ZXIiKQogICAgYXAuYWRkX2FyZ3VtZW50KCItLXBvcnQiLCB0eXBlPWludCwgZGVmYXVsdD04MTMwKQogICAgYXAuYWRkX2FyZ3VtZW50KCItLW91dCIsIGRlZmF1bHQ9InNjcmVlbnNob3RzIikKICAgIGFyZ3MgPSBhcC5wYXJzZV9hcmdzKCkKICAgIGZyb20gcGxheXdyaWdodC5zeW5jX2FwaSBpbXBvcnQgc3luY19wbGF5d3JpZ2h0CgogICAgdG1wID0gdGVtcGZpbGUubWtkdGVtcChwcmVmaXg9InBkcHMtYnJvd3Nlci10ZXN0LSIpCiAgICBvdXRkaXIgPSBvcy5wYXRoLmFic3BhdGgoYXJncy5vdXQpCiAgICBvcy5tYWtlZGlycyhvdXRkaXIsIGV4aXN0X29rPVRydWUpCiAgICBiYXNlID0gZiJodHRwOi8vMTI3LjAuMC4xOnthcmdzLnBvcnR9IgogICAgcHJvYyA9IHN1YnByb2Nlc3MuUG9wZW4oW2FyZ3Muc2VydmVyLCAiLS1wb3J0Iiwgc3RyKGFyZ3MucG9ydCksCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIi0tZGF0YS1kaXIiLCB0bXBdLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgc3Rkb3V0PXN1YnByb2Nlc3MuUElQRSwgc3RkZXJyPXN1YnByb2Nlc3MuU1RET1VULAogICAgICAgICAgICAgICAgICAgICAgICAgICAgdGV4dD1UcnVlKQogICAgdHJ5OgogICAgICAgIGZvciBfIGluIHJhbmdlKDMwKToKICAgICAgICAgICAgdHJ5OgogICAgICAgICAgICAgICAgaW1wb3J0IHVybGxpYi5yZXF1ZXN0CiAgICAgICAgICAgICAgICB3aXRoIHVybGxpYi5yZXF1ZXN0LnVybG9wZW4oYmFzZSArICIvIiwgdGltZW91dD0yKSBhcyByOgogICAgICAgICAgICAgICAgICAgIGlmIHIuc3RhdHVzID09IDIwMDoKICAgICAgICAgICAgICAgICAgICAgICAgYnJlYWsKICAgICAgICAgICAgZXhjZXB0IEV4Y2VwdGlvbjoKICAgICAgICAgICAgICAgIHRpbWUuc2xlZXAoMC41KQogICAgICAgIGVsc2U6CiAgICAgICAgICAgIHByaW50KCJGQUlMIHNlcnZlciBkaWQgbm90IHN0YXJ0IikKICAgICAgICAgICAgcmV0dXJuIDEKICAgICAgICB3aXRoIHN5bmNfcGxheXdyaWdodCgpIGFzIHB3OgogICAgICAgICAgICBicm93c2VyID0gcHcuY2hyb21pdW0ubGF1bmNoKGhlYWRsZXNzPVRydWUpCiAgICAgICAgICAgIHBhZ2UgPSBicm93c2VyLm5ld19wYWdlKCkKICAgICAgICAgICAgcGFnZS5vbigicGFnZWVycm9yIiwgbGFtYmRhIGU6IEVSUk9SUy5hcHBlbmQoc3RyKGUpKSkKICAgICAgICAgICAgcGFnZS5vbigiY29uc29sZSIsIGxhbWJkYSBtOiBFUlJPUlMuYXBwZW5kKG0udGV4dCkgaWYgbS50eXBlID09ICJlcnJvciIgZWxzZSBOb25lKQogICAgICAgICAgICBmYWlsZWQgPSBbXQogICAgICAgICAgICBwYWdlLm9uKCJyZXNwb25zZSIsIGxhbWJkYSByOiBmYWlsZWQuYXBwZW5kKHIudXJsKSBpZiByLnN0YXR1cyA+PSA0MDAgYW5kICIvYXBpLyIgaW4gci51cmwgZWxzZSBOb25lKQoKICAgICAgICAgICAgcGFnZS5nb3RvKGJhc2UgKyAiLyIsIHRpbWVvdXQ9MTUwMDApCiAgICAgICAgICAgIGNoZWNrKCJsYW5kaW5nIHBhZ2UgbG9hZHMiLCAiRGVjaWRlIGJldHRlciIgaW4gcGFnZS5jb250ZW50KCkpCiAgICAgICAgICAgIHBhZ2Uuc2NyZWVuc2hvdChwYXRoPW9zLnBhdGguam9pbihvdXRkaXIsICIwMS1sYW5kaW5nLnBuZyIpKQoKICAgICAgICAgICAgIyBSZWdpc3RlcjogZmlyc3QgdXNlciBiZWNvbWVzIEFETUlOLgogICAgICAgICAgICBwYWdlLmNsaWNrKCJidXR0b25bZGF0YS1zZWN0aW9uPSdhdXRoJ10iKQogICAgICAgICAgICBwYWdlLmZpbGwoIiNyZWdVc2VyIiwgImJyb3dzZXJ1c2VyIikKICAgICAgICAgICAgcGFnZS5maWxsKCIjcmVnUGFzcyIsICJCcm93c2VyMTIzIikKICAgICAgICAgICAgcGFnZS5jbGljaygiI3JlZ0J0biIpCiAgICAgICAgICAgIHBhZ2Uud2FpdF9mb3JfdGltZW91dCgxNTAwKQogICAgICAgICAgICBjaGVjaygicmVnaXN0cmF0aW9uIG1lc3NhZ2UiLCAic3VjY2VzcyIgaW4gcGFnZS5jb250ZW50KCkubG93ZXIoKSBvciAicmVnaXN0ZXJlZCIgaW4gcGFnZS5jb250ZW50KCkubG93ZXIoKSkKCiAgICAgICAgICAgICMgTG9naW4uCiAgICAgICAgICAgIHBhZ2UuZmlsbCgiI2xvZ2luVXNlciIsICJicm93c2VydXNlciIpCiAgICAgICAgICAgIHBhZ2UuZmlsbCgiI2xvZ2luUGFzcyIsICJCcm93c2VyMTIzIikKICAgICAgICAgICAgcGFnZS5jbGljaygiI2xvZ2luQnRuIikKICAgICAgICAgICAgcGFnZS53YWl0X2Zvcl90aW1lb3V0KDE1MDApCiAgICAgICAgICAgIGNoZWNrKCJsb2dpbiBsZWFkcyB0byBvdmVydmlldyIsIHBhZ2UudXJsLnN0YXJ0c3dpdGgoYmFzZSkpCiAgICAgICAgICAgIHBhZ2Uuc2NyZWVuc2hvdChwYXRoPW9zLnBhdGguam9pbihvdXRkaXIsICIwMi1vdmVydmlldy5wbmciKSkKCiAgICAgICAgICAgICMgRXZlcnkgc2VjdGlvbiBsb2FkcyAoY2xpY2sgZWFjaCBuYXYgYnV0dG9uLCBzZWN0aW9uIHZpc2libGUpLgogICAgICAgICAgICBzZWN0aW9ucyA9IHBhZ2UuZXZhbF9vbl9zZWxlY3Rvcl9hbGwoCiAgICAgICAgICAgICAgICAiYnV0dG9uW2RhdGEtc2VjdGlvbl0iLAogICAgICAgICAgICAgICAgImVscyA9PiBlbHMubWFwKGUgPT4gZS5kYXRhc2V0LnNlY3Rpb24pIikKICAgICAgICAgICAgcHJpbnQoZiIgIHNlY3Rpb25zIGZvdW5kOiB7bGVuKHNlY3Rpb25zKX0iKQogICAgICAgICAgICBmb3Igc2VjIGluIHNlY3Rpb25zOgogICAgICAgICAgICAgICAgdHJ5OgogICAgICAgICAgICAgICAgICAgIHBhZ2UuY2xpY2soZiJidXR0b25bZGF0YS1zZWN0aW9uPSd7c2VjfSddIikKICAgICAgICAgICAgICAgICAgICBwYWdlLndhaXRfZm9yX3RpbWVvdXQoMzAwKQogICAgICAgICAgICAgICAgICAgIHZpc2libGUgPSBwYWdlLmlzX3Zpc2libGUoZiJzZWN0aW9uI3tzZWN9IikKICAgICAgICAgICAgICAgICAgICBjaGVjayhmInNlY3Rpb24ge3NlY30gdmlzaWJsZSIsIHZpc2libGUpCiAgICAgICAgICAgICAgICBleGNlcHQgRXhjZXB0aW9uIGFzIGU6CiAgICAgICAgICAgICAgICAgICAgY2hlY2soZiJzZWN0aW9uIHtzZWN9IHZpc2libGUiLCBGYWxzZSwgc3RyKGUpWzoxMDBdKQogICAgICAgICAgICBwYWdlLnNjcmVlbnNob3QocGF0aD1vcy5wYXRoLmpvaW4ob3V0ZGlyLCAiMDMtdGFza3MucG5nIikpCgogICAgICAgICAgICAjIEZvcm0gc3VibWl0OiBjcmVhdGUgYSB0YXNrLCB0aGVuIGNoZWNrIGl0IGFwcGVhcnMuCiAgICAgICAgICAgIHBhZ2UuY2xpY2soImJ1dHRvbltkYXRhLXNlY3Rpb249J3Rhc2tzJ10iKQogICAgICAgICAgICBwYWdlLmZpbGwoIiN0YXNrVGl0bGUiLCAiQnJvd3NlclRhc2siKQogICAgICAgICAgICBwYWdlLmZpbGwoIiN0YXNrVXJnZW5jeSIsICI4IikKICAgICAgICAgICAgcGFnZS5maWxsKCIjdGFza0ltcG9ydGFuY2UiLCAiOCIpCiAgICAgICAgICAgIHBhZ2UuZmlsbCgiI3Rhc2tEZWFkbGluZSIsICIyMDI2LTExLTIwIikKICAgICAgICAgICAgcGFnZS5jbGljaygiI3Rhc2tBZGRCdG4iKQogICAgICAgICAgICBwYWdlLndhaXRfZm9yX3RpbWVvdXQoMTUwMCkKICAgICAgICAgICAgY2hlY2soInRhc2sgZm9ybSBzdWJtaXQiLCAiQnJvd3NlclRhc2siIGluIHBhZ2UuY29udGVudCgpKQoKICAgICAgICAgICAgIyBGaW5hbmNlIGZvcm06IGJ1ZGdldCBjYWxjdWxhdGlvbi4KICAgICAgICAgICAgcGFnZS5jbGljaygiYnV0dG9uW2RhdGEtc2VjdGlvbj0nYnVkZ2V0J10iKQogICAgICAgICAgICBwYWdlLmZpbGwoIiNidWRJbmNvbWUiLCAiNTAwMCIpCiAgICAgICAgICAgIHBhZ2UuZmlsbCgiI2J1ZEV4cGVuc2VzIiwgIjEyMDAiKQogICAgICAgICAgICBwYWdlLmNsaWNrKCIjYnVkQnRuIikKICAgICAgICAgICAgcGFnZS53YWl0X2Zvcl90aW1lb3V0KDE1MDApCiAgICAgICAgICAgIGNoZWNrKCJidWRnZXQgcmVzdWx0IDM4MDAiLCAiMzgwMCIgaW4gcGFnZS5jb250ZW50KCkpCgogICAgICAgICAgICAjIFJlcG9ydHMgc2VjdGlvbiBzY3JlZW5zaG90LCB0aGVuIGRhcmsgbW9kZS4KICAgICAgICAgICAgcGFnZS5jbGljaygiYnV0dG9uW2RhdGEtc2VjdGlvbj0ncmVwb3J0cyddIikKICAgICAgICAgICAgcGFnZS53YWl0X2Zvcl90aW1lb3V0KDgwMCkKICAgICAgICAgICAgcGFnZS5zY3JlZW5zaG90KHBhdGg9b3MucGF0aC5qb2luKG91dGRpciwgIjA0LXJlcG9ydHMucG5nIikpCiAgICAgICAgICAgIHBhZ2UuY2xpY2soIiN0aGVtZUJ0biIpCiAgICAgICAgICAgIHBhZ2Uud2FpdF9mb3JfdGltZW91dCg1MDApCiAgICAgICAgICAgIHRoZW1lID0gcGFnZS5ldmFsdWF0ZSgiZG9jdW1lbnQuZG9jdW1lbnRFbGVtZW50LmdldEF0dHJpYnV0ZSgnZGF0YS10aGVtZScpIikKICAgICAgICAgICAgY2hlY2soImRhcmsgbW9kZSB0b2dnbGUiLCB0aGVtZSA9PSAiZGFyayIsIHN0cih0aGVtZSkpCiAgICAgICAgICAgIHBhZ2Uuc2NyZWVuc2hvdChwYXRoPW9zLnBhdGguam9pbihvdXRkaXIsICIwNS1kYXJrLW1vZGUucG5nIikpCiAgICAgICAgICAgIHBhZ2UuY2xpY2soIiN0aGVtZUJ0biIpCiAgICAgICAgICAgIHBhZ2Uud2FpdF9mb3JfdGltZW91dCgzMDApCgogICAgICAgICAgICAjIE1vYmlsZSB2aWV3cG9ydDogc2lkZWJhciBoYW1idXJnZXIsIG5vIGhvcml6b250YWwgb3ZlcmZsb3cuCiAgICAgICAgICAgIG1wYWdlID0gYnJvd3Nlci5uZXdfcGFnZSh2aWV3cG9ydD17IndpZHRoIjogMzc1LCAiaGVpZ2h0IjogNjY3fSkKICAgICAgICAgICAgbXBhZ2UuZ290byhiYXNlICsgIi8iLCB0aW1lb3V0PTE1MDAwKQogICAgICAgICAgICBtcGFnZS5jbGljaygiI21lbnVCdG4iKQogICAgICAgICAgICBtcGFnZS53YWl0X2Zvcl90aW1lb3V0KDUwMCkKICAgICAgICAgICAgb3ZlcmZsb3cgPSBtcGFnZS5ldmFsdWF0ZSgKICAgICAgICAgICAgICAgICJkb2N1bWVudC5kb2N1bWVudEVsZW1lbnQuc2Nyb2xsV2lkdGggLSBkb2N1bWVudC5kb2N1bWVudEVsZW1lbnQuY2xpZW50V2lkdGgiKQogICAgICAgICAgICBjaGVjaygibW9iaWxlIG5vIGhvcml6b250YWwgb3ZlcmZsb3ciLCBvdmVyZmxvdyA8PSAxLCBzdHIob3ZlcmZsb3cpKQogICAgICAgICAgICBtcGFnZS5zY3JlZW5zaG90KHBhdGg9b3MucGF0aC5qb2luKG91dGRpciwgIjA2LW1vYmlsZS5wbmciKSkKICAgICAgICAgICAgbXBhZ2UuY2xvc2UoKQoKICAgICAgICAgICAgIyBVbmF1dGhlbnRpY2F0ZWQ6IGZyZXNoIGNvbnRleHQsIHByb3RlY3RlZCBBUEkgbXVzdCBiZSA0MDEuCiAgICAgICAgICAgIGN0eCA9IGJyb3dzZXIubmV3X2NvbnRleHQoKQogICAgICAgICAgICBhbm9uID0gY3R4Lm5ld19wYWdlKCkKICAgICAgICAgICAgYW5vbi5nb3RvKGJhc2UgKyAiLyIsIHRpbWVvdXQ9MTUwMDApCiAgICAgICAgICAgIHN0YXR1cyA9IGFub24uZXZhbHVhdGUoCiAgICAgICAgICAgICAgICAiZmV0Y2goJy9hcGkvb3ZlcnZpZXcnKS50aGVuKHIgPT4gci5zdGF0dXMpIikKICAgICAgICAgICAgY2hlY2soInVuYXV0aGVudGljYXRlZCBvdmVydmlldyA0MDEiLCBzdGF0dXMgPT0gNDAxLCBzdHIoc3RhdHVzKSkKICAgICAgICAgICAgY3R4LmNsb3NlKCkKCiAgICAgICAgICAgIGNoZWNrKCJubyBKUyBwYWdlIGVycm9ycyIsIGxlbihFUlJPUlMpID09IDAsIHN0cihFUlJPUlNbOjNdKSkKICAgICAgICAgICAgY2hlY2soIm5vIGZhaWxlZCBBUEkgcmVxdWVzdHMiLCBsZW4oZmFpbGVkKSA9PSAwLCBzdHIoZmFpbGVkWzozXSkpCiAgICAgICAgICAgIGJyb3dzZXIuY2xvc2UoKQogICAgZmluYWxseToKICAgICAgICBwcm9jLnRlcm1pbmF0ZSgpCiAgICAgICAgdHJ5OgogICAgICAgICAgICBwcm9jLndhaXQodGltZW91dD01KQogICAgICAgIGV4Y2VwdCBFeGNlcHRpb246CiAgICAgICAgICAgIHByb2Mua2lsbCgpCiAgICAgICAgc2h1dGlsLnJtdHJlZSh0bXAsIGlnbm9yZV9lcnJvcnM9VHJ1ZSkKICAgIHByaW50KGYiXG5icm93c2VyX3Rlc3Q6IHtQQVNTfSBwYXNzZWQsIHtGQUlMfSBmYWlsZWQiKQogICAgcmV0dXJuIDEgaWYgRkFJTCBlbHNlIDAKCgppZiBfX25hbWVfXyA9PSAiX19tYWluX18iOgogICAgc3lzLmV4aXQobWFpbigpKQo=
+#!/usr/bin/env python3
+"""Playwright browser test for the dashboard.
+
+Starts the C++ server from the repository root (so its static files
+resolve), then drives a real Chromium browser through: landing page,
+registration, login, every dashboard section, a form submit, theme
+toggle, mobile viewport, and an unauthenticated protected-section
+check. Screenshots are saved to the output directory.
+
+Usage:
+    python3 tests/browser_test.py --server ./cpp_server --port 8130 \
+        --out screenshots
+
+Requires: pip install playwright, plus a Chromium build installed
+via `python3 -m playwright install chromium` (or a manually placed
+headless-shell build). Exit code 0 = all checks passed.
+"""
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+
+PASS = 0
+FAIL = 0
+ERRORS = []
+
+
+def check(name, cond, detail=""):
+    global PASS, FAIL
+    if cond:
+        PASS += 1
+        print(f"  PASS {name}")
+    else:
+        FAIL += 1
+        print(f"  FAIL {name} {detail}")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--server", default="./cpp_server")
+    ap.add_argument("--port", type=int, default=8130)
+    ap.add_argument("--out", default="screenshots")
+    args = ap.parse_args()
+    from playwright.sync_api import sync_playwright
+
+    tmp = tempfile.mkdtemp(prefix="pdps-browser-test-")
+    outdir = os.path.abspath(args.out)
+    os.makedirs(outdir, exist_ok=True)
+    base = f"http://127.0.0.1:{args.port}"
+    proc = subprocess.Popen([args.server, "--port", str(args.port),
+                             "--data-dir", tmp],
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            text=True)
+    try:
+        for _ in range(30):
+            try:
+                import urllib.request
+                with urllib.request.urlopen(base + "/", timeout=2) as r:
+                    if r.status == 200:
+                        break
+            except Exception:
+                time.sleep(0.5)
+        else:
+            print("FAIL server did not start")
+            return 1
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.on("pageerror", lambda e: ERRORS.append(str(e)))
+            page.on("console", lambda m: ERRORS.append(m.text) if m.type == "error" else None)
+            failed = []
+            page.on("response", lambda r: failed.append(r.url) if r.status >= 400 and "/api/" in r.url else None)
+
+            page.goto(base + "/", timeout=15000)
+            check("landing page loads", "Decide better" in page.content())
+            page.screenshot(path=os.path.join(outdir, "01-landing.png"))
+
+            # Register: first user becomes ADMIN.
+            page.click("button[data-section='auth']")
+            page.fill("#regUser", "browseruser")
+            page.fill("#regPass", "Browser123")
+            page.click("#regBtn")
+            page.wait_for_timeout(1500)
+            check("registration message", "success" in page.content().lower() or "registered" in page.content().lower())
+
+            # Login.
+            page.fill("#loginUser", "browseruser")
+            page.fill("#loginPass", "Browser123")
+            page.click("#loginBtn")
+            page.wait_for_timeout(1500)
+            check("login leads to overview", page.url.startswith(base))
+            page.screenshot(path=os.path.join(outdir, "02-overview.png"))
+
+            # Every section loads (click each nav button, section visible).
+            sections = page.eval_on_selector_all(
+                "button[data-section]",
+                "els => els.map(e => e.dataset.section)")
+            print(f"  sections found: {len(sections)}")
+            for sec in sections:
+                try:
+                    page.click(f"button[data-section='{sec}']")
+                    page.wait_for_timeout(300)
+                    visible = page.is_visible(f"section#{sec}")
+                    check(f"section {sec} visible", visible)
+                except Exception as e:
+                    check(f"section {sec} visible", False, str(e)[:100])
+            page.screenshot(path=os.path.join(outdir, "03-tasks.png"))
+
+            # Form submit: create a task, then check it appears.
+            page.click("button[data-section='tasks']")
+            page.fill("#taskTitle", "BrowserTask")
+            page.fill("#taskUrgency", "8")
+            page.fill("#taskImportance", "8")
+            page.fill("#taskDeadline", "2026-11-20")
+            page.click("#taskAddBtn")
+            page.wait_for_timeout(1500)
+            check("task form submit", "BrowserTask" in page.content())
+
+            # Finance form: budget calculation.
+            page.click("button[data-section='budget']")
+            page.fill("#budIncome", "5000")
+            page.fill("#budExpenses", "1200")
+            page.click("#budBtn")
+            page.wait_for_timeout(1500)
+            check("budget result 3800", "3800" in page.content())
+
+            # Reports section screenshot, then dark mode.
+            page.click("button[data-section='reports']")
+            page.wait_for_timeout(800)
+            page.screenshot(path=os.path.join(outdir, "04-reports.png"))
+            page.click("#themeBtn")
+            page.wait_for_timeout(500)
+            theme = page.evaluate("document.documentElement.getAttribute('data-theme')")
+            check("dark mode toggle", theme == "dark", str(theme))
+            page.screenshot(path=os.path.join(outdir, "05-dark-mode.png"))
+            page.click("#themeBtn")
+            page.wait_for_timeout(300)
+
+            # Mobile viewport: sidebar hamburger, no horizontal overflow.
+            mpage = browser.new_page(viewport={"width": 375, "height": 667})
+            mpage.goto(base + "/", timeout=15000)
+            mpage.click("#menuBtn")
+            mpage.wait_for_timeout(500)
+            overflow = mpage.evaluate(
+                "document.documentElement.scrollWidth - document.documentElement.clientWidth")
+            check("mobile no horizontal overflow", overflow <= 1, str(overflow))
+            mpage.screenshot(path=os.path.join(outdir, "06-mobile.png"))
+            mpage.close()
+
+            # Unauthenticated: fresh context, protected API must be 401.
+            ctx = browser.new_context()
+            anon = ctx.new_page()
+            anon.goto(base + "/", timeout=15000)
+            status = anon.evaluate(
+                "fetch('/api/overview').then(r => r.status)")
+            check("unauthenticated overview 401", status == 401, str(status))
+            ctx.close()
+
+            check("no JS page errors", len(ERRORS) == 0, str(ERRORS[:3]))
+            check("no failed API requests", len(failed) == 0, str(failed[:3]))
+            browser.close()
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            proc.kill()
+        shutil.rmtree(tmp, ignore_errors=True)
+    print(f"\nbrowser_test: {PASS} passed, {FAIL} failed")
+    return 1 if FAIL else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
