@@ -1,1 +1,75 @@
-IyBUZXN0aW5nCgojIyBBdXRvbWF0ZWQgdGVzdHMgKHJ1biBmcm9tIHRoZSByZXBvc2l0b3J5IHJvb3QpCgpgYGBzaAojIEJ1aWxkIGZpcnN0IChMaW51eC9tYWNPUyk6Cm1ha2UKIyBvciwgd2l0aG91dCBtYWtlOgpnKysgLXN0ZD1jKysxNyAtV2FsbCAtV2V4dHJhIC1vIHByb2plY3QgYWRtaW4uY3BwIGJhY2t1cF9yZXN0b3JlLmNwcCBidWRnZXQuY3BwIGNvbXBhcmVfb3B0aW9ucy5jcHAgY29udHJvbC5jcHAgZGFpbHlfZGVjaXNpb24uY3BwIGRlYWRsaW5lX2FsZXJ0LmNwcCBkZWNpc2lvbl9leHBsYW5hdGlvbi5jcHAgZGVsZXRlX2NvbmZpcm1hdGlvbi5jcHAgZXJyb3JfaGFuZGxlci5jcHAgZXhwb3J0X3JlcG9ydC5jcHAgZmlsdGVyX3NvcnQuY3BwIGhhYml0LmNwcCBoYWJpdF9zdHJlYWsuY3BwIGhpc3RvcnkuY3BwIGluY29tZV9leHBlbnNlLmNwcCBpbnB1dF92YWxpZGF0aW9uLmNwcCBsb2dpbi5jcHAgbG9nb3V0LmNwcCBtYWluLmNwcCBtdWx0aV90YXNrX2RlY2lzaW9uLmNwcCBwYXNzd29yZF9jaGFuZ2UuY3BwIHBhc3N3b3JkX3ZhbGlkYXRpb24uY3BwIHBlcmlvZF9yZXBvcnQuY3BwIHByaW9yaXR5X2NhbGN1bGF0b3IuY3BwIHByb2JsZW0uY3BwIHByb2ZpbGUuY3BwIHJlZ2lzdHJhdGlvbi5jcHAgcmVwb3J0LmNwcCBzYXZpbmdzX2dvYWwuY3BwIHNlYXJjaF9oaXN0b3J5LmNwcCBzdHVkeV9wbGFubmVyLmNwcCB0YXNrX3ByaW9yaXRpemF0aW9uLmNwcCB0YXNrX3N0YXR1cy5jcHAgdGltZV9hbGxvY2F0aW9uLmNwcApnKysgLXN0ZD1jKysxNyAtV2FsbCAtV2V4dHJhIC1wdGhyZWFkIC1vIGNwcF9zZXJ2ZXIgZGFzaGJvYXJkL2NwcF9zZXJ2ZXIuY3BwCgojIENvbnNvbGUgcmVncmVzc2lvbiAoMTQgY2hlY2tzLCBmcmVzaCB0ZW1wIGRhdGEgZGlyKToKcHl0aG9uMyB0ZXN0cy9jb25zb2xlX3Rlc3QucHkgLS1iaW5hcnkgLi9wcm9qZWN0CgojIEFQSSByZWdyZXNzaW9uLCBDKysgc2VydmVyICgzNiBjaGVja3MsIGZyZXNoIHRlbXAgZGF0YSBkaXIpOgpweXRob24zIHRlc3RzL2FwaV90ZXN0LnB5IC0tc2VydmVyLWNtZCAiLi9jcHBfc2VydmVyIiAtLXBvcnQgODEyMwoKIyBBUEkgcmVncmVzc2lvbiwgUHl0aG9uIGZhbGxiYWNrIHNlcnZlciAoc2FtZSAzNiBjaGVja3MpOgpweXRob24zIHRlc3RzL2FwaV90ZXN0LnB5IC0tc2VydmVyLWNtZCAicHl0aG9uMyBkYXNoYm9hcmQvc2VydmVyLnB5IiAtLXBvcnQgODEyNAoKIyBCcm93c2VyIHRlc3QgKDMzIGNoZWNrcyArIDYgc2NyZWVuc2hvdHMsIG5lZWRzIFBsYXl3cmlnaHQgKyBDaHJvbWl1bSk6CnBpcCBpbnN0YWxsIHBsYXl3cmlnaHQKcHl0aG9uMyAtbSBwbGF5d3JpZ2h0IGluc3RhbGwgY2hyb21pdW0KcHl0aG9uMyB0ZXN0cy9icm93c2VyX3Rlc3QucHkgLS1zZXJ2ZXIgLi9jcHBfc2VydmVyIC0tcG9ydCA4MTMwIC0tb3V0IHNjcmVlbnNob3RzCmBgYAoKQWxsIHRlc3Qgc2NyaXB0cyBjcmVhdGUgdGhlaXIgb3duIHRlbXBvcmFyeSBkYXRhIGRpcmVjdG9yaWVzLCB1c2UKb25seSB0ZXN0IGFjY291bnRzIChuZXZlciByZWFsIGNyZWRlbnRpYWxzKSwgYW5kIGRlbGV0ZSB0aGUgZGF0YQphZnRlcndhcmRzLiBBIG5vbi16ZXJvIGV4aXQgY29kZSBtZWFucyBhdCBsZWFzdCBvbmUgY2hlY2sgZmFpbGVkOwp0aGUgb3V0cHV0IGxpc3RzIGV2ZXJ5IFBBU1MgYW5kIEZBSUwgYnkgbmFtZS4KCiMjIFdoYXQgdGhlIHRlc3RzIGNvdmVyCgotIFJlZ2lzdHJhdGlvbiwgbG9naW4sIGxvZ291dCwgcHJvZmlsZSwgYWRtaW4gcGVybWlzc2lvbnMgKDQwMyBmb3IKICBub24tYWRtaW4pLCBwYXNzd29yZCBjaGFuZ2UsIGFuZCBvbGQtcGxhaW50ZXh0IHBhc3N3b3JkIG1pZ3JhdGlvbi4KLSBMb2dpbiByYXRlIGxpbWl0aW5nICg1IGZhaWx1cmVzLCB0aGVuIDQyOSkuCi0gRGFpbHkgZGVjaXNpb24sIHByaW9yaXR5ICg1MC81MCksIHRhc2tzIChjcmVhdGUsIFBBVENIIHRvCiAgSW4gUHJvZ3Jlc3MsIGRlYWRsaW5lIFVQQ09NSU5HKSwgY29tcGFyZSwgbXVsdGktdGFzaywgZGVjaXNpb24KICBleHBsYW5hdGlvbiAoNDUvNTApLCBidWRnZXQgKDM4MDApLCB0cmFuc2FjdGlvbnMsIHNhdmluZ3MsCiAgY29uY3VycmVudCBzYXZpbmdzIGFkZHMgKDEwIHggMTAwID0gMTAwMCwgbm8gbG9zdCB1cGRhdGUpLAogIGhhYml0cywgc3RyZWFrIGNhbGN1bGF0aW9uLCBzdHVkeSBwbGFubmVyICg2aCksIHRpbWUgYWxsb2NhdGlvbiwKICBtb250aGx5IHJlcG9ydCwgc2VhcmNoLCBiYWNrdXAsIENTViBleHBvcnQsIG92ZXJ2aWV3LCBpbmZvLgotIENvbnNvbGUgdGFzayBwZXJzaXN0ZW5jZTogYSB0YXNrIGNyZWF0ZWQgYnkgVGFzayBQcmlvcml0aXphdGlvbgogIGluIG9uZSBjb25zb2xlIHNlc3Npb24gaXMgdmlzaWJsZSB0byBUYXNrIFN0YXR1cyBhbmQgRGVhZGxpbmUKICBBbGVydCBpbiBhIG5ldyBzZXNzaW9uICh0YXNrcy50eHQsIGRhc2hib2FyZCBmb3JtYXQpLgotIERhc2hib2FyZDogYWxsIDIzIHNlY3Rpb25zIGxvYWQsIHRhc2sgYW5kIGJ1ZGdldCBmb3JtcyBzdWJtaXQsCiAgZGFyayBtb2RlIHRvZ2dsZXMsIG1vYmlsZSB2aWV3cG9ydCBoYXMgbm8gaG9yaXpvbnRhbCBvdmVyZmxvdywKICB1bmF1dGhlbnRpY2F0ZWQgQVBJIGFjY2VzcyBpcyA0MDEsIG5vIEphdmFTY3JpcHQgZXJyb3JzLCBubwogIGZhaWxlZCBBUEkgcmVxdWVzdHMuCi0gQnVpbGQgd2FybmluZ3M6IGAtV2FsbCAtV2V4dHJhIC1XcGVkYW50aWNgIHdpdGggMCB3YXJuaW5ncyBmb3IKICBib3RoIHRoZSBjb25zb2xlIGFwcCBhbmQgdGhlIEMrKyBzZXJ2ZXIuCi0gU2FuaXRpemVycyAobWFudWFsLCBub3QgaW4gQ0kpOiB0aGUgY29uc29sZSBhcHAgd2FzIGFsc28gYnVpbHQKICB3aXRoIGAtZnNhbml0aXplPWFkZHJlc3MsdW5kZWZpbmVkYCBhbmQgcnVuIHRocm91Z2ggcmVnaXN0ZXIsCiAgbG9naW4sIHRhc2sgcHJpb3JpdGlzYXRpb24sIHRhc2sgc3RhdHVzLCBkZWFkbGluZSBhbGVydCBhbmQKICBiYWxhbmNlIHdpdGggbm8gc2FuaXRpemVyIHJlcG9ydC4KCiMjIENvbnRpbnVvdXMgaW50ZWdyYXRpb24KCmAuZ2l0aHViL3dvcmtmbG93cy9jaS55bWxgIHJ1bnMgdGhlIHNhbWUgY29uc29sZSBhbmQgQVBJIHRlc3RzIG9uCnJlYWwgTGludXggKHVidW50dS1sYXRlc3QpIGFuZCByZWFsIFdpbmRvd3MgKHdpbmRvd3MtbGF0ZXN0LCBNaW5HVykKcnVubmVycywgcGx1cyBhIHNlcnZlciBzdGFydHVwL3NodXRkb3duIGNoZWNrIGFuZCBhIHN0YW5kYWxvbmUKYnVpbGQgb2YgU3dlZXR5J3MgbG9naWNfcHJpb3JpdHkgdGVzdCBmcm9tIGl0cyBvd24gYnJhbmNoIChpdCBoYXMKaXRzIG93biBtYWluKCksIHNvIGl0IGlzIG5ldmVyIGJ1aWx0IGludG8gdGhlIHByb2R1Y3Rpb24gYXBwKS4KCiMjIFdoYXQgaXMgTk9UIHRlc3RlZCBoZXJlCgotIFJ1bnRpbWUgb24gYSBwaHlzaWNhbCBXaW5kb3dzIDExIG1hY2hpbmUgYnkgaGFuZDogdGhlIFdpbmRvd3MgQ0kKICBqb2IgaXMgdGhlIHJlYWwgV2luZG93cyBydW50aW1lIHRlc3QgKGEgaG9zdGVkIFdpbmRvd3MgcnVubmVyKS4KICBJZiBDSSBpcyB1bmF2YWlsYWJsZSwgdGhhdCBqb2IgaXMgTk9UIFRFU1RFRCwgbm90IHBhc3NlZC4KLSBQdWJsaWMgZGVwbG95bWVudCwgSFRUUFMgdGVybWluYXRpb24sIGFuZCBwcm94eS1sZXZlbCByYXRlCiAgbGltaXRpbmc6IHNlZSBTRUNVUklUWS5tZC4gVGhleSBhcmUgbm90IHBhcnQgb2YgdGhpcyB0ZXN0IHN1aXRlLgotIEJyb3dzZXIgc2NyZWVuc2hvdHMgYXJlIHRha2VuIGZyb20gdGhlIHJlYWwgcnVubmluZyBkYXNoYm9hcmQKICBpbiB0aGUgYnJvd3NlciB0ZXN0OyBlYXJsaWVyIGxheW91dC1wcmV2aWV3IGRpYWdyYW1zIGluIHRoZQogIHdvcmtzcGFjZSBhcmUgbGFiZWxsZWQgZGlhZ3JhbXMsIG5vdCBzY3JlZW5zaG90cywgYW5kIG11c3Qgbm90IGJlCiAgcHJlc2VudGVkIGFzIHNjcmVlbnNob3RzLgo=
+# Testing
+
+## Automated tests (run from the repository root)
+
+```sh
+# Build first (Linux/macOS):
+make
+# or, without make:
+g++ -std=c++17 -Wall -Wextra -o project admin.cpp backup_restore.cpp budget.cpp compare_options.cpp control.cpp daily_decision.cpp deadline_alert.cpp decision_explanation.cpp delete_confirmation.cpp error_handler.cpp export_report.cpp filter_sort.cpp habit.cpp habit_streak.cpp history.cpp income_expense.cpp input_validation.cpp login.cpp logout.cpp main.cpp multi_task_decision.cpp password_change.cpp password_validation.cpp period_report.cpp priority_calculator.cpp problem.cpp profile.cpp registration.cpp report.cpp savings_goal.cpp search_history.cpp study_planner.cpp task_prioritization.cpp task_status.cpp time_allocation.cpp
+g++ -std=c++17 -Wall -Wextra -pthread -o cpp_server dashboard/cpp_server.cpp
+
+# Console regression (14 checks, fresh temp data dir):
+python3 tests/console_test.py --binary ./project
+
+# API regression, C++ server (36 checks, fresh temp data dir):
+python3 tests/api_test.py --server-cmd "./cpp_server" --port 8123
+
+# API regression, Python fallback server (same 36 checks):
+python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8124
+
+# Browser test (33 checks + 6 screenshots, needs Playwright + Chromium):
+pip install playwright
+python3 -m playwright install chromium
+python3 tests/browser_test.py --server ./cpp_server --port 8130 --out screenshots
+```
+
+All test scripts create their own temporary data directories, use
+only test accounts (never real credentials), and delete the data
+afterwards. A non-zero exit code means at least one check failed;
+the output lists every PASS and FAIL by name.
+
+## What the tests cover
+
+- Registration, login, logout, profile, admin permissions (403 for
+  non-admin), password change, and old-plaintext password migration.
+- Login rate limiting (5 failures, then 429).
+- Daily decision, priority (50/50), tasks (create, PATCH to
+  In Progress, deadline UPCOMING), compare, multi-task, decision
+  explanation (45/50), budget (3800), transactions, savings,
+  concurrent savings adds (10 x 100 = 1000, no lost update),
+  habits, streak calculation, study planner (6h), time allocation,
+  monthly report, search, backup, CSV export, overview, info.
+- Console task persistence: a task created by Task Prioritization
+  in one console session is visible to Task Status and Deadline
+  Alert in a new session (tasks.txt, dashboard format).
+- Dashboard: all 23 sections load, task and budget forms submit,
+  dark mode toggles, mobile viewport has no horizontal overflow,
+  unauthenticated API access is 401, no JavaScript errors, no
+  failed API requests.
+- Build warnings: `-Wall -Wextra -Wpedantic` with 0 warnings for
+  both the console app and the C++ server.
+- Sanitizers (manual, not in CI): the console app was also built
+  with `-fsanitize=address,undefined` and run through register,
+  login, task prioritisation, task status, deadline alert and
+  balance with no sanitizer report.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs the same console and API tests on
+real Linux (ubuntu-latest) and real Windows (windows-latest, MinGW)
+runners, plus a server startup/shutdown check and a standalone
+build of Sweety's logic_priority test from its own branch (it has
+its own main(), so it is never built into the production app).
+
+## What is NOT tested here
+
+- Runtime on a physical Windows 11 machine by hand: the Windows CI
+  job is the real Windows runtime test (a hosted Windows runner).
+  If CI is unavailable, that job is NOT TESTED, not passed.
+- Public deployment, HTTPS termination, and proxy-level rate
+  limiting: see SECURITY.md. They are not part of this test suite.
+- Browser screenshots are taken from the real running dashboard
+  in the browser test; earlier layout-preview diagrams in the
+  workspace are labelled diagrams, not screenshots, and must not be
+  presented as screenshots.
