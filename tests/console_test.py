@@ -41,6 +41,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--binary", required=True)
     args = ap.parse_args()
+    # The test runs the binary with a temporary data directory as its
+    # working directory, so a relative binary path would not be found
+    # there. Resolve it once, up front (this also fixes CI, where the
+    # workflow passes ./project / ./project.exe).
+    args.binary = os.path.abspath(args.binary)
     tmp = tempfile.mkdtemp(prefix="pdps-console-test-")
     print(f"data dir: {tmp}")
     try:
