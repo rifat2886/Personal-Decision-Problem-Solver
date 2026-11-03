@@ -1,6 +1,7 @@
 #include "habit_streak.h"
 #include "error_handler.h"
 #include "file_lock.h"
+#include "data_owner.h"
 #include <algorithm>
 #include <iostream>
 #include <fstream>
@@ -93,7 +94,7 @@ void markHabitDone()
         return;
     }
 
-    file << habit << "|" << date << '\n';
+    file << habit << "|" << date << "|" << g_currentUser << '\n';
 
     cout << "Habit completion recorded!\n";
 }
@@ -119,6 +120,7 @@ void showHabitStreak()
 
     while (getline(file, line))
     {
+        if (!lineVisibleFor(line, 2)) continue;
         size_t separator = line.find('|');
 
         if (separator == string::npos)
@@ -126,6 +128,9 @@ void showHabitStreak()
 
         string savedHabit = line.substr(0, separator);
         string savedDate = line.substr(separator + 1);
+        // Strip owner field if present (third field).
+        size_t secondSep = savedDate.find('|');
+        if (secondSep != string::npos) savedDate = savedDate.substr(0, secondSep);
 
         if (savedHabit == habit && validCalendarDate(savedDate))
         {
