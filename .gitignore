@@ -1,1 +1,8 @@
-dXNlcnMudHh0CnByb2plY3QuZXhlCnByb2plY3RfbmV3LmV4ZQpjcHBfc2VydmVyCmNwcF9zZXJ2ZXIuZXhlCnByb2plY3QKKi5sb2NrCl9fcHljYWNoZV9fLwo=
+users.txt
+project.exe
+project_new.exe
+cpp_server
+cpp_server.exe
+project
+*.lock
+__pycache__/
