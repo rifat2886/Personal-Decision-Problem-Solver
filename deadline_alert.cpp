@@ -1,1 +1,61 @@
-I2luY2x1ZGUgImRlYWRsaW5lX2FsZXJ0LmgiCiNpbmNsdWRlICJ0YXNrX2RhdGEuaCIKI2luY2x1ZGUgInRhc2tfc3RvcmUuaCIKCiNpbmNsdWRlIDxpb3N0cmVhbT4KI2luY2x1ZGUgPHN0cmluZz4KdXNpbmcgbmFtZXNwYWNlIHN0ZDsKCnZvaWQgZGVhZGxpbmVBbGVydCgpIHsKICAgIGNvdXQgPDwgIlxuPT09PT0gREVBRExJTkUgQUxFUlQgPT09PT1cbiI7CgogICAgLy8gTG9hZCBwZXJzaXN0ZWQgdGFza3MgKGNvbnNvbGUgKyBkYXNoYm9hcmQgc2hhcmUgdGFza3MudHh0KS4KICAgIHBkcHNfdGFza3M6OmxvYWRUYXNrcygpOwoKICAgIGlmICh0YXNrTGlzdC5lbXB0eSgpKSB7CiAgICAgICAgY291dCA8PCAiTm8gdGFza3MgZm91bmQuIFVzZSBUYXNrIFByaW9yaXRpemF0aW9uIGZpcnN0LlxuIjsKICAgICAgICByZXR1cm47CiAgICB9CgogICAgc3RyaW5nIHRvZGF5OwoKICAgIGNvdXQgPDwgIlRvZGF5J3MgZGF0ZSAoWVlZWS1NTS1ERCk6ICI7CiAgICBnZXRsaW5lKGNpbiA+PiB3cywgdG9kYXkpOwoKICAgIGlmICh0b2RheS5zaXplKCkgIT0gMTAgfHwKICAgICAgICB0b2RheVs0XSAhPSAnLScgfHwgdG9kYXlbN10gIT0gJy0nKSB7CiAgICAgICAgY291dCA8PCAiSW52YWxpZCBkYXRlIGZvcm1hdCFcbiI7CiAgICAgICAgcmV0dXJuOwogICAgfQoKICAgIGZvciAoY2hhciBjIDogdG9kYXkpIHsKICAgICAgICBpZiAoYyAhPSAnLScgJiYgKGMgPCAnMCcgfHwgYyA+ICc5JykpIHsKICAgICAgICAgICAgY291dCA8PCAiSW52YWxpZCBkYXRlIGZvcm1hdCFcbiI7CiAgICAgICAgICAgIHJldHVybjsKICAgICAgICB9CiAgICB9CgogICAgZm9yIChjb25zdCBUYXNrJiB0YXNrIDogdGFza0xpc3QpIHsKICAgICAgICBpZiAodGFzay5kZWFkbGluZS5lbXB0eSgpIHx8CiAgICAgICAgICAgIHRhc2suc3RhdHVzID09ICJDb21wbGV0ZWQiKQogICAgICAgICAgICBjb250aW51ZTsKCiAgICAgICAgaWYgKHRhc2suZGVhZGxpbmUuc2l6ZSgpICE9IDEwIHx8CiAgICAgICAgICAgIHRhc2suZGVhZGxpbmVbNF0gIT0gJy0nIHx8CiAgICAgICAgICAgIHRhc2suZGVhZGxpbmVbN10gIT0gJy0nKSB7CiAgICAgICAgICAgIGNvdXQgPDwgIkNoZWNrIGRlYWRsaW5lIGZvcjogIgogICAgICAgICAgICAgICAgIDw8IHRhc2sudGl0bGUgPDwgJ1xuJzsKICAgICAgICAgICAgY29udGludWU7CiAgICAgICAgfQoKICAgICAgICBpZiAodGFzay5kZWFkbGluZSA8IHRvZGF5KSB7CiAgICAgICAgICAgIGNvdXQgPDwgIk9WRVJEVUU6ICIgPDwgdGFzay50aXRsZQogICAgICAgICAgICAgICAgIDw8ICIgfCBEZWFkbGluZTogIiA8PCB0YXNrLmRlYWRsaW5lIDw8ICdcbic7CiAgICAgICAgfSBlbHNlIGlmICh0YXNrLmRlYWRsaW5lID09IHRvZGF5KSB7CiAgICAgICAgICAgIGNvdXQgPDwgIkRVRSBUT0RBWTogIiA8PCB0YXNrLnRpdGxlIDw8ICdcbic7CiAgICAgICAgfSBlbHNlIHsKICAgICAgICAgICAgY291dCA8PCAiVVBDT01JTkc6ICIgPDwgdGFzay50aXRsZQogICAgICAgICAgICAgICAgIDw8ICIgfCBEZWFkbGluZTogIiA8PCB0YXNrLmRlYWRsaW5lIDw8ICdcbic7CiAgICAgICAgfQogICAgfQp9Cg==
+#include "deadline_alert.h"
+#include "task_data.h"
+#include "task_store.h"
+
+#include <iostream>
+#include <string>
+using namespace std;
+
+void deadlineAlert() {
+    cout << "\n===== DEADLINE ALERT =====\n";
+
+    // Load persisted tasks (console + dashboard share tasks.txt).
+    pdps_tasks::loadTasks();
+
+    if (taskList.empty()) {
+        cout << "No tasks found. Use Task Prioritization first.\n";
+        return;
+    }
+
+    string today;
+
+    cout << "Today's date (YYYY-MM-DD): ";
+    getline(cin >> ws, today);
+
+    if (today.size() != 10 ||
+        today[4] != '-' || today[7] != '-') {
+        cout << "Invalid date format!\n";
+        return;
+    }
+
+    for (char c : today) {
+        if (c != '-' && (c < '0' || c > '9')) {
+            cout << "Invalid date format!\n";
+            return;
+        }
+    }
+
+    for (const Task& task : taskList) {
+        if (task.deadline.empty() ||
+            task.status == "Completed")
+            continue;
+
+        if (task.deadline.size() != 10 ||
+            task.deadline[4] != '-' ||
+            task.deadline[7] != '-') {
+            cout << "Check deadline for: "
+                 << task.title << '\n';
+            continue;
+        }
+
+        if (task.deadline < today) {
+            cout << "OVERDUE: " << task.title
+                 << " | Deadline: " << task.deadline << '\n';
+        } else if (task.deadline == today) {
+            cout << "DUE TODAY: " << task.title << '\n';
+        } else {
+            cout << "UPCOMING: " << task.title
+                 << " | Deadline: " << task.deadline << '\n';
+        }
+    }
+}
