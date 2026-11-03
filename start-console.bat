@@ -1,1 +1,27 @@
-QGVjaG8gb2ZmClJFTSBQZXJzb25hbCBEZWNpc2lvbiAmIFByb2JsZW0gU29sdmVyIOKAlCBjb25zb2xlIGFwcCBsYXVuY2hlciAoV2luZG93cyAxMSkKUkVNIERvdWJsZS1jbGljayB0aGlzIGZpbGUuIEl0IGJ1aWxkcyB0aGUgY29uc29sZSBhcHAgaWYgbmVlZGVkLCB0aGVuIHJ1bnMgaXQuClJFTSBObyBDKysga25vd2xlZGdlIGlzIG5lZWRlZC4gSWYgdGhlIGNvbXBpbGVyIGlzIG1pc3NpbmcsIGl0IHRlbGxzIHlvdSBzby4KY2QgL2QgIiV+ZHAwIgppZiBub3QgZXhpc3QgcHJvamVjdC5leGUgKAogIGVjaG8gQnVpbGRpbmcgdGhlIGNvbnNvbGUgYXBwIGZvciB0aGUgZmlyc3QgdGltZSwgcGxlYXNlIHdhaXQuLi4KICB3aGVyZSBnKysgPm51bCAyPm51bAogIGlmIGVycm9ybGV2ZWwgMSAoCiAgICBlY2hvIEVSUk9SOiBnKysgKE1pbkdXLXc2NCkgd2FzIG5vdCBmb3VuZC4KICAgIGVjaG8gSW5zdGFsbCBNaW5HVy13NjQgR0NDLCBhZGQgaXQgdG8gUEFUSCwgdGhlbiBkb3VibGUtY2xpY2sgdGhpcyBmaWxlIGFnYWluLgogICAgZWNobyBTZWUgUlVOLm1kIGZvciB0aGUgZG93bmxvYWQgbGluayBhbmQgc3RlcHMuCiAgICBwYXVzZQogICAgZXhpdCAvYiAxCiAgKQogIGcrKyAtc3RkPWMrKzE3IC1XYWxsIC1XZXh0cmEgLW8gcHJvamVjdC5leGUgYWRtaW4uY3BwIGJhY2t1cF9yZXN0b3JlLmNwcCBidWRnZXQuY3BwIGNvbXBhcmVfb3B0aW9ucy5jcHAgY29udHJvbC5jcHAgZGFpbHlfZGVjaXNpb24uY3BwIGRlYWRsaW5lX2FsZXJ0LmNwcCBkZWNpc2lvbl9leHBsYW5hdGlvbi5jcHAgZGVsZXRlX2NvbmZpcm1hdGlvbi5jcHAgZXJyb3JfaGFuZGxlci5jcHAgZXhwb3J0X3JlcG9ydC5jcHAgZmlsdGVyX3NvcnQuY3BwIGhhYml0LmNwcCBoYWJpdF9zdHJlYWsuY3BwIGhpc3RvcnkuY3BwIGluY29tZV9leHBlbnNlLmNwcCBpbnB1dF92YWxpZGF0aW9uLmNwcCBsb2dpbi5jcHAgbG9nb3V0LmNwcCBtYWluLmNwcCBtdWx0aV90YXNrX2RlY2lzaW9uLmNwcCBwYXNzd29yZF9jaGFuZ2UuY3BwIHBhc3N3b3JkX3ZhbGlkYXRpb24uY3BwIHBlcmlvZF9yZXBvcnQuY3BwIHByaW9yaXR5X2NhbGN1bGF0b3IuY3BwIHByb2JsZW0uY3BwIHByb2ZpbGUuY3BwIHJlZ2lzdHJhdGlvbi5jcHAgcmVwb3J0LmNwcCBzYXZpbmdzX2dvYWwuY3BwIHNlYXJjaF9oaXN0b3J5LmNwcCBzdHVkeV9wbGFubmVyLmNwcCB0YXNrX3ByaW9yaXRpemF0aW9uLmNwcCB0YXNrX3N0YXR1cy5jcHAgdGltZV9hbGxvY2F0aW9uLmNwcAogIGlmIGVycm9ybGV2ZWwgMSAoCiAgICBlY2hvIEVSUk9SOiB0aGUgYnVpbGQgZmFpbGVkLiBTZWUgdGhlIG1lc3NhZ2VzIGFib3ZlLCBvciBSVU4ubWQgdHJvdWJsZXNob290aW5nLgogICAgcGF1c2UKICAgIGV4aXQgL2IgMQogICkKICBlY2hvIEJ1aWxkIGZpbmlzaGVkLgopCmVjaG8gU3RhcnRpbmcgdGhlIGNvbnNvbGUgYXBwLi4uCmVjaG8gRmlyc3QgdGltZT8gQ2hvb3NlIDEgdG8gUmVnaXN0ZXIuIFRoZSBmaXJzdCBhY2NvdW50IHlvdSBjcmVhdGUgYmVjb21lcyBBRE1JTi4KcHJvamVjdC5leGUKcGF1c2UK
+@echo off
+REM Personal Decision & Problem Solver — console app launcher (Windows 11)
+REM Double-click this file. It builds the console app if needed, then runs it.
+REM No C++ knowledge is needed. If the compiler is missing, it tells you so.
+cd /d "%~dp0"
+if not exist project.exe (
+  echo Building the console app for the first time, please wait...
+  where g++ >nul 2>nul
+  if errorlevel 1 (
+    echo ERROR: g++ (MinGW-w64) was not found.
+    echo Install MinGW-w64 GCC, add it to PATH, then double-click this file again.
+    echo See RUN.md for the download link and steps.
+    pause
+    exit /b 1
+  )
+  g++ -std=c++17 -Wall -Wextra -o project.exe admin.cpp backup_restore.cpp budget.cpp compare_options.cpp control.cpp daily_decision.cpp deadline_alert.cpp decision_explanation.cpp delete_confirmation.cpp error_handler.cpp export_report.cpp filter_sort.cpp habit.cpp habit_streak.cpp history.cpp income_expense.cpp input_validation.cpp login.cpp logout.cpp main.cpp multi_task_decision.cpp password_change.cpp password_validation.cpp period_report.cpp priority_calculator.cpp problem.cpp profile.cpp registration.cpp report.cpp savings_goal.cpp search_history.cpp study_planner.cpp task_prioritization.cpp task_status.cpp time_allocation.cpp
+  if errorlevel 1 (
+    echo ERROR: the build failed. See the messages above, or RUN.md troubleshooting.
+    pause
+    exit /b 1
+  )
+  echo Build finished.
+)
+echo Starting the console app...
+echo First time? Choose 1 to Register. The first account you create becomes ADMIN.
+project.exe
+pause
