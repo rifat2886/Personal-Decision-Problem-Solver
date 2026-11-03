@@ -1,4 +1,5 @@
 #include "search_history.h"
+#include "data_owner.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -31,6 +32,7 @@ void searchHistory()
 
     while (getline(file, line))
     {
+        if (!lineVisibleFor(line, 5)) continue;
         if (line.find(query) != string::npos)
         {
             cout << line << '\n';
