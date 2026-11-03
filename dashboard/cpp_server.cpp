@@ -274,10 +274,18 @@ struct FileLock {
 };
 
 // ---------------------------------------------------------------- data
-struct Decision { string id, date, type, title; int priority = 0; };
-struct Tx { string date, type, category, note; double amount = 0; };
-struct Goal { string name; double target = 0, saved = 0; };
-struct Task { string id, title, deadline, status; int urgency = 0, importance = 0; int score() const { return urgency * 2 + importance * 3; } };
+// Per-user isolation (Issue 2): every personal record carries an owner
+// as the LAST pipe field. Records written before this change have no
+// owner field; they are "legacy" records and are NEVER deleted or
+// silently assigned. A legacy record is visible only when users.txt
+// contains exactly one user and that user is the requester (the only
+// possible owner); with two or more users, legacy records are hidden
+// from every regular user and preserved verbatim on disk. ADMIN does
+// NOT get access to other users' records.
+struct Decision { string id, date, type, title, owner; int priority = 0; };
+struct Tx { string date, type, category, note, owner; double amount = 0; };
+struct Goal { string name, owner; double target = 0, saved = 0; };
+struct Task { string id, title, deadline, status, owner; int urgency = 0, importance = 0; int score() const { return urgency * 2 + importance * 3; } };
 
 static map<string, pair<string, string>> loadUsers() {  // username -> (password, role)
     map<string, pair<string, string>> users;
@@ -287,22 +295,28 @@ static map<string, pair<string, string>> loadUsers() {  // username -> (password
     }
     return users;
 }
+static bool ownerVisible(const string& owner, const string& user) {
+    if (owner == user) return true;
+    if (!owner.empty()) return false;
+    auto users = loadUsers();
+    return users.size() == 1 && users.count(user) == 1;
+}
 static vector<Decision> loadDecisions() {
     vector<Decision> out;
     for (auto& line : readLines(joinPath(g_dataDir, "decisions.txt"))) {
         auto parts = splitPipe(line); if (parts.size() < 5) continue;
         try { Decision d; d.id = parts[0]; d.date = parts[1]; d.type = parts[2]; d.priority = stoi(parts[3]);
-              d.title = parts[4]; for (size_t i = 5; i < parts.size(); i++) d.title += "|" + parts[i]; out.push_back(d); }
+              d.title = parts[4]; d.owner = parts.size() >= 6 ? parts[5] : ""; out.push_back(d); }
         catch (...) {}
     }
     return out;
 }
-static Decision appendDecision(const string& type, int priority, const string& title) {
+static Decision appendDecision(const string& type, int priority, const string& title, const string& owner) {
     FileLock lock("decisions.txt");
     auto ds = loadDecisions(); long long nextId = 1;
     for (auto& d : ds) { try { nextId = max(nextId, stoll(d.id) + 1); } catch (...) {} }
-    Decision rec; rec.id = to_string(nextId); rec.date = todayStr(); rec.type = sanitize(type); rec.priority = priority; rec.title = sanitize(title);
-    appendLine(joinPath(g_dataDir, "decisions.txt"), rec.id + "|" + rec.date + "|" + rec.type + "|" + to_string(rec.priority) + "|" + rec.title);
+    Decision rec; rec.id = to_string(nextId); rec.date = todayStr(); rec.type = sanitize(type); rec.priority = priority; rec.title = sanitize(title); rec.owner = owner;
+    appendLine(joinPath(g_dataDir, "decisions.txt"), rec.id + "|" + rec.date + "|" + rec.type + "|" + to_string(rec.priority) + "|" + rec.title + "|" + rec.owner);
     return rec;
 }
 static string decisionJson(const Decision& d) {
@@ -313,7 +327,7 @@ static vector<Tx> loadTxs() {
     vector<Tx> out;
     for (auto& line : readLines(joinPath(g_dataDir, "transactions.txt"))) {
         auto parts = splitPipe(line); if (parts.size() < 5) continue;
-        try { Tx t; t.date = parts[0]; t.type = parts[1]; t.category = parts[2]; t.amount = stod(parts[3]); t.note = parts[4]; out.push_back(t); } catch (...) {}
+        try { Tx t; t.date = parts[0]; t.type = parts[1]; t.category = parts[2]; t.amount = stod(parts[3]); t.note = parts[4]; t.owner = parts.size() >= 6 ? parts[5] : ""; out.push_back(t); } catch (...) {}
     }
     return out;
 }
@@ -321,20 +335,20 @@ static vector<Goal> loadGoals() {
     vector<Goal> out;
     for (auto& line : readLines(joinPath(g_dataDir, "savings_goals.txt"))) {
         auto parts = splitPipe(line); if (parts.size() < 3) continue;
-        try { Goal g; g.name = parts[0]; g.target = stod(parts[1]); g.saved = stod(parts[2]); out.push_back(g); } catch (...) {}
+        try { Goal g; g.name = parts[0]; g.target = stod(parts[1]); g.saved = stod(parts[2]); g.owner = parts.size() >= 4 ? parts[3] : ""; out.push_back(g); } catch (...) {}
     }
     return out;
 }
 static void saveGoals(const vector<Goal>& goals) {
     vector<string> lines;
-    for (auto& g : goals) lines.push_back(sanitize(g.name) + "|" + fmtNumRaw(g.target) + "|" + fmtNumRaw(g.saved));
+    for (auto& g : goals) lines.push_back(sanitize(g.name) + "|" + fmtNumRaw(g.target) + "|" + fmtNumRaw(g.saved) + "|" + sanitize(g.owner));
     writeLines(joinPath(g_dataDir, "savings_goals.txt"), lines);
 }
 static vector<Task> loadTasks() {
     vector<Task> out;
     for (auto& line : readLines(joinPath(g_dataDir, "tasks.txt"))) {
         auto parts = splitPipe(line); if (parts.size() < 6) continue;
-        try { Task t; t.id = parts[0]; t.title = parts[1]; t.urgency = stoi(parts[2]); t.importance = stoi(parts[3]); t.deadline = parts[4]; t.status = parts[5]; out.push_back(t); } catch (...) {}
+        try { Task t; t.id = parts[0]; t.title = parts[1]; t.urgency = stoi(parts[2]); t.importance = stoi(parts[3]); t.deadline = parts[4]; t.status = parts[5]; t.owner = parts.size() >= 7 ? parts[6] : ""; out.push_back(t); } catch (...) {}
     }
     sort(out.begin(), out.end(), [](const Task& a, const Task& b) {
         if (a.score() != b.score()) return a.score() > b.score();
@@ -343,7 +357,7 @@ static vector<Task> loadTasks() {
 }
 static void saveTasks(const vector<Task>& tasks) {
     vector<string> lines;
-    for (auto& t : tasks) lines.push_back(sanitize(t.id) + "|" + sanitize(t.title) + "|" + to_string(t.urgency) + "|" + to_string(t.importance) + "|" + sanitize(t.deadline) + "|" + sanitize(t.status));
+    for (auto& t : tasks) lines.push_back(sanitize(t.id) + "|" + sanitize(t.title) + "|" + to_string(t.urgency) + "|" + to_string(t.importance) + "|" + sanitize(t.deadline) + "|" + sanitize(t.status) + "|" + sanitize(t.owner));
     writeLines(joinPath(g_dataDir, "tasks.txt"), lines);
 }
 static string taskJson(const Task& t) {
@@ -446,11 +460,12 @@ static vector<MtTask> parseMtTasks(const string& body, bool& ok) {
     ok = !out.empty(); return out;
 }
 
-static string habitStreakJson(const string& habit) {
+static string habitStreakJson(const string& habit, const string& user) {
     int total = 0; vector<string> dates;
     for (auto& line : readLines(joinPath(g_dataDir, "habit_log.txt"))) {
         auto p = splitPipe(line);
-        if (p.size() >= 2 && p[0] == habit && validDate(p[1])) { total++; dates.push_back(p[1]); }
+        string owner = p.size() >= 3 ? p[2] : "";
+        if (p.size() >= 2 && p[0] == habit && validDate(p[1]) && ownerVisible(owner, user)) { total++; dates.push_back(p[1]); }
     }
     if (dates.empty()) return "{\"habit\":" + jsonStr(habit) + ",\"total\":0,\"streak\":0,\"latest\":null}";
     sort(dates.begin(), dates.end()); dates.erase(unique(dates.begin(), dates.end()), dates.end());
@@ -529,12 +544,16 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         return sendJson(fd, 200, "{\"username\":" + jsonStr(user) + ",\"role\":" + jsonStr(role) + "}");
 
     if (path == "/api/overview" && method == "GET") {
-        auto ds = loadDecisions(); auto txs = loadTxs(); auto goals = loadGoals(); auto tasks = loadTasks();
+        auto allDs = loadDecisions(); auto allTxs = loadTxs(); auto allGoals = loadGoals(); auto allTasks = loadTasks();
+        vector<Decision> ds; for (auto& d : allDs) if (ownerVisible(d.owner, user)) ds.push_back(d);
+        vector<Tx> txs; for (auto& t : allTxs) if (ownerVisible(t.owner, user)) txs.push_back(t);
+        vector<Goal> goals; for (auto& g : allGoals) if (ownerVisible(g.owner, user)) goals.push_back(g);
+        vector<Task> tasks; for (auto& t : allTasks) if (ownerVisible(t.owner, user)) tasks.push_back(t);
         double income = 0, expense = 0; for (auto& t : txs) (t.type == "income" ? income : expense) += t.amount;
         double tg = 0, sg = 0; for (auto& g : goals) { tg += g.target; sg += g.saved; }
         int pending = 0; for (auto& t : tasks) if (t.status == "Pending") pending++;
         map<string, int> habits;
-        for (auto& line : readLines(joinPath(g_dataDir, "habit_log.txt"))) { auto p = splitPipe(line); if (p.size() >= 2) habits[p[0]]++; }
+        for (auto& line : readLines(joinPath(g_dataDir, "habit_log.txt"))) { auto p = splitPipe(line); string owner = p.size() >= 3 ? p[2] : ""; if (p.size() >= 2 && ownerVisible(owner, user)) habits[p[0]]++; }
         ostringstream os; os << "{\"username\":" << jsonStr(user) << ",\"role\":" << jsonStr(role)
             << ",\"decisions\":" << ds.size() << ",\"tasks\":" << tasks.size() << ",\"tasksPending\":" << pending
             << ",\"income\":" << fmtNum(income) << ",\"expense\":" << fmtNum(expense) << ",\"balance\":" << fmtNum(income - expense)
@@ -544,7 +563,8 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
     }
 
     if (path == "/api/decisions" && method == "GET") {
-        auto ds = loadDecisions(); string search, dtype;
+        auto allDs = loadDecisions(); vector<Decision> ds; for (auto& d : allDs) if (ownerVisible(d.owner, user)) ds.push_back(d);
+        string search, dtype;
         auto si = query.find("search"); if (si != query.end()) search = si->second;
         auto ti = query.find("type"); if (ti != query.end()) dtype = ti->second;
         string out = "["; bool first = true;
@@ -565,13 +585,13 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         jsonStringField(req.body, "type", type); if (type.empty()) type = "Daily";
         if (!jsonIntField(req.body, "priority", prio) || prio < 0 || prio > 1000 || !jsonStringField(req.body, "title", title) || trimStr(title).empty())
             return sendErr(fd, 400, "A decision needs a title and a numeric priority.");
-        return sendJson(fd, 201, decisionJson(appendDecision(type, (int)prio, title)));
+        return sendJson(fd, 201, decisionJson(appendDecision(type, (int)prio, title, user)));
     }
     if (path.rfind("/api/decisions/", 0) == 0 && method == "DELETE") {
         string id = path.substr(string("/api/decisions/").size());
         FileLock lock("decisions.txt");
         auto lines = readLines(joinPath(g_dataDir, "decisions.txt")); vector<string> kept; bool found = false;
-        for (auto& line : lines) { if (splitPipe(line)[0] == id) { found = true; continue; } kept.push_back(line); }
+        for (auto& line : lines) { auto p = splitPipe(line); string owner = p.size() >= 6 ? p[5] : ""; if (p.size() >= 1 && p[0] == id && ownerVisible(owner, user)) { found = true; continue; } kept.push_back(line); }
         if (!found) return sendErr(fd, 404, "Decision ID not found.");
         writeLines(joinPath(g_dataDir, "decisions.txt"), kept);
         return sendJson(fd, 200, "{\"deleted\":" + jsonStr(id) + "}");
@@ -593,7 +613,7 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         else if (urgency >= 7) suggestion = "Complete this task soon.";
         else suggestion = "Schedule this task for later.";
         int score = (int)(urgency * 2 + importance * 3);
-        Decision rec = appendDecision("Daily", score, "Daily decision: " + suggestion);
+        Decision rec = appendDecision("Daily", score, "Daily decision: " + suggestion, user);
         return sendJson(fd, 200, "{\"suggestion\":" + jsonStr(suggestion) + ",\"score\":" + to_string(score) + ",\"record\":" + decisionJson(rec) + "}");
     }
 
@@ -609,7 +629,7 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         stable_sort(tasks.begin(), tasks.end(), [](const MtTask& a, const MtTask& b) { return a.urgency > b.urgency; });
         vector<MtTask> rec, skip; long long re = eBudget, rt = tBudget;
         for (auto& t : tasks) {
-            if (t.energy <= re && t.minutes <= rt) { re -= t.energy; rt -= t.minutes; rec.push_back(t); appendDecision("MultiTask", t.urgency * 5, "Multi-task: " + t.name); }
+            if (t.energy <= re && t.minutes <= rt) { re -= t.energy; rt -= t.minutes; rec.push_back(t); appendDecision("MultiTask", t.urgency * 5, "Multi-task: " + t.name, user); }
             else skip.push_back(t);
         }
         auto arrJson = [](const vector<MtTask>& v) { string s = "["; bool f = true; for (auto& t : v) { if (!f) s += ","; f = false; s += "{\"name\":" + jsonStr(t.name) + ",\"deadlineUrgency\":" + to_string(t.urgency) + ",\"energy\":" + to_string(t.energy) + ",\"time\":" + to_string(t.minutes) + "}"; } return s + "]"; };
@@ -627,7 +647,8 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
     }
 
     if (path == "/api/tasks" && method == "GET") {
-        auto tasks = loadTasks(); string out = "["; bool first = true;
+        auto allTasks = loadTasks(); vector<Task> tasks; for (auto& t : allTasks) if (ownerVisible(t.owner, user)) tasks.push_back(t);
+        string out = "["; bool first = true;
         for (auto& t : tasks) { if (!first) out += ","; first = false; out += taskJson(t); }
         return sendJson(fd, 200, out + "]");
     }
@@ -643,7 +664,7 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         FileLock lock("tasks.txt");
         auto tasks = loadTasks(); long long nextId = 1;
         for (auto& t : tasks) { try { nextId = max(nextId, stoll(t.id) + 1); } catch (...) {} }
-        Task task; task.id = to_string(nextId); task.title = title; task.urgency = (int)urgency; task.importance = (int)importance; task.deadline = deadline; task.status = "Pending";
+        Task task; task.id = to_string(nextId); task.title = title; task.urgency = (int)urgency; task.importance = (int)importance; task.deadline = deadline; task.status = "Pending"; task.owner = user;
         tasks.push_back(task); saveTasks(tasks);
         return sendJson(fd, 201, taskJson(task));
     }
@@ -651,8 +672,9 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         string id = path.substr(string("/api/tasks/").size());
         FileLock lock("tasks.txt");
         auto tasks = loadTasks(); Task* found = nullptr;
-        for (auto& t : tasks) if (t.id == id) found = &t;
+        for (auto& t : tasks) if (t.id == id && ownerVisible(t.owner, user)) found = &t;
         if (!found) return sendErr(fd, 404, "Task not found.");
+        if (found->owner.empty()) found->owner = user;
         if (method == "DELETE") {
             vector<Task> kept; for (auto& t : tasks) if (t.id != id) kept.push_back(t);
             saveTasks(kept); return sendJson(fd, 200, "{\"deleted\":" + jsonStr(id) + "}");
@@ -675,7 +697,8 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
     }
 
     if (path == "/api/transactions" && method == "GET") {
-        auto txs = loadTxs(); string out = "["; bool first = true;
+        auto allTxs = loadTxs(); vector<Tx> txs; for (auto& t : allTxs) if (ownerVisible(t.owner, user)) txs.push_back(t);
+        string out = "["; bool first = true;
         for (auto& t : txs) { if (!first) out += ","; first = false;
             out += "{\"date\":" + jsonStr(t.date) + ",\"type\":" + jsonStr(t.type) + ",\"category\":" + jsonStr(t.category) + ",\"amount\":" + fmtNum(t.amount) + ",\"note\":" + jsonStr(t.note) + "}"; }
         return sendJson(fd, 200, out + "]");
@@ -687,12 +710,13 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         if (!validDate(date) || (type != "income" && type != "expense") || trimStr(category).empty() || amount < 0)
             return sendErr(fd, 400, "Need a real date, type income/expense, a category, and an amount >= 0.");
         FileLock lock("transactions.txt");
-        appendLine(joinPath(g_dataDir, "transactions.txt"), date + "|" + type + "|" + sanitize(category) + "|" + fmtNumRaw(amount) + "|" + sanitize(note));
+        appendLine(joinPath(g_dataDir, "transactions.txt"), date + "|" + type + "|" + sanitize(category) + "|" + fmtNumRaw(amount) + "|" + sanitize(note) + "|" + user);
         return sendJson(fd, 201, "{\"date\":" + jsonStr(date) + ",\"type\":" + jsonStr(type) + ",\"category\":" + jsonStr(category) + ",\"amount\":" + fmtNum(amount) + ",\"note\":" + jsonStr(note) + "}");
     }
 
     if (path == "/api/savings" && method == "GET") {
-        auto goals = loadGoals(); string out = "["; bool first = true;
+        auto allGoals = loadGoals(); vector<Goal> goals; for (auto& g : allGoals) if (ownerVisible(g.owner, user)) goals.push_back(g);
+        string out = "["; bool first = true;
         for (auto& g : goals) { if (!first) out += ","; first = false;
             out += "{\"name\":" + jsonStr(g.name) + ",\"target\":" + fmtNum(g.target) + ",\"saved\":" + fmtNum(g.saved) + "}"; }
         return sendJson(fd, 200, out + "]");
@@ -702,8 +726,8 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         if (trimStr(name).empty() || target <= 0) return sendErr(fd, 400, "A goal needs a name and a target > 0.");
         FileLock lock("savings_goals.txt");
         auto goals = loadGoals();
-        for (auto& g : goals) if (g.name == name) return sendErr(fd, 400, "A goal with that name already exists.");
-        goals.push_back({name, target, 0}); saveGoals(goals);
+        for (auto& g : goals) if (g.name == name && ownerVisible(g.owner, user)) return sendErr(fd, 400, "A goal with that name already exists.");
+        Goal ng; ng.name = name; ng.target = target; ng.saved = 0; ng.owner = user; goals.push_back(ng); saveGoals(goals);
         return sendJson(fd, 201, "{\"name\":" + jsonStr(name) + ",\"target\":" + fmtNum(target) + ",\"saved\":0}");
     }
     if (path == "/api/savings/add" && method == "POST") {
@@ -711,14 +735,14 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         if (amount <= 0) return sendErr(fd, 400, "Amount must be > 0.");
         FileLock lock("savings_goals.txt");
         auto goals = loadGoals();
-        for (auto& g : goals) if (g.name == name) { g.saved += amount; saveGoals(goals);
+        for (auto& g : goals) if (g.name == name && ownerVisible(g.owner, user)) { if (g.owner.empty()) g.owner = user; g.saved += amount; saveGoals(goals);
             return sendJson(fd, 200, "{\"name\":" + jsonStr(g.name) + ",\"target\":" + fmtNum(g.target) + ",\"saved\":" + fmtNum(g.saved) + "}"); }
         return sendErr(fd, 404, "Goal not found.");
     }
 
     if (path == "/api/habits" && method == "GET") {
         map<string, vector<string>> byHabit;
-        for (auto& line : readLines(joinPath(g_dataDir, "habit_log.txt"))) { auto p = splitPipe(line); if (p.size() >= 2) byHabit[p[0]].push_back(p[1]); }
+        for (auto& line : readLines(joinPath(g_dataDir, "habit_log.txt"))) { auto p = splitPipe(line); string owner = p.size() >= 3 ? p[2] : ""; if (p.size() >= 2 && ownerVisible(owner, user)) byHabit[p[0]].push_back(p[1]); }
         string out = "["; bool first = true;
         for (auto& kv : byHabit) { sort(kv.second.begin(), kv.second.end()); if (!first) out += ","; first = false;
             out += "{\"habit\":" + jsonStr(kv.first) + ",\"dates\":["; bool f2 = true; for (auto& d : kv.second) { if (!f2) out += ","; f2 = false; out += jsonStr(d); } out += "]}"; }
@@ -728,16 +752,16 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         string habit, date; jsonStringField(req.body, "habit", habit); jsonStringField(req.body, "date", date);
         if (date.empty()) date = todayStr();
         if (trimStr(habit).empty() || !validDate(date)) return sendErr(fd, 400, "Need a habit name and a real YYYY-MM-DD date.");
-        { FileLock lock("habit_log.txt"); appendLine(joinPath(g_dataDir, "habit_log.txt"), sanitize(habit) + "|" + date); }
-        return sendJson(fd, 201, habitStreakJson(habit));
+        { FileLock lock("habit_log.txt"); appendLine(joinPath(g_dataDir, "habit_log.txt"), sanitize(habit) + "|" + date + "|" + user); }
+        return sendJson(fd, 201, habitStreakJson(habit, user));
     }
     if (path == "/api/habits/streak" && method == "GET") {
         auto it = query.find("habit"); if (it == query.end() || it->second.empty()) return sendErr(fd, 400, "Give a habit name, for example ?habit=Reading.");
-        return sendJson(fd, 200, habitStreakJson(it->second));
+        return sendJson(fd, 200, habitStreakJson(it->second, user));
     }
 
     if (path == "/api/reports" && method == "GET") {
-        auto txs = loadTxs();
+        auto allTxs = loadTxs(); vector<Tx> txs; for (auto& t : allTxs) if (ownerVisible(t.owner, user)) txs.push_back(t);
         auto mi = query.find("month"), wi = query.find("week_end");
         vector<Tx> selected; string label;
         if (mi != query.end() && !mi->second.empty()) {
@@ -761,16 +785,21 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
     if (path == "/api/backup" && method == "POST") {
         if (!fileExists(joinPath(g_dataDir, "decisions.txt"))) return sendErr(fd, 400, "No decision file found to back up.");
         FileLock lock("decisions.txt");
-        auto lines = readLines(joinPath(g_dataDir, "decisions.txt"));
+        auto allLines = readLines(joinPath(g_dataDir, "decisions.txt")); vector<string> lines;
+        for (auto& ln : allLines) { auto p = splitPipe(ln); string owner = p.size() >= 6 ? p[5] : ""; if (ownerVisible(owner, user)) lines.push_back(ln); }
         writeLines(joinPath(g_dataDir, "decisions_backup.txt"), lines);
         return sendJson(fd, 200, "{\"backedUp\":" + to_string(lines.size()) + "}");
     }
     if (path == "/api/restore" && method == "POST") {
         if (!fileExists(joinPath(g_dataDir, "decisions_backup.txt"))) return sendErr(fd, 400, "No backup file found.");
         FileLock lock("decisions.txt");
-        auto lines = readLines(joinPath(g_dataDir, "decisions_backup.txt"));
-        writeLines(joinPath(g_dataDir, "decisions.txt"), lines);
-        return sendJson(fd, 200, "{\"restored\":" + to_string(lines.size()) + "}");
+        auto rawBackup = readLines(joinPath(g_dataDir, "decisions_backup.txt")); vector<string> backupLines;
+        for (auto& ln : rawBackup) { auto p = splitPipe(ln); string owner = p.size() >= 6 ? p[5] : ""; if (ownerVisible(owner, user)) backupLines.push_back(ln); }
+        auto current = readLines(joinPath(g_dataDir, "decisions.txt")); vector<string> kept;
+        for (auto& ln : current) { auto p = splitPipe(ln); string owner = p.size() >= 6 ? p[5] : ""; if (!ownerVisible(owner, user)) kept.push_back(ln); }
+        for (auto& ln : backupLines) kept.push_back(ln);
+        writeLines(joinPath(g_dataDir, "decisions.txt"), kept);
+        return sendJson(fd, 200, "{\"restored\":" + to_string(backupLines.size()) + "}");
     }
 
     // ---- new sections (all mirror the console modules of the same name) ----
@@ -850,7 +879,8 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         // Completed tasks skipped, malformed deadlines flagged.
         string today; auto ti = query.find("today"); if (ti != query.end()) today = ti->second; else today = todayStr();
         if (!validDate(today)) return sendErr(fd, 400, "Today must be a real YYYY-MM-DD date.");
-        auto tasks = loadTasks(); string out = "[";
+        auto allTasks = loadTasks(); vector<Task> tasks; for (auto& t : allTasks) if (ownerVisible(t.owner, user)) tasks.push_back(t);
+        string out = "[";
         bool first = true;
         for (auto& t : tasks) {
             if (t.status == "Completed") continue;
@@ -901,7 +931,8 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         string format = "txt"; auto fi = query.find("format"); if (fi != query.end()) format = fi->second;
         if (format != "txt" && format != "csv") return sendErr(fd, 400, "Format must be txt or csv.");
         FileLock lock("transactions.txt");
-        auto lines = readLines(joinPath(g_dataDir, "transactions.txt"));
+        auto allLines = readLines(joinPath(g_dataDir, "transactions.txt")); vector<string> lines;
+        for (auto& ln : allLines) { auto p = splitPipe(ln); string owner = p.size() >= 6 ? p[5] : ""; if (ownerVisible(owner, user)) lines.push_back(ln); }
         if (!fileExists(joinPath(g_dataDir, "transactions.txt"))) return sendErr(fd, 400, "No transactions file found to export.");
         string content;
         if (format == "txt") {
@@ -934,7 +965,7 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         else if (difficulty >= 4) suggestion = "Divide the problem into smaller tasks.";
         else if (timeM < 15) suggestion = "Make a short and simple plan.";
         else suggestion = "Plan your work and start solving.";
-        Decision rec = appendDecision("Problem", (int)difficulty, "Problem: " + problem + " - " + suggestion);
+        Decision rec = appendDecision("Problem", (int)difficulty, "Problem: " + problem + " - " + suggestion, user);
         return sendJson(fd, 200, "{\"suggestion\":" + jsonStr(suggestion) + ",\"record\":" + decisionJson(rec) + "}");
     }
     if (path == "/api/daily-summary" && method == "POST") {
@@ -948,7 +979,7 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         if (income < 0 || expenses < 0 || completed < 0 || planned <= 0 || completed > planned)
             return sendErr(fd, 400, "Need income/expenses >= 0, planned > 0, and completed 0..planned.");
         double balance = income - expenses; double rate = completed * 100.0 / planned;
-        ostringstream line; line << fixed << setprecision(2) << "Income: " << income << ", Expenses: " << expenses << ", Balance: " << balance << ", Habit completion: " << rate << "%";
+        ostringstream line; line << "User: " << user << ", " << fixed << setprecision(2) << "Income: " << income << ", Expenses: " << expenses << ", Balance: " << balance << ", Habit completion: " << rate << "%";
         { FileLock lock("daily_report.txt"); appendLine(joinPath(g_dataDir, "daily_report.txt"), line.str()); }
         ostringstream os; os << fixed << setprecision(2) << "{\"income\":" << income << ",\"expenses\":" << expenses << ",\"balance\":" << balance << ",\"habitRate\":" << rate << "}";
         return sendJson(fd, 200, os.str());
