@@ -62,7 +62,8 @@ a { color: var(--primary); }
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
-.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1 1 auto; }
+.brand > div { min-width: 0; flex: 1 1 auto; }
 .brand-mark {
   width: 40px; height: 40px; flex: 0 0 40px;
   display: grid; place-items: center;
@@ -71,7 +72,7 @@ a { color: var(--primary); }
 }
 .brand strong { display: block; font-size: 16px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand-sub { display: block; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .who { font-size: 14px; color: var(--muted); white-space: nowrap; }
 .iconbtn {
   width: 40px; height: 40px; border: 1px solid var(--border);
@@ -184,6 +185,14 @@ tr:last-child td { border-bottom: 0; }
 @media (max-width: 420px) {
   .grid { grid-template-columns: 1fr; }
   .brand-mark { width: 34px; height: 34px; flex-basis: 34px; }
+  /* Fix: at 375px the long title was cut off by the viewport because
+     the brand text container could not shrink and the title was
+     forced onto one line. Let it wrap onto two lines inside a
+     taller topbar, so the full title stays visible. */
+  .topbar { height: auto; min-height: 64px; padding: 10px 12px; gap: 8px; align-items: flex-start; }
+  .brand { gap: 8px; align-items: flex-start; }
+  .brand strong { white-space: normal; font-size: 15px; line-height: 1.25; }
+  .iconbtn { flex-shrink: 0; }
 }
 
 /* Landing hero + charts (Phase 5, own design) */
