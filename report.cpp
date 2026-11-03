@@ -1,4 +1,5 @@
 #include "report.h"
+#include "data_owner.h"
 #include "file_lock.h"
 #include <iostream>
 #include <fstream>
@@ -74,7 +75,8 @@ void generateReport() {
     }
 
     file << fixed << setprecision(2);
-    file << "Income: " << income
+    file << "User: " << g_currentUser
+         << ", Income: " << income
          << ", Expenses: " << expenses
          << ", Balance: " << balance
          << ", Habit completion: " << habitRate << "%\n";
