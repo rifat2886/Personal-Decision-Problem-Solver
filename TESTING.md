@@ -20,6 +20,15 @@ python3 tests/api_test.py --server-cmd "./cpp_server" --port 8123
 # API regression, Python fallback server (same 36 checks):
 python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8124
 
+# Per-user isolation (Issue 2, 29 checks, both servers):
+# Alice and Bob each create decisions, tasks, transactions, savings
+# and habits; each sees only their own, cross-user PATCH/DELETE is
+# 404, ADMIN sees no other user's records, and legacy records
+# (no owner) are visible to a sole user, hidden with two users,
+# and preserved on disk.
+python3 tests/per_user_test.py --server-cmd "./cpp_server" --port 8180
+python3 tests/per_user_test.py --server-cmd "python3 dashboard/server.py" --port 8181
+
 # Browser test (33 checks + 6 screenshots, needs Playwright + Chromium):
 pip install playwright
 python3 -m playwright install chromium
