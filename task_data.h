@@ -14,6 +14,7 @@ struct Task {
     int importance;
     std::string deadline;
     std::string status;
+    std::string owner;
 };
 
 inline std::vector<Task> taskList;
