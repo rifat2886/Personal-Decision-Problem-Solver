@@ -40,6 +40,12 @@
 - There are no cookies, so there is no cookie-based CSRF: API calls
   require an `Authorization: Bearer <token>` header, which a plain
   cross-site form cannot supply.
+- Sessions live only in the running server's memory and are NOT
+  shared between servers: a token issued by the C++ server is not
+  valid on the Python server and vice versa. Run only one server
+  at a time (the normal `start-dashboard` flow) and log in again
+  if you switch servers; the password hash itself is shared, so
+  the same account works on either server after a fresh login.
 
 ### Rate limiting and request limits
 - Login: 5 failed attempts per username in 5 minutes, then HTTP 429
