@@ -8,6 +8,26 @@ made the branch unbuildable; that error was found by a fresh clone
 audit and fixed file-by-file in plain text, with no file deleted);
 55 remote branches, none deleted.
 
+## 2026-11-03 code-review fixes (Issues 1, 2, 3, user-approved)
+- Issue 1: `dashboard/cpp_server.cpp` now includes
+  `../password_hash.h` unconditionally; it was previously inside
+  the non-Windows `#else` block only, so a Windows build could not
+  see `pdps_hash` (used by register/login/password-change).
+- Issue 3: console `main.cpp` now requires login for menus 9-43
+  (including calculators that read stored data); Register, Login,
+  Logout and Exit are unchanged.
+- Issue 2: per-user isolation in both servers and the console
+  (see SECURITY.md): owner is the last pipe field of every
+  personal record; reads/writes/edits/deletes/reports/backups/
+  restores/exports filter by the logged-in user; ADMIN sees no
+  other user's records; legacy records (no owner) are visible
+  only to a sole user, hidden with two or more users, and never
+  deleted or silently assigned. New test
+  `tests/per_user_test.py` (29 checks, Alice/Bob, both servers)
+  passes, plus console two-user and legacy checks.
+- No teammate branch, commit, file or contribution was deleted;
+  no merge, no public deployment, no ci.yml push in this round.
+
 ## 2026-11-03 follow-up round (after f38fc78)
 - Verified f38fc78 from a fresh clone: all files plain text
   (no base64 blobs), `make` builds clean, 0 warnings.
