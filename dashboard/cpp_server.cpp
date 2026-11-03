@@ -79,10 +79,14 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/file.h>
-#include "../password_hash.h"
 #include <sys/socket.h>
 #include <unistd.h>
 #endif
+// password_hash.h is portable (no POSIX calls) and is used by shared
+// code (register/login/password-change), so it must be included on
+// Windows too. It was previously inside the non-Windows branch only,
+// which broke the Windows build. See Issue 1 in AUDIT.md.
+#include "../password_hash.h"
 
 using namespace std;
 
