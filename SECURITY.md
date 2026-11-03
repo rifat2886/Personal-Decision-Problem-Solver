@@ -1,1 +1,88 @@
-IyBTZWN1cml0eQoKIyMgV2hhdCB3YXMgZml4ZWQgaW4gdGhpcyBicmFuY2gKCiMjIyBQYXNzd29yZHMgYXJlIGhhc2hlZCwgbm90IHN0b3JlZCBpbiBwbGFpbiB0ZXh0Ci0gTmV3IGFjY291bnRzIHN0b3JlIG9ubHkgYSBQQktERjItSE1BQy1TSEEyNTYgaGFzaAogIChgcGJrZGYyJDEwMDAwMCQ8c2FsdC1oZXg+JDxoYXNoLWhleD5gLCAxMDAsMDAwIGl0ZXJhdGlvbnMsIDE2LWJ5dGUKICByYW5kb20gc2FsdCBwZXIgdXNlciksIGltcGxlbWVudGVkIGluIGBwYXNzd29yZF9oYXNoLmhgIChDKyspIGFuZAogIHdpdGggYGhhc2hsaWIucGJrZGYyX2htYWNgIGluIGBkYXNoYm9hcmQvc2VydmVyLnB5YCAoUHl0aG9uKSBpbiB0aGUKICBpZGVudGljYWwgZm9ybWF0LCBzbyB0aGUgY29uc29sZSBhcHAsIHRoZSBDKysgc2VydmVyIGFuZCB0aGUgUHl0aG9uCiAgZmFsbGJhY2sgYWxsIHZlcmlmeSBlYWNoIG90aGVyJ3MgY3JlZGVudGlhbHMuCi0gQXJnb24yaWQgd2FzIGNvbnNpZGVyZWQgYnV0IG5lZWRzIGFuIGV4dGVybmFsIGxpYnJhcnksIHdoaWNoIHRoaXMKICBwcm9qZWN0IGRvZXMgbm90IGRlcGVuZCBvbjsgUEJLREYyLUhNQUMtU0hBMjU2IGlzIGEgcmVjb2duaXNlZAogIHN0YW5kYXJkIEtERiAoUkZDIDgwMTgpIGFuZCBpcyByZXByb2R1Y2libGUgZnJvbSB0aGUgUHl0aG9uCiAgc3RhbmRhcmQgbGlicmFyeS4KLSBUaGUgdXNlcnMudHh0IGZvcm1hdCBpcyB1bmNoYW5nZWQgaW4gc2hhcGU6IHN0aWxsCiAgYHVzZXJuYW1lIGNyZWRlbnRpYWwgUk9MRWAsIG9uZSB1c2VyIHBlciBsaW5lLCBubyBzcGFjZXMgaW4gYW55CiAgZmllbGQuIE9ubHkgdGhlIGNyZWRlbnRpYWwgZmllbGQgY2hhbmdlcyBmcm9tIHBsYWludGV4dCB0byBoYXNoLgoKIyMjIEJhY2t3YXJkLWNvbXBhdGlibGUgbWlncmF0aW9uIChubyBkYXRhIGxvc3MpCi0gT2xkIHBsYWludGV4dCBhY2NvdW50cyBzdGlsbCBsb2cgaW4uIE9uIGEgc3VjY2Vzc2Z1bCBsb2dpbiwgdGhlCiAgY3JlZGVudGlhbCBpcyBpbW1lZGlhdGVseSByZXdyaXR0ZW4gYXMgYSBoYXNoLCB1bmRlciB0aGUgdXNlcnMudHh0CiAgbG9jaywgaW4gdGhlIGNvbnNvbGUgYXBwLCB0aGUgQysrIHNlcnZlciBhbmQgdGhlIFB5dGhvbiBzZXJ2ZXIuCiAgQWZ0ZXIgdGhhdCBsb2dpbiwgbm8gcGxhaW50ZXh0IHJlbWFpbnMgZm9yIHRoYXQgdXNlci4KLSBCZWZvcmUgbWlncmF0aW5nLCBiYWNrIHVwIHVzZXJzLnR4dCAoY29weSBpdCB0byB1c2Vyc19iYWNrdXAudHh0KS4KICBSb2xsYmFjazogcmVzdG9yZSB0aGUgYmFja2VkLXVwIHVzZXJzLnR4dCBmaWxlOyBvbGQgcGxhaW50ZXh0CiAgYWNjb3VudHMgd2lsbCBsb2cgaW4gYWdhaW4gYW5kIHJlLW1pZ3JhdGUgb24gbmV4dCBsb2dpbiwgYW5kCiAgYWxyZWFkeS1oYXNoZWQgYWNjb3VudHMga2VlcCB3b3JraW5nICh0aGVpciBoYXNoZXMgYXJlIHN0aWxsCiAgdmFsaWQgYWZ0ZXIgYSByZXN0b3JlIG9mIHRoZSBwcmUtbWlncmF0aW9uIGZpbGUgb25seSBpZiB0aGUKICByZXN0b3JlIGlzIGZyb20gYmVmb3JlIGFueSBwYXNzd29yZCBjaGFuZ2Ug4oCUIHNlZSAiUmVjb3ZlcnkiIGJlbG93KS4KLSBQYXNzd29yZCBjaGFuZ2UgYWx3YXlzIHN0b3JlcyB0aGUgbmV3IHBhc3N3b3JkIGFzIGEgaGFzaC4KLSBQYXNzd29yZHMgYXJlIG5ldmVyIHJldHVybmVkIGJ5IGFueSBBUEkgKGFkbWluL3VzZXJzIHJldHVybgogIHVzZXJuYW1lICsgcm9sZSBvbmx5KSBhbmQgbmV2ZXIgd3JpdHRlbiB0byBhbnkgbG9nIGZpbGUuCgojIyMgU2Vzc2lvbnMKLSBTZXNzaW9uIHRva2VucyBhcmUgcmFuZG9tIChDKys6IE9TIHJhbmRvbV9kZXZpY2UgKyBjb3VudGVyOwogIFB5dGhvbjogc2VjcmV0cy50b2tlbl9oZXgpIGFuZCBhcmUgbmV2ZXIgd3JpdHRlbiB0byBhIGZpbGUuCi0gU2Vzc2lvbnMgZXhwaXJlIGFmdGVyIDEyIGhvdXJzOyBleHBpcmVkIHRva2VucyBhcmUgcmVqZWN0ZWQgYW5kCiAgcmVtb3ZlZC4gTG9nb3V0IGRlbGV0ZXMgdGhlIHRva2VuIGltbWVkaWF0ZWx5LgotIFRoZXJlIGFyZSBubyBjb29raWVzLCBzbyB0aGVyZSBpcyBubyBjb29raWUtYmFzZWQgQ1NSRjogQVBJIGNhbGxzCiAgcmVxdWlyZSBhbiBgQXV0aG9yaXphdGlvbjogQmVhcmVyIDx0b2tlbj5gIGhlYWRlciwgd2hpY2ggYSBwbGFpbgogIGNyb3NzLXNpdGUgZm9ybSBjYW5ub3Qgc3VwcGx5LgoKIyMjIFJhdGUgbGltaXRpbmcgYW5kIHJlcXVlc3QgbGltaXRzCi0gTG9naW46IDUgZmFpbGVkIGF0dGVtcHRzIHBlciB1c2VybmFtZSBpbiA1IG1pbnV0ZXMsIHRoZW4gSFRUUCA0MjkKICB1bnRpbCB0aGUgd2luZG93IHBhc3Nlcy4gQSBzdWNjZXNzZnVsIGxvZ2luIGNsZWFycyB0aGUgY291bnQuCi0gUmVxdWVzdCBib2RpZXMgYXJlIGNhcHBlZCBhdCAxIE1pQiAoQysrOiBIVFRQIDQxMzsgUHl0aG9uOiByZWplY3RlZAogIGFzIGludmFsaWQgSlNPTikuIFN0YXRpYyBzZXJ2aW5nIGlzIGFsbG93LWxpc3RlZCB0bwogIGluZGV4Lmh0bWwgLyBzdHlsZS5jc3MgLyBhcHAuanMgb25seSAoYC91c2Vycy50eHRgIHJldHVybnMgNDA0KS4KCiMjIyBGaWxlIGFjY2VzcyBhbmQgbG9ja2luZwotIFRoZSBjb25zb2xlIGFwcCwgdGhlIEMrKyBzZXJ2ZXIgYW5kIHRoZSBQeXRob24gZmFsbGJhY2sgYWxsIGxvY2sKICB0aGUgc2FtZSBwZXItZmlsZSBgPGRhdGFmaWxlPi5sb2NrYCBmaWxlcyAoZmxvY2sgb24gUE9TSVgsCiAgTG9ja0ZpbGVFeCBvbiBXaW5kb3dzLCBmY250bC9tc3ZjcnQgaW4gUHl0aG9uKSwgc28gY29uY3VycmVudAogIHdyaXRlcyBmcm9tIGRpZmZlcmVudCBwcm9jZXNzZXMgY2Fubm90IGxvc2UgdXBkYXRlcy4gVGhpcyB3YXMKICB0ZXN0ZWQgd2l0aCAxMCBwYXJhbGxlbCBzYXZpbmdzIGFkZHMgdG90YWxsaW5nIGV4YWN0bHkgMTAwMC4KLSBMb2NrIGZpbGVzIChgKi5sb2NrYCkgYXJlIGVtcHR5IG1hcmtlciBmaWxlcyBhbmQgYXJlIGdpdC1pZ25vcmVkOwogIHRoZXkgY29udGFpbiBubyBkYXRhLgoKIyMgV2hhdCBpcyBzdGlsbCBOT1Qgc2FmZSwgYW5kIG11c3Qgbm90IGJlIHNraXBwZWQKCjEuICoqTm8gSFRUUFMgaW4gdGhlIHNlcnZlcnMgdGhlbXNlbHZlcy4qKiBCb3RoIHNlcnZlcnMgYmluZCB0bwogICBsb2NhbGhvc3Qgb25seSAoMTI3LjAuMC4xKSBieSBkZWZhdWx0LiBEbyBOT1QgYmluZCB0aGVtIHRvCiAgIDAuMC4wLjAgb3IgZXhwb3NlIHRoZW0gdG8gdGhlIHB1YmxpYyBpbnRlcm5ldCB1bmxlc3MgdGhleSBzaXQKICAgYmVoaW5kIGEgcmV2ZXJzZSBwcm94eSB0aGF0IHRlcm1pbmF0ZXMgVExTIChIVFRQUykgYW5kIHRoZQogICBvcGVyYXRvciBoYXMgdmVyaWZpZWQgaXQuIFB1YmxpYyBkZXBsb3ltZW50IGlzIE5PVCBkb25lIGluIHRoaXMKICAgYnJhbmNoIGFuZCBtdXN0IG5vdCBiZSBhc3N1bWVkLgoyLiAqKk5vIGFjY291bnQgcmVjb3ZlcnkuKiogVGhlcmUgaXMgbm8gcGFzc3dvcmQgcmVzZXQsIGVtYWlsCiAgIHZlcmlmaWNhdGlvbiwgb3IgImZvcmdvdCBwYXNzd29yZCIgZmxvdy4gSWYgYSB1c2VyIGZvcmdldHMgdGhlaXIKICAgcGFzc3dvcmQsIGFuIEFETUlOIG11c3QgZGVsZXRlIGFuZCByZS1jcmVhdGUgdGhlIGFjY291bnQsIG9yCiAgIHJlc3RvcmUgdXNlcnMudHh0IGZyb20gYmFja3VwLgozLiAqKk5vIHBlci1JUCByYXRlIGxpbWl0aW5nLioqIFRoZSBsb2dpbiBsaW1pdCBpcyBwZXIgdXNlcm5hbWUsIG5vdAogICBwZXIgSVAsIHNvIGEgZGlzdHJpYnV0ZWQgZ3Vlc3NpbmcgYXR0YWNrIGFjcm9zcyBtYW55IHVzZXJuYW1lcwogICBpcyBub3QgYmxvY2tlZCBieSB0aGlzIGNvbnRyb2wgYWxvbmUuIERvIG5vdCBleHBvc2UgdGhlIGxvZ2luCiAgIGVuZHBvaW50IHB1YmxpY2x5IHdpdGhvdXQgYW4gYWRkaXRpb25hbCBwcm94eS1sZXZlbCBsaW1pdC4KNC4gKipTZXNzaW9uIHRva2VucyBhcmUgYmVhcmVyIHRva2Vucy4qKiBBbnlvbmUgd2hvIGNvcGllcyBhIHRva2VuCiAgIGNhbiB1c2UgaXQgdW50aWwgaXQgZXhwaXJlcyAoMTJoKSBvciBpcyBsb2dnZWQgb3V0LiBEbyBub3Qgc2hhcmUKICAgdG9rZW5zLCBzY3JlZW5zaG90cyBvZiB0b2tlbnMsIG9yIGJyb3dzZXIgc3RvcmFnZSBjb250ZW50cy4KCiMjIFJlY292ZXJ5Ci0gSWYgdXNlcnMudHh0IGlzIGNvcnJ1cHRlZCwgcmVzdG9yZSBpdCBmcm9tIGEgYmFja3VwIGNvcHkuIFRoZQogIGNvbnNvbGUgYXBwIGFuZCBib3RoIHNlcnZlcnMgcmVhZCB1c2Vycy50eHQgb24gZXZlcnkgbG9naW4sIHNvIGEKICByZXN0b3JlZCBmaWxlIHRha2VzIGVmZmVjdCBpbW1lZGlhdGVseSAobm8gcmVzdGFydCBuZWVkZWQgZm9yIHRoZQogIFB5dGhvbiBzZXJ2ZXI7IHRoZSBDKysgc2VydmVyIGFsc28gcmUtcmVhZHMgaXQgcGVyIHJlcXVlc3QpLgotIElmIGEgbWlncmF0aW9uIGlzIGludGVycnVwdGVkIG1pZC13cml0ZSwgdXNlcnMudHh0IGlzIHdyaXR0ZW4KICB1bmRlciBhIGxvY2sgYXMgYSB3aG9sZSBmaWxlOyBhIHBhcnRpYWwgd3JpdGUgZnJvbSBhIGNyYXNoZWQKICBwcm9jZXNzIGNhbiBsZWF2ZSBhIHRydW5jYXRlZCBmaWxlIOKAlCByZXN0b3JlIGZyb20gYmFja3VwIGluIHRoYXQKICBjYXNlLCB0aGVuIGxvZyBpbiBhZ2FpbiB0byByZS1taWdyYXRlLgo=
+# Security
+
+## What was fixed in this branch
+
+### Passwords are hashed, not stored in plain text
+- New accounts store only a PBKDF2-HMAC-SHA256 hash
+  (`pbkdf2$100000$<salt-hex>$<hash-hex>`, 100,000 iterations, 16-byte
+  random salt per user), implemented in `password_hash.h` (C++) and
+  with `hashlib.pbkdf2_hmac` in `dashboard/server.py` (Python) in the
+  identical format, so the console app, the C++ server and the Python
+  fallback all verify each other's credentials.
+- Argon2id was considered but needs an external library, which this
+  project does not depend on; PBKDF2-HMAC-SHA256 is a recognised
+  standard KDF (RFC 8018) and is reproducible from the Python
+  standard library.
+- The users.txt format is unchanged in shape: still
+  `username credential ROLE`, one user per line, no spaces in any
+  field. Only the credential field changes from plaintext to hash.
+
+### Backward-compatible migration (no data loss)
+- Old plaintext accounts still log in. On a successful login, the
+  credential is immediately rewritten as a hash, under the users.txt
+  lock, in the console app, the C++ server and the Python server.
+  After that login, no plaintext remains for that user.
+- Before migrating, back up users.txt (copy it to users_backup.txt).
+  Rollback: restore the backed-up users.txt file; old plaintext
+  accounts will log in again and re-migrate on next login, and
+  already-hashed accounts keep working (their hashes are still
+  valid after a restore of the pre-migration file only if the
+  restore is from before any password change — see "Recovery" below).
+- Password change always stores the new password as a hash.
+- Passwords are never returned by any API (admin/users return
+  username + role only) and never written to any log file.
+
+### Sessions
+- Session tokens are random (C++: OS random_device + counter;
+  Python: secrets.token_hex) and are never written to a file.
+- Sessions expire after 12 hours; expired tokens are rejected and
+  removed. Logout deletes the token immediately.
+- There are no cookies, so there is no cookie-based CSRF: API calls
+  require an `Authorization: Bearer <token>` header, which a plain
+  cross-site form cannot supply.
+
+### Rate limiting and request limits
+- Login: 5 failed attempts per username in 5 minutes, then HTTP 429
+  until the window passes. A successful login clears the count.
+- Request bodies are capped at 1 MiB (C++: HTTP 413; Python: rejected
+  as invalid JSON). Static serving is allow-listed to
+  index.html / style.css / app.js only (`/users.txt` returns 404).
+
+### File access and locking
+- The console app, the C++ server and the Python fallback all lock
+  the same per-file `<datafile>.lock` files (flock on POSIX,
+  LockFileEx on Windows, fcntl/msvcrt in Python), so concurrent
+  writes from different processes cannot lose updates. This was
+  tested with 10 parallel savings adds totalling exactly 1000.
+- Lock files (`*.lock`) are empty marker files and are git-ignored;
+  they contain no data.
+
+## What is still NOT safe, and must not be skipped
+
+1. **No HTTPS in the servers themselves.** Both servers bind to
+   localhost only (127.0.0.1) by default. Do NOT bind them to
+   0.0.0.0 or expose them to the public internet unless they sit
+   behind a reverse proxy that terminates TLS (HTTPS) and the
+   operator has verified it. Public deployment is NOT done in this
+   branch and must not be assumed.
+2. **No account recovery.** There is no password reset, email
+   verification, or "forgot password" flow. If a user forgets their
+   password, an ADMIN must delete and re-create the account, or
+   restore users.txt from backup.
+3. **No per-IP rate limiting.** The login limit is per username, not
+   per IP, so a distributed guessing attack across many usernames
+   is not blocked by this control alone. Do not expose the login
+   endpoint publicly without an additional proxy-level limit.
+4. **Session tokens are bearer tokens.** Anyone who copies a token
+   can use it until it expires (12h) or is logged out. Do not share
+   tokens, screenshots of tokens, or browser storage contents.
+
+## Recovery
+- If users.txt is corrupted, restore it from a backup copy. The
+  console app and both servers read users.txt on every login, so a
+  restored file takes effect immediately (no restart needed for the
+  Python server; the C++ server also re-reads it per request).
+- If a migration is interrupted mid-write, users.txt is written
+  under a lock as a whole file; a partial write from a crashed
+  process can leave a truncated file — restore from backup in that
+  case, then log in again to re-migrate.
