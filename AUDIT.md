@@ -94,3 +94,52 @@ for new/migrated accounts, plaintext only until an old account's
 next login), decisions.txt, tasks.txt, transactions.txt,
 savings_goals.txt, habit_log.txt, daily_report.txt,
 financial_report.txt/.csv, error_log.txt, decisions_backup.txt.
+
+## Main-branch stray workflow file — 2026-11-03 (documented, NOT deleted, NOT merged)
+
+Main moved from f21865c to 418420baf8f2ad6024a2602775c998a931c239a7
+(commit "Add CI workflow configuration", 2026-11-03 11:21 +06, author
+Rifat, NOT pushed by Muse). That commit adds exactly one file, with a
+literally broken name: `workflows/workflow.yml‐.` — the directory is
+`workflows/`, not `.github/workflows/`, and the filename ends with a
+hyphen-like character and a dot. Its content is only 13 lines: a single
+checkout step, no build or test step, and a reference to a
+`secrets.workflow_token` secret. Consequences, verified 2026-11-03:
+
+- GitHub Actions does NOT discover this file, so it does NOT run any
+  CI. It must not be described as a working workflow.
+- It is on main only, not on the PR #64 branch. The PR branch head is
+  still 44571fbee9fa93c93ceb036a96493af0aeb06bc2.
+- No file was deleted or overwritten to document this. Whether the
+  stray file is later removed, renamed, or replaced is a separate
+  decision for the repository owner, with explicit permission.
+- The correct workflow is the prepared `.github/workflows/ci.yml`
+  (Linux ubuntu-latest + Windows windows-latest jobs, no secrets,
+  build list exactly matching the 35 root .cpp files, tests
+  console_test.py / api_test.py). It is held ready locally and is
+  NOT pushed while the Workflows permission is ineffective.
+
+## Workflows permission — still BLOCKED (not assumed effective)
+
+The Muse GitHub App installation still lacks Workflows: Read and
+write. The last push attempt for `.github/workflows/ci.yml` returned
+403 "Resource not accessible by integration", while a non-workflow
+write in the same session succeeded, proving the failure is
+workflow-specific. Per GitHub's App model, the App developer must first
+add Workflows to the App registration, and the installation owner must
+then approve the new permission; until both happen, the old permission
+set continues. No bypass is used, and permission is not assumed
+effective from a repository-access change alone.
+
+## Compatibility of new main 418420b with PR #64 (checked, NOT merged)
+
+Merge-base of main and backend-testing-dashboard is f21865c. Since
+that base, main changed only the one stray file above; the PR branch
+changed 36 files and added the dashboard, tests, docs and launchers.
+No path was changed on both sides, so a simulated merge
+(`git merge-tree`, no commit, no branch change) produced tree
+6ebf52ea0ca40e3f4765d8a486cdb294b2b47b9d with NO conflicts: 95
+files = the PR branch's 94 files plus main's 1 stray file. A future
+merge would therefore keep the stray file unless the owner separately
+decides to remove it. PR #64 stays open; no merge, delete, or public
+deployment was done in this round.
