@@ -1,1 +1,117 @@
-I2luY2x1ZGUgInRhc2tfcHJpb3JpdGl6YXRpb24uaCIKI2luY2x1ZGUgInRhc2tfZGF0YS5oIgojaW5jbHVkZSAidGFza19zdG9yZS5oIgojaW5jbHVkZSAiZGVjaXNpb25fc3RvcmUuaCIKCiNpbmNsdWRlIDxpb3N0cmVhbT4KI2luY2x1ZGUgPGFsZ29yaXRobT4KI2luY2x1ZGUgPGxpbWl0cz4KdXNpbmcgbmFtZXNwYWNlIHN0ZDsKCnZvaWQgdGFza1ByaW9yaXRpemF0aW9uKCkgewogICAgaW50IGNvdW50OwoKICAgIGNvdXQgPDwgIlxuPT09PT0gVEFTSyBQUklPUklUSVpBVElPTiA9PT09PVxuIjsKICAgIGNvdXQgPDwgIk51bWJlciBvZiB0YXNrcyAoMS0yMCk6ICI7CgogICAgaWYgKCEoY2luID4+IGNvdW50KSB8fCBjb3VudCA8IDEgfHwgY291bnQgPiAyMCkgewogICAgICAgIGNvdXQgPDwgIkludmFsaWQgbnVtYmVyIG9mIHRhc2tzIVxuIjsKICAgICAgICBjaW4uY2xlYXIoKTsKICAgICAgICBjaW4uaWdub3JlKDEwMDAwLCAnXG4nKTsKICAgICAgICByZXR1cm47CiAgICB9CgogICAgY2luLmlnbm9yZShudW1lcmljX2xpbWl0czxzdHJlYW1zaXplPjo6bWF4KCksICdcbicpOwogICAgdGFza0xpc3QuY2xlYXIoKTsKCiAgICBmb3IgKGludCBpID0gMDsgaSA8IGNvdW50OyBpKyspIHsKICAgICAgICBUYXNrIHRhc2s7CgogICAgICAgIGNvdXQgPDwgIlxuVGFzayAiIDw8IGkgKyAxIDw8ICIgdGl0bGU6ICI7CiAgICAgICAgZ2V0bGluZShjaW4sIHRhc2sudGl0bGUpOwoKICAgICAgICBpZiAodGFzay50aXRsZS5lbXB0eSgpKSB7CiAgICAgICAgICAgIGNvdXQgPDwgIlRpdGxlIGNhbm5vdCBiZSBlbXB0eS5cbiI7CiAgICAgICAgICAgIGktLTsKICAgICAgICAgICAgY29udGludWU7CiAgICAgICAgfQoKICAgICAgICAvLyBGSVggKGJhY2tlbmQgZmluYWwgdGVzdGluZyk6IHJldHJ5IGEgc2luZ2xlIGludmFsaWQgZmllbGQKICAgICAgICAvLyBpbnN0ZWFkIG9mIGRpc2NhcmRpbmcgZXZlcnkgdGFzayBlbnRlcmVkIHNvIGZhciBhbmQKICAgICAgICAvLyBmb3JjaW5nIHRoZSB1c2VyIHRvIHJlc3RhcnQgdGhpcyBmZWF0dXJlLgogICAgICAgIHdoaWxlICh0cnVlKSB7CiAgICAgICAgICAgIGNvdXQgPDwgIlVyZ2VuY3kgKDEtMTApOiAiOwogICAgICAgICAgICBpZiAoY2luID4+IHRhc2sudXJnZW5jeSAmJgogICAgICAgICAgICAgICAgdGFzay51cmdlbmN5ID49IDEgJiYgdGFzay51cmdlbmN5IDw9IDEwKQogICAgICAgICAgICAgICAgYnJlYWs7CiAgICAgICAgICAgIGlmIChjaW4uZW9mKCkpIHsKICAgICAgICAgICAgICAgIGNvdXQgPDwgIklucHV0IGNsb3NlZC4gQWJvcnRpbmcgdGFzayBwcmlvcml0aXphdGlvbi5cbiI7CiAgICAgICAgICAgICAgICB0YXNrTGlzdC5jbGVhcigpOwogICAgICAgICAgICAgICAgcmV0dXJuOwogICAgICAgICAgICB9CiAgICAgICAgICAgIGNvdXQgPDwgIkludmFsaWQgdXJnZW5jeS4gUGxlYXNlIGVudGVyIGEgbnVtYmVyIGZyb20gMSB0byAxMC5cbiI7CiAgICAgICAgICAgIGNpbi5jbGVhcigpOwogICAgICAgICAgICBjaW4uaWdub3JlKDEwMDAwLCAnXG4nKTsKICAgICAgICB9CgogICAgICAgIHdoaWxlICh0cnVlKSB7CiAgICAgICAgICAgIGNvdXQgPDwgIkltcG9ydGFuY2UgKDEtMTApOiAiOwogICAgICAgICAgICBpZiAoY2luID4+IHRhc2suaW1wb3J0YW5jZSAmJgogICAgICAgICAgICAgICAgdGFzay5pbXBvcnRhbmNlID49IDEgJiYgdGFzay5pbXBvcnRhbmNlIDw9IDEwKQogICAgICAgICAgICAgICAgYnJlYWs7CiAgICAgICAgICAgIGlmIChjaW4uZW9mKCkpIHsKICAgICAgICAgICAgICAgIGNvdXQgPDwgIklucHV0IGNsb3NlZC4gQWJvcnRpbmcgdGFzayBwcmlvcml0aXphdGlvbi5cbiI7CiAgICAgICAgICAgICAgICB0YXNrTGlzdC5jbGVhcigpOwogICAgICAgICAgICAgICAgcmV0dXJuOwogICAgICAgICAgICB9CiAgICAgICAgICAgIGNvdXQgPDwgIkludmFsaWQgaW1wb3J0YW5jZS4gUGxlYXNlIGVudGVyIGEgbnVtYmVyIGZyb20gMSB0byAxMC5cbiI7CiAgICAgICAgICAgIGNpbi5jbGVhcigpOwogICAgICAgICAgICBjaW4uaWdub3JlKDEwMDAwLCAnXG4nKTsKICAgICAgICB9CgogICAgICAgIGNpbi5pZ25vcmUobnVtZXJpY19saW1pdHM8c3RyZWFtc2l6ZT46Om1heCgpLCAnXG4nKTsKCiAgICAgICAgY291dCA8PCAiRGVhZGxpbmUgKFlZWVktTU0tREQsIG9yIGJsYW5rKTogIjsKICAgICAgICBnZXRsaW5lKGNpbiwgdGFzay5kZWFkbGluZSk7CgogICAgICAgIHRhc2suc3RhdHVzID0gIlBlbmRpbmciOwogICAgICAgIHRhc2tMaXN0LnB1c2hfYmFjayh0YXNrKTsKICAgIH0KCiAgICBzb3J0KHRhc2tMaXN0LmJlZ2luKCksIHRhc2tMaXN0LmVuZCgpLAogICAgICAgICBbXShjb25zdCBUYXNrJiBhLCBjb25zdCBUYXNrJiBiKSB7CiAgICAgICAgICAgICBpbnQgc2NvcmVBID0gYS51cmdlbmN5ICogMiArIGEuaW1wb3J0YW5jZSAqIDM7CiAgICAgICAgICAgICBpbnQgc2NvcmVCID0gYi51cmdlbmN5ICogMiArIGIuaW1wb3J0YW5jZSAqIDM7CiAgICAgICAgICAgICByZXR1cm4gc2NvcmVBID4gc2NvcmVCOwogICAgICAgICB9KTsKCiAgICBjb3V0IDw8ICJcbj09PT09IFBSSU9SSVRJWkVEIFRBU0tTID09PT09XG4iOwoKICAgIGZvciAoc2l6ZV90IGkgPSAwOyBpIDwgdGFza0xpc3Quc2l6ZSgpOyBpKyspIHsKICAgICAgICBpbnQgc2NvcmUgPSB0YXNrTGlzdFtpXS51cmdlbmN5ICogMgogICAgICAgICAgICAgICAgICArIHRhc2tMaXN0W2ldLmltcG9ydGFuY2UgKiAzOwoKICAgICAgICBjb3V0IDw8IGkgKyAxIDw8ICIuICIgPDwgdGFza0xpc3RbaV0udGl0bGUKICAgICAgICAgICAgIDw8ICIgfCBTY29yZTogIiA8PCBzY29yZQogICAgICAgICAgICAgPDwgIiB8IERlYWRsaW5lOiAiCiAgICAgICAgICAgICA8PCAodGFza0xpc3RbaV0uZGVhZGxpbmUuZW1wdHkoKQogICAgICAgICAgICAgICAgID8gIk5vdCBzZXQiIDogdGFza0xpc3RbaV0uZGVhZGxpbmUpCiAgICAgICAgICAgICA8PCAiIHwgU3RhdHVzOiAiIDw8IHRhc2tMaXN0W2ldLnN0YXR1cyA8PCAnXG4nOwoKICAgICAgICAvLyBTYXZlIGVhY2ggcHJpb3JpdGlzZWQgdGFzayBhcyBhIGRlY2lzaW9uIHJlY29yZCBzbwogICAgICAgIC8vIFNlYXJjaC9GaWx0ZXIvU29ydCBjYW4gZmluZCBwcmlvcml0aXNlZCB0YXNrcy4gVGhlCiAgICAgICAgLy8gZGVhZGxpbmUgaXMgY2FycmllZCBpbiB0aGUgdGl0bGUgZm9yIHZpc2liaWxpdHkuCiAgICAgICAgYXBwZW5kRGVjaXNpb25SZWNvcmQoIlRhc2siLCBzY29yZSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICB0YXNrTGlzdFtpXS50aXRsZSArCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICh0YXNrTGlzdFtpXS5kZWFkbGluZS5lbXB0eSgpCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPyAiIgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDogIiAoZGVhZGxpbmUgIiArCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgdGFza0xpc3RbaV0uZGVhZGxpbmUgKyAiKSIpKTsKICAgIH0KCiAgICAvLyBQZXJzaXN0IHRoZSB0YXNrcyBzbyBUYXNrIFN0YXR1cywgRGVhZGxpbmUgQWxlcnQgYW5kIHRoZQogICAgLy8gZGFzaGJvYXJkIGFsbCBzZWUgdGhlbSAocHJldmlvdXNseSB0aGV5IHdlcmUgaW4tbWVtb3J5IG9ubHkKICAgIC8vIGFuZCBsb3N0IHdoZW4gdGhlIGNvbnNvbGUgYXBwIGV4aXRlZCkuCiAgICBwZHBzX3Rhc2tzOjphcHBlbmRUYXNrcyh0YXNrTGlzdCk7CiAgICBjb3V0IDw8ICJUYXNrcyBzYXZlZCB0byB0YXNrcy50eHQuXG4iOwp9Cg==
+#include "task_prioritization.h"
+#include "task_data.h"
+#include "task_store.h"
+#include "decision_store.h"
+
+#include <iostream>
+#include <algorithm>
+#include <limits>
+using namespace std;
+
+void taskPrioritization() {
+    int count;
+
+    cout << "\n===== TASK PRIORITIZATION =====\n";
+    cout << "Number of tasks (1-20): ";
+
+    if (!(cin >> count) || count < 1 || count > 20) {
+        cout << "Invalid number of tasks!\n";
+        cin.clear();
+        cin.ignore(10000, '\n');
+        return;
+    }
+
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    taskList.clear();
+
+    for (int i = 0; i < count; i++) {
+        Task task;
+
+        cout << "\nTask " << i + 1 << " title: ";
+        getline(cin, task.title);
+
+        if (task.title.empty()) {
+            cout << "Title cannot be empty.\n";
+            i--;
+            continue;
+        }
+
+        // FIX (backend final testing): retry a single invalid field
+        // instead of discarding every task entered so far and
+        // forcing the user to restart this feature.
+        while (true) {
+            cout << "Urgency (1-10): ";
+            if (cin >> task.urgency &&
+                task.urgency >= 1 && task.urgency <= 10)
+                break;
+            if (cin.eof()) {
+                cout << "Input closed. Aborting task prioritization.\n";
+                taskList.clear();
+                return;
+            }
+            cout << "Invalid urgency. Please enter a number from 1 to 10.\n";
+            cin.clear();
+            cin.ignore(10000, '\n');
+        }
+
+        while (true) {
+            cout << "Importance (1-10): ";
+            if (cin >> task.importance &&
+                task.importance >= 1 && task.importance <= 10)
+                break;
+            if (cin.eof()) {
+                cout << "Input closed. Aborting task prioritization.\n";
+                taskList.clear();
+                return;
+            }
+            cout << "Invalid importance. Please enter a number from 1 to 10.\n";
+            cin.clear();
+            cin.ignore(10000, '\n');
+        }
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Deadline (YYYY-MM-DD, or blank): ";
+        getline(cin, task.deadline);
+
+        task.status = "Pending";
+        taskList.push_back(task);
+    }
+
+    sort(taskList.begin(), taskList.end(),
+         [](const Task& a, const Task& b) {
+             int scoreA = a.urgency * 2 + a.importance * 3;
+             int scoreB = b.urgency * 2 + b.importance * 3;
+             return scoreA > scoreB;
+         });
+
+    cout << "\n===== PRIORITIZED TASKS =====\n";
+
+    for (size_t i = 0; i < taskList.size(); i++) {
+        int score = taskList[i].urgency * 2
+                  + taskList[i].importance * 3;
+
+        cout << i + 1 << ". " << taskList[i].title
+             << " | Score: " << score
+             << " | Deadline: "
+             << (taskList[i].deadline.empty()
+                 ? "Not set" : taskList[i].deadline)
+             << " | Status: " << taskList[i].status << '\n';
+
+        // Save each prioritised task as a decision record so
+        // Search/Filter/Sort can find prioritised tasks. The
+        // deadline is carried in the title for visibility.
+        appendDecisionRecord("Task", score,
+                             taskList[i].title +
+                                 (taskList[i].deadline.empty()
+                                      ? ""
+                                      : " (deadline " +
+                                            taskList[i].deadline + ")"));
+    }
+
+    // Persist the tasks so Task Status, Deadline Alert and the
+    // dashboard all see them (previously they were in-memory only
+    // and lost when the console app exited).
+    pdps_tasks::appendTasks(taskList);
+    cout << "Tasks saved to tasks.txt.\n";
+}
