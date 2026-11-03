@@ -3,8 +3,9 @@
 
 // Persistent task storage, shared by the console app and the dashboard.
 //
-// Format (exactly the dashboard's tasks.txt format, unchanged):
-//   id|title|urgency|importance|deadline|status
+// Format (exactly the dashboard's tasks.txt format, plus owner):
+//   id|title|urgency|importance|deadline|status|owner
+// Records without an owner are legacy records (see data_owner.h).
 // Titles, deadlines and statuses are sanitised so a user-supplied '|'
 // cannot break the format. Corrupted lines (fewer than 6 fields, or a
 // non-numeric urgency/importance) are skipped, not fatal.
@@ -21,6 +22,7 @@
 // to migrate.
 
 #include "file_lock.h"
+#include "data_owner.h"
 #include "task_data.h"
 
 #include <fstream>
@@ -51,8 +53,10 @@ inline std::vector<std::string> splitPipe(const std::string& line) {
     return parts;
 }
 
-// Load all tasks from tasks.txt (empty if the file does not exist).
-// Also fills the shared in-memory taskList, for callers that use it.
+// Load only the current user's tasks from tasks.txt (empty if the
+// file does not exist). Also fills the shared in-memory taskList.
+// Other users' and legacy records are NOT returned here, so callers
+// cannot see them; saveTasks() preserves them on disk (see below).
 inline std::vector<Task> loadTasks() {
     FileLock lock("tasks.txt");
     std::vector<Task> tasks;
@@ -76,19 +80,40 @@ inline std::vector<Task> loadTasks() {
             continue;
         t.deadline = parts[4];
         t.status = parts[5];
+        t.owner = parts.size() >= 7 ? parts[6] : "";
+        if (!ownerVisibleFor(t.owner)) continue;
         tasks.push_back(t);
     }
     taskList = tasks;
     return tasks;
 }
 
-// Rewrite tasks.txt with the given tasks, preserving ids where set
-// and assigning new sequential ids where empty. Held under the lock.
+// Rewrite tasks.txt with the given (current user's) tasks, preserving
+// ids where set and assigning new sequential ids where empty, AND
+// preserving every other user's and legacy line verbatim on disk.
+// Held under the lock.
 inline void saveTasks(const std::vector<Task>& tasks) {
     FileLock lock("tasks.txt");
+    std::vector<std::string> kept;
+    {
+        std::ifstream input("tasks.txt");
+        std::string line;
+        while (std::getline(input, line)) {
+            if (line.empty()) continue;
+            auto parts = splitPipe(line);
+            if (parts.size() < 6) { kept.push_back(line); continue; }
+            std::string owner = parts.size() >= 7 ? parts[6] : "";
+            if (!ownerVisibleFor(owner)) kept.push_back(line);
+        }
+    }
     std::ofstream output("tasks.txt");
     if (!output) return;
+    for (auto& ln : kept) output << ln << '\n';
     int nextId = 1;
+    for (auto& ln : kept) {
+        auto parts = splitPipe(ln);
+        if (!parts.empty()) { try { int v = std::stoi(parts[0]); if (v >= nextId) nextId = v + 1; } catch (...) {} }
+    }
     for (const auto& t : tasks) {
         std::string id = t.id;
         if (id.empty()) {
@@ -101,10 +126,11 @@ inline void saveTasks(const std::vector<Task>& tasks) {
                 id = std::to_string(nextId);
             }
         }
+        std::string owner = t.owner.empty() ? g_currentUser : t.owner;
         output << id << '|' << sanitizeField(t.title) << '|'
                << t.urgency << '|' << t.importance << '|'
                << sanitizeField(t.deadline) << '|'
-               << sanitizeField(t.status) << '\n';
+               << sanitizeField(t.status) << '|' << owner << '\n';
         try {
             int v = std::stoi(id);
             if (v >= nextId) nextId = v + 1;
@@ -153,7 +179,7 @@ inline void appendTasks(const std::vector<Task>& newTasks) {
         output << nextId++ << '|' << sanitizeField(t.title) << '|'
                << t.urgency << '|' << t.importance << '|'
                << sanitizeField(t.deadline) << '|'
-               << sanitizeField(t.status) << '\n';
+               << sanitizeField(t.status) << '|' << g_currentUser << '\n';
     }
 }
 
