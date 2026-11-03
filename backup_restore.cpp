@@ -1,9 +1,11 @@
 #include "backup_restore.h"
+#include "data_owner.h"
 #include "error_handler.h"
 #include "file_lock.h"
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <vector>
 
 using namespace std;
 
@@ -38,7 +40,7 @@ void backupDecisions()
     string line;
 
     while (getline(source, line))
-        backup << line << '\n';
+        if (lineVisibleFor(line, 5)) backup << line << '\n';
 
     cout << "Backup created successfully!\n";
 }
@@ -81,10 +83,20 @@ void restoreDecisions()
         return;
     }
 
+    // Restore only the current user's records; preserve others.
+    vector<string> kept;
+    {
+        ifstream current("decisions.txt");
+        string cur;
+        while (getline(current, cur)) {
+            if (!lineVisibleFor(cur, 5)) kept.push_back(cur);
+        }
+    }
+    for (auto& ln : kept) destination << ln << '\n';
     string line;
 
     while (getline(backup, line))
-        destination << line << '\n';
+        if (lineVisibleFor(line, 5)) destination << line << '\n';
 
     cout << "Decisions restored successfully!\n";
 }
