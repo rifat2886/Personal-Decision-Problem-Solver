@@ -1,1 +1,58 @@
-I2luY2x1ZGUgImxvZ2luLmgiCiNpbmNsdWRlICJmaWxlX2xvY2suaCIKI2luY2x1ZGUgInBhc3N3b3JkX2hhc2guaCIKCiNpbmNsdWRlIDxpb3N0cmVhbT4KI2luY2x1ZGUgPGZzdHJlYW0+CiNpbmNsdWRlIDxzdHJpbmc+CiNpbmNsdWRlIDx2ZWN0b3I+Cgpib29sIGxvZ2luVXNlcihzdGQ6OnN0cmluZyYgY3VycmVudFVzZXIsIGJvb2wmIGlzQWRtaW4pCnsKICAgIHN0ZDo6c3RyaW5nIHVzZXJuYW1lLCBwYXNzd29yZDsKCiAgICBzdGQ6OmNvdXQgPDwgIkVudGVyIHVzZXJuYW1lOiAiOwogICAgc3RkOjpjaW4gPj4gdXNlcm5hbWU7CgogICAgc3RkOjpjb3V0IDw8ICJFbnRlciBwYXNzd29yZDogIjsKICAgIHN0ZDo6Y2luID4+IHBhc3N3b3JkOwoKICAgIHN0ZDo6aWZzdHJlYW0gZmlsZSgidXNlcnMudHh0Iik7CgogICAgc3RkOjpzdHJpbmcgdSwgcCwgcm9sZTsKCiAgICB3aGlsZSAoZmlsZSA+PiB1ID4+IHAgPj4gcm9sZSkKICAgIHsKICAgICAgICBpZiAodSA9PSB1c2VybmFtZSAmJiBwZHBzX2hhc2g6OnZlcmlmeVBhc3N3b3JkKHBhc3N3b3JkLCBwKSkKICAgICAgICB7CiAgICAgICAgICAgIGN1cnJlbnRVc2VyID0gdTsKICAgICAgICAgICAgaXNBZG1pbiA9IChyb2xlID09ICJBRE1JTiIpOwoKICAgICAgICAgICAgLy8gQmFja3dhcmQtY29tcGF0aWJsZSBtaWdyYXRpb246IGEgcGxhaW50ZXh0IGNyZWRlbnRpYWwKICAgICAgICAgICAgLy8gdGhhdCBqdXN0IG1hdGNoZWQgaXMgcmV3cml0dGVuIGFzIGEgaGFzaCwgdW5kZXIgbG9jay4KICAgICAgICAgICAgLy8gQWZ0ZXIgdGhpcyBsb2dpbiwgbm8gcGxhaW50ZXh0IHJlbWFpbnMgZm9yIHRoaXMgdXNlci4KICAgICAgICAgICAgaWYgKCFwZHBzX2hhc2g6OmlzSGFzaGVkKHApKQogICAgICAgICAgICB7CiAgICAgICAgICAgICAgICBGaWxlTG9jayBsb2NrKCJ1c2Vycy50eHQiKTsKICAgICAgICAgICAgICAgIHN0ZDo6aWZzdHJlYW0gaW4oInVzZXJzLnR4dCIpOwogICAgICAgICAgICAgICAgc3RkOjp2ZWN0b3I8c3RkOjpzdHJpbmc+IHJlY29yZHM7CiAgICAgICAgICAgICAgICBzdGQ6OnN0cmluZyBydSwgcnAsIHJyOwogICAgICAgICAgICAgICAgd2hpbGUgKGluID4+IHJ1ID4+IHJwID4+IHJyKQogICAgICAgICAgICAgICAgewogICAgICAgICAgICAgICAgICAgIGlmIChydSA9PSB1c2VybmFtZSkKICAgICAgICAgICAgICAgICAgICAgICAgcnAgPSBwZHBzX2hhc2g6Omhhc2hQYXNzd29yZChwYXNzd29yZCk7CiAgICAgICAgICAgICAgICAgICAgcmVjb3Jkcy5wdXNoX2JhY2socnUgKyAiICIgKyBycCArICIgIiArIHJyKTsKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIGluLmNsb3NlKCk7CiAgICAgICAgICAgICAgICBzdGQ6Om9mc3RyZWFtIG91dCgidXNlcnMudHh0Iik7CiAgICAgICAgICAgICAgICBmb3IgKGNvbnN0IGF1dG8mIHIgOiByZWNvcmRzKSBvdXQgPDwgciA8PCAnXG4nOwogICAgICAgICAgICB9CgogICAgICAgICAgICBzdGQ6OmNvdXQgPDwgIkxvZ2luIHN1Y2Nlc3NmdWwhXG4iOwogICAgICAgICAgICByZXR1cm4gdHJ1ZTsKICAgICAgICB9CiAgICB9CgogICAgc3RkOjpjb3V0IDw8ICJJbnZhbGlkIHVzZXJuYW1lIG9yIHBhc3N3b3JkIVxuIjsKICAgIHJldHVybiBmYWxzZTsKfQ==
+#include "login.h"
+#include "file_lock.h"
+#include "password_hash.h"
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+
+bool loginUser(std::string& currentUser, bool& isAdmin)
+{
+    std::string username, password;
+
+    std::cout << "Enter username: ";
+    std::cin >> username;
+
+    std::cout << "Enter password: ";
+    std::cin >> password;
+
+    std::ifstream file("users.txt");
+
+    std::string u, p, role;
+
+    while (file >> u >> p >> role)
+    {
+        if (u == username && pdps_hash::verifyPassword(password, p))
+        {
+            currentUser = u;
+            isAdmin = (role == "ADMIN");
+
+            // Backward-compatible migration: a plaintext credential
+            // that just matched is rewritten as a hash, under lock.
+            // After this login, no plaintext remains for this user.
+            if (!pdps_hash::isHashed(p))
+            {
+                FileLock lock("users.txt");
+                std::ifstream in("users.txt");
+                std::vector<std::string> records;
+                std::string ru, rp, rr;
+                while (in >> ru >> rp >> rr)
+                {
+                    if (ru == username)
+                        rp = pdps_hash::hashPassword(password);
+                    records.push_back(ru + " " + rp + " " + rr);
+                }
+                in.close();
+                std::ofstream out("users.txt");
+                for (const auto& r : records) out << r << '\n';
+            }
+
+            std::cout << "Login successful!\n";
+            return true;
+        }
+    }
+
+    std::cout << "Invalid username or password!\n";
+    return false;
+}
