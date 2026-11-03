@@ -260,14 +260,18 @@ https://github.com/rifat2886/Personal-Decision-Problem-Solver
 | `search_history.txt`, `error_log.txt`, `system_log.txt` | Search history, error log, and history-action log. |
 | `financial_report.txt`, `financial_report.csv`, `daily_report.txt` | Exported reports. |
 
-Task prioritization data (`taskList` in `task_data.h`) is kept
-in memory only for the current run: run Task Prioritization (11)
-before Task Status (13) or Deadline Alert (14) in the same session.
+Task prioritization data is persisted to `tasks.txt` (see
+`task_store.h`): Task Status (13) and Deadline Alert (14) load
+`tasks.txt` first, so they work in a new session and the console
+app and the dashboard share the same tasks.
 
-> Security note: this is a coursework console app. Passwords are
-> stored in plain text in `users.txt` and usernames/passwords
-> cannot contain spaces (they are space-separated in that file).
-> Do not reuse a real password here.
+> Security note: this is a coursework console app. New passwords
+> are stored as PBKDF2 hashes in `users.txt` (old plaintext
+> accounts are upgraded to a hash on their next login), and
+> usernames/passwords cannot contain spaces (they are
+> space-separated in that file). The servers bind to localhost
+> only and have no HTTPS, so do not expose them to the internet
+> and do not reuse a real password here. See SECURITY.md.
 
 ## Future Improvements
 
