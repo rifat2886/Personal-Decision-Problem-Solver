@@ -1,1 +1,68 @@
-IyBQZXJzb25hbCBEZWNpc2lvbiAmIFByb2JsZW0gU29sdmVyIOKAlCBleHBsaWNpdCBidWlsZCwgbm8gIiouY3BwIGJsaW5kbHkiLgojCiMgVGhlIHByb2R1Y3Rpb24gY29uc29sZSBhcHAgaXMgYnVpbHQgZnJvbSBleGFjdGx5IHRoZSAzNSBzb3VyY2UgZmlsZXMKIyBsaXN0ZWQgYmVsb3cuIFRlc3QgZmlsZXMgd2l0aCB0aGVpciBvd24gbWFpbigpIChmb3IgZXhhbXBsZSBTd2VldHkncwojIGxvZ2ljX3ByaW9yaXR5X3Rlc3QuY3BwLCB3aGljaCBsaXZlcyBvbiB0aGUgbG9naWMtcHJpb3JpdHkgYnJhbmNoCiMgYW5kIGlzIE5PVCBpbiB0aGlzIHRyZWUpIG11c3QgbmV2ZXIgYmUgYWRkZWQgdG8gdGhpcyBsaXN0LCBvciB0aGUKIyBidWlsZCB3b3VsZCBmYWlsIHdpdGggZHVwbGljYXRlIG1haW4oKSBkZWZpbml0aW9ucy4gVGhlIENJIHdvcmtmbG93CiMgYnVpbGRzIHRoYXQgdGVzdCBzdGFuZGFsb25lIGluIGEgdGVtcG9yYXJ5IGRpcmVjdG9yeSBpbnN0ZWFkLgojCiMgICBtYWtlICAgICAgICAgICAgICAtPiBidWlsZCBjb25zb2xlIGFwcCAocHJvamVjdCkgYW5kIEMrKyBzZXJ2ZXIgKGNwcF9zZXJ2ZXIpCiMgICBtYWtlIHByb2plY3QgICAgICAtPiBjb25zb2xlIGFwcCBvbmx5CiMgICBtYWtlIGNwcF9zZXJ2ZXIgICAtPiBDKysgZGFzaGJvYXJkIHNlcnZlciBvbmx5CiMgICBtYWtlIGNsZWFuICAgICAgICAtPiByZW1vdmUgYnVpbHQgYmluYXJpZXMKIwojIFdpbmRvd3M6IHVzZSBzdGFydC1kYXNoYm9hcmQuYmF0IC8gc3RhcnQtY29uc29sZS5iYXQgaW5zdGVhZCBvZiBtYWtlLAojIG9yIHVzZSBtaW5ndzMyLW1ha2Ugd2l0aCB0aGUgc2FtZSB0YXJnZXRzLgoKQ1hYID89IGcrKwpDWFhGTEFHUyA/PSAtc3RkPWMrKzE3IC1XYWxsIC1XZXh0cmEKClNPVVJDRVMgPSBhZG1pbi5jcHAgXAogICAgICAgICAgYmFja3VwX3Jlc3RvcmUuY3BwIFwKICAgICAgICAgIGJ1ZGdldC5jcHAgXAogICAgICAgICAgY29tcGFyZV9vcHRpb25zLmNwcCBcCiAgICAgICAgICBjb250cm9sLmNwcCBcCiAgICAgICAgICBkYWlseV9kZWNpc2lvbi5jcHAgXAogICAgICAgICAgZGVhZGxpbmVfYWxlcnQuY3BwIFwKICAgICAgICAgIGRlY2lzaW9uX2V4cGxhbmF0aW9uLmNwcCBcCiAgICAgICAgICBkZWxldGVfY29uZmlybWF0aW9uLmNwcCBcCiAgICAgICAgICBlcnJvcl9oYW5kbGVyLmNwcCBcCiAgICAgICAgICBleHBvcnRfcmVwb3J0LmNwcCBcCiAgICAgICAgICBmaWx0ZXJfc29ydC5jcHAgXAogICAgICAgICAgaGFiaXQuY3BwIFwKICAgICAgICAgIGhhYml0X3N0cmVhay5jcHAgXAogICAgICAgICAgaGlzdG9yeS5jcHAgXAogICAgICAgICAgaW5jb21lX2V4cGVuc2UuY3BwIFwKICAgICAgICAgIGlucHV0X3ZhbGlkYXRpb24uY3BwIFwKICAgICAgICAgIGxvZ2luLmNwcCBcCiAgICAgICAgICBsb2dvdXQuY3BwIFwKICAgICAgICAgIG1haW4uY3BwIFwKICAgICAgICAgIG11bHRpX3Rhc2tfZGVjaXNpb24uY3BwIFwKICAgICAgICAgIHBhc3N3b3JkX2NoYW5nZS5jcHAgXAogICAgICAgICAgcGFzc3dvcmRfdmFsaWRhdGlvbi5jcHAgXAogICAgICAgICAgcGVyaW9kX3JlcG9ydC5jcHAgXAogICAgICAgICAgcHJpb3JpdHlfY2FsY3VsYXRvci5jcHAgXAogICAgICAgICAgcHJvYmxlbS5jcHAgXAogICAgICAgICAgcHJvZmlsZS5jcHAgXAogICAgICAgICAgcmVnaXN0cmF0aW9uLmNwcCBcCiAgICAgICAgICByZXBvcnQuY3BwIFwKICAgICAgICAgIHNhdmluZ3NfZ29hbC5jcHAgXAogICAgICAgICAgc2VhcmNoX2hpc3RvcnkuY3BwIFwKICAgICAgICAgIHN0dWR5X3BsYW5uZXIuY3BwIFwKICAgICAgICAgIHRhc2tfcHJpb3JpdGl6YXRpb24uY3BwIFwKICAgICAgICAgIHRhc2tfc3RhdHVzLmNwcCBcCiAgICAgICAgICB0aW1lX2FsbG9jYXRpb24uY3BwCgphbGw6IHByb2plY3QgY3BwX3NlcnZlcgoKcHJvamVjdDogJChTT1VSQ0VTKSAqLmgKCSQoQ1hYKSAkKENYWEZMQUdTKSAtbyBwcm9qZWN0ICQoU09VUkNFUykKCmNwcF9zZXJ2ZXI6IGRhc2hib2FyZC9jcHBfc2VydmVyLmNwcCBwYXNzd29yZF9oYXNoLmgKCSQoQ1hYKSAkKENYWEZMQUdTKSAtcHRocmVhZCAtbyBjcHBfc2VydmVyIGRhc2hib2FyZC9jcHBfc2VydmVyLmNwcAoKY2xlYW46CglybSAtZiBwcm9qZWN0IHByb2plY3QuZXhlIGNwcF9zZXJ2ZXIgY3BwX3NlcnZlci5leGUKCi5QSE9OWTogYWxsIGNsZWFuCg==
+# Personal Decision & Problem Solver — explicit build, no "*.cpp blindly".
+#
+# The production console app is built from exactly the 35 source files
+# listed below. Test files with their own main() (for example Sweety's
+# logic_priority_test.cpp, which lives on the logic-priority branch
+# and is NOT in this tree) must never be added to this list, or the
+# build would fail with duplicate main() definitions. The CI workflow
+# builds that test standalone in a temporary directory instead.
+#
+#   make              -> build console app (project) and C++ server (cpp_server)
+#   make project      -> console app only
+#   make cpp_server   -> C++ dashboard server only
+#   make clean        -> remove built binaries
+#
+# Windows: use start-dashboard.bat / start-console.bat instead of make,
+# or use mingw32-make with the same targets.
+
+CXX ?= g++
+CXXFLAGS ?= -std=c++17 -Wall -Wextra
+
+SOURCES = admin.cpp \
+          backup_restore.cpp \
+          budget.cpp \
+          compare_options.cpp \
+          control.cpp \
+          daily_decision.cpp \
+          deadline_alert.cpp \
+          decision_explanation.cpp \
+          delete_confirmation.cpp \
+          error_handler.cpp \
+          export_report.cpp \
+          filter_sort.cpp \
+          habit.cpp \
+          habit_streak.cpp \
+          history.cpp \
+          income_expense.cpp \
+          input_validation.cpp \
+          login.cpp \
+          logout.cpp \
+          main.cpp \
+          multi_task_decision.cpp \
+          password_change.cpp \
+          password_validation.cpp \
+          period_report.cpp \
+          priority_calculator.cpp \
+          problem.cpp \
+          profile.cpp \
+          registration.cpp \
+          report.cpp \
+          savings_goal.cpp \
+          search_history.cpp \
+          study_planner.cpp \
+          task_prioritization.cpp \
+          task_status.cpp \
+          time_allocation.cpp
+
+all: project cpp_server
+
+project: $(SOURCES) *.h
+	$(CXX) $(CXXFLAGS) -o project $(SOURCES)
+
+cpp_server: dashboard/cpp_server.cpp password_hash.h
+	$(CXX) $(CXXFLAGS) -pthread -o cpp_server dashboard/cpp_server.cpp
+
+clean:
+	rm -f project project.exe cpp_server cpp_server.exe
+
+.PHONY: all clean
