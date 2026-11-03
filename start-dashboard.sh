@@ -1,14 +1,1 @@
-#!/bin/sh
-# Personal Decision & Problem Solver - dashboard starter (Linux/macOS)
-# Builds the C++ server if needed, then serves the dashboard on http://127.0.0.1:8000/
-# Data files live in this repository directory (same files the console app uses).
-# Do NOT expose this server to the internet: passwords are stored in plain text
-# in users.txt (inherited C++ format). See dashboard/README.md, "Security".
-set -e
-cd "$(dirname "$0")"
-if [ ! -x ./cpp_server ]; then
-  echo "Building C++ server..."
-  g++ -std=c++17 -Wall -Wextra -pthread -o cpp_server dashboard/cpp_server.cpp
-fi
-echo "Dashboard: http://127.0.0.1:8000/  (stop with Ctrl+C)"
-exec ./cpp_server --port 8000 --data-dir .
+IyEvYmluL3NoCiMgUGVyc29uYWwgRGVjaXNpb24gJiBQcm9ibGVtIFNvbHZlciAtIGRhc2hib2FyZCBzdGFydGVyIChMaW51eC9tYWNPUykKIyBCdWlsZHMgdGhlIEMrKyBzZXJ2ZXIgaWYgbmVlZGVkLCB0aGVuIHNlcnZlcyB0aGUgZGFzaGJvYXJkIG9uIGh0dHA6Ly8xMjcuMC4wLjE6ODAwMC8KIyBEYXRhIGZpbGVzIGxpdmUgaW4gdGhpcyByZXBvc2l0b3J5IGRpcmVjdG9yeSAoc2FtZSBmaWxlcyB0aGUgY29uc29sZSBhcHAgdXNlcykuCiMgRG8gTk9UIGV4cG9zZSB0aGlzIHNlcnZlciB0byB0aGUgaW50ZXJuZXQ6IHBhc3N3b3JkcyBhcmUgc3RvcmVkIGluIHBsYWluIHRleHQKIyBpbiB1c2Vycy50eHQgKGluaGVyaXRlZCBDKysgZm9ybWF0KS4gU2VlIGRhc2hib2FyZC9SRUFETUUubWQsICJTZWN1cml0eSIuCnNldCAtZQpjZCAiJChkaXJuYW1lICIkMCIpIgppZiBbICEgLXggLi9jcHBfc2VydmVyIF07IHRoZW4KICBlY2hvICJCdWlsZGluZyBDKysgc2VydmVyLi4uIgogIGcrKyAtc3RkPWMrKzE3IC1XYWxsIC1XZXh0cmEgLXB0aHJlYWQgLW8gY3BwX3NlcnZlciBkYXNoYm9hcmQvY3BwX3NlcnZlci5jcHAKZmkKZWNobyAiRGFzaGJvYXJkOiBodHRwOi8vMTI3LjAuMC4xOjgwMDAvICAoc3RvcCB3aXRoIEN0cmwrQykiCmV4ZWMgLi9jcHBfc2VydmVyIC0tcG9ydCA4MDAwIC0tZGF0YS1kaXIgLgo=
