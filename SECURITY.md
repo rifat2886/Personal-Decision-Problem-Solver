@@ -32,6 +32,37 @@
 - Passwords are never returned by any API (admin/users return
   username + role only) and never written to any log file.
 
+### Per-user data isolation (Issue 2, this round)
+- Every personal record now carries an owner as the LAST pipe field:
+  `decisions.txt` `id|date|type|priority|title|owner`,
+  `tasks.txt` `id|title|urgency|importance|deadline|status|owner`,
+  `transactions.txt` `date|type|category|amount|note|owner`,
+  `savings_goals.txt` `name|target|saved|owner`,
+  `habit_log.txt` `habit|date|owner`.
+- The C++ server, the Python server and the console app apply the
+  SAME rules: reads, writes, edits, deletes, reports, backups,
+  restores and exports are filtered by the logged-in user. A user
+  who tries to PATCH or DELETE another user's task/decision gets
+  404 (not "belongs to someone else"), and their own records are
+  untouched. Savings goal names are unique per user, not globally.
+- ADMIN does NOT get access to other users' private records.
+  ADMIN endpoints return username + role only, never personal data.
+- Legacy records (written before this change, with no owner field)
+  are NEVER deleted and NEVER silently assigned to an arbitrary
+  user. They are visible only when users.txt contains exactly one
+  user and that user is the requester; with two or more users they
+  are hidden from every regular user and preserved verbatim on
+  disk. Before any migration, back up the data files
+  (e.g. `decisions.txt.pre-migration-backup`); if ownership is
+  ambiguous, preserve the original data and stop rather than guess.
+- Daily-summary lines in `daily_report.txt` are stamped
+  `User: <username>, ...` so a shared append-only log does not
+  silently mix users' summaries.
+- Tested with two users (Alice and Bob) in
+  `tests/per_user_test.py` (29 checks, both servers) and in the
+  console (Alice's tasks/decisions are invisible to Bob, and vice
+  versa; legacy single-user visible, multi-user hidden, preserved).
+
 ### Sessions
 - Session tokens are random (C++: OS random_device + counter;
   Python: secrets.token_hex) and are never written to a file.
