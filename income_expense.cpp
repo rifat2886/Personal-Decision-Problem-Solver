@@ -1,5 +1,6 @@
 #include "income_expense.h"
 #include "file_lock.h"
+#include "data_owner.h"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -65,7 +66,7 @@ void addTransaction()
     }
 
     file << date << "|" << type << "|" << category
-         << "|" << amount << "|" << note << "\n";
+         << "|" << amount << "|" << note << "|" << g_currentUser << "\n";
 
     file.close();
 
@@ -87,6 +88,7 @@ void showTransactions()
 
     while (getline(file, line))
     {
+        if (!lineVisibleFor(line, 5)) continue;
         cout << line << '\n';
     }
 
@@ -101,6 +103,7 @@ void showBalance()
 
     while (getline(file, line))
     {
+        if (!lineVisibleFor(line, 5)) continue;
         // date|type|category|amount|note
         size_t p1 = line.find('|');
         if (p1 == string::npos) continue;
