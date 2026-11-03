@@ -1,4 +1,5 @@
 #include "export_report.h"
+#include "data_owner.h"
 #include "error_handler.h"
 #include "file_lock.h"
 #include <iostream>
@@ -37,7 +38,7 @@ void exportReportTXT()
     string line;
 
     while (getline(source, line))
-        destination << line << '\n';
+        if (lineVisibleFor(line, 5)) destination << line << '\n';
 
     cout << "TXT report exported to financial_report.txt\n";
 }
@@ -71,6 +72,7 @@ void exportReportCSV()
 
     while (getline(source, line))
     {
+        if (!lineVisibleFor(line, 5)) continue;
         size_t first = line.find('|');
         if (first == string::npos)
             continue;
@@ -83,12 +85,15 @@ void exportReportCSV()
         size_t fourth = line.find('|', third + 1);
         if (fourth == string::npos)
             continue;
+        string note = line.substr(fourth + 1);
+        size_t ownerSep = note.find('|');
+        if (ownerSep != string::npos) note = note.substr(0, ownerSep);
 
         destination << line.substr(0, first) << ','
                     << line.substr(first + 1, second - first - 1) << ','
                     << line.substr(second + 1, third - second - 1) << ','
                     << line.substr(third + 1, fourth - third - 1) << ','
-                    << '"' << line.substr(fourth + 1) << '"' << '\n';
+                    << '"' << note << '"' << '\n';
     }
 
     cout << "CSV report exported to financial_report.csv\n";
