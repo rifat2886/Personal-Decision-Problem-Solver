@@ -1,1 +1,113 @@
-IyEvdXNyL2Jpbi9lbnYgcHl0aG9uMwoiIiJBdXRvbWF0ZWQgY29uc29sZS1hcHAgcmVncmVzc2lvbiB0ZXN0LgoKUnVucyB0aGUgY29uc29sZSBiaW5hcnkgaW4gYSBmcmVzaCB0ZW1wb3JhcnkgZGlyZWN0b3J5IHdpdGggc2NyaXB0ZWQKc3RkaW4sIHRoZW4gY2hlY2tzIHN0ZG91dCBhbmQgdGhlIGRhdGEgZmlsZXMgaXQgd3JvdGUuIE5vIHJlYWwKcGFzc3dvcmRzIGFyZSB1c2VkOyBhbGwgdGVzdCBhY2NvdW50cyBsaXZlIGluIHRoZSB0ZW1wb3JhcnkgZGlyZWN0b3J5LgoKVXNhZ2U6CiAgICBweXRob24zIHRlc3RzL2NvbnNvbGVfdGVzdC5weSAtLWJpbmFyeSBwYXRoL3RvL3Byb2plY3QKCkV4aXQgY29kZSAwID0gYWxsIGNoZWNrcyBwYXNzZWQsIDEgPSBhdCBsZWFzdCBvbmUgY2hlY2sgZmFpbGVkLgoiIiIKaW1wb3J0IGFyZ3BhcnNlCmltcG9ydCBvcwppbXBvcnQgc2h1dGlsCmltcG9ydCBzdWJwcm9jZXNzCmltcG9ydCBzeXMKaW1wb3J0IHRlbXBmaWxlCgpQQVNTID0gMApGQUlMID0gMAoKCmRlZiBjaGVjayhuYW1lLCBjb25kLCBkZXRhaWw9IiIpOgogICAgZ2xvYmFsIFBBU1MsIEZBSUwKICAgIGlmIGNvbmQ6CiAgICAgICAgUEFTUyArPSAxCiAgICAgICAgcHJpbnQoZiIgIFBBU1Mge25hbWV9IikKICAgIGVsc2U6CiAgICAgICAgRkFJTCArPSAxCiAgICAgICAgcHJpbnQoZiIgIEZBSUwge25hbWV9IHtkZXRhaWx9IikKCgpkZWYgcnVuKGJpbmFyeSwgZGF0YV9kaXIsIHNjcmlwdCk6CiAgICBwcm9jID0gc3VicHJvY2Vzcy5ydW4oW2JpbmFyeV0sIGlucHV0PXNjcmlwdCwgY2FwdHVyZV9vdXRwdXQ9VHJ1ZSwKICAgICAgICAgICAgICAgICAgICAgICAgICB0ZXh0PVRydWUsIGN3ZD1kYXRhX2RpciwgdGltZW91dD0zMCkKICAgIHJldHVybiBwcm9jLnJldHVybmNvZGUsIHByb2Muc3Rkb3V0CgoKZGVmIG1haW4oKToKICAgIGFwID0gYXJncGFyc2UuQXJndW1lbnRQYXJzZXIoKQogICAgYXAuYWRkX2FyZ3VtZW50KCItLWJpbmFyeSIsIHJlcXVpcmVkPVRydWUpCiAgICBhcmdzID0gYXAucGFyc2VfYXJncygpCiAgICB0bXAgPSB0ZW1wZmlsZS5ta2R0ZW1wKHByZWZpeD0icGRwcy1jb25zb2xlLXRlc3QtIikKICAgIHByaW50KGYiZGF0YSBkaXI6IHt0bXB9IikKICAgIHRyeToKICAgICAgICAjIFNlc3Npb24gMTogcmVnaXN0ZXIgKGZpcnN0IHVzZXIgPSBBRE1JTiwgaGFzaGVkKSwgbG9naW4sCiAgICAgICAgIyBwcmlvcml0aXNlIGEgdGFzayAocGVyc2lzdHMgdG8gdGFza3MudHh0KSwgbG9nb3V0IHZpYSBtZW51IDAuCiAgICAgICAgIyBNZW51IG51bWJlcnMgYXJlIHRha2VuIGZyb20gdGhlIGNvbnNvbGUgbWFpbiBtZW51OyB0aGUgZXhhY3QKICAgICAgICAjIHByb21wdCB0ZXh0IGlzIG5vdCBhc3NlcnRlZCwgb25seSB0aGUgb3V0Y29tZXMgYmVsb3cuCiAgICAgICAgc2NyaXB0MSA9ICgKICAgICAgICAgICAgIjFcbnRlc3R1c2VyXG5UZXN0UGFzczEyM1xuXG5cbiIgICAjIHJlZ2lzdGVyCiAgICAgICAgICAgICIyXG50ZXN0dXNlclxuVGVzdFBhc3MxMjNcblxuXG4iICAjIGxvZ2luCiAgICAgICAgICAgICIxMVxuMVxuQ29uc29sZVRhc2tcbjhcbjhcbjIwMjYtMTEtMjBcblxuXG4iICAjIHByaW9yaXRpc2UgMSB0YXNrCiAgICAgICAgICAgICIwXG4iCiAgICAgICAgKQogICAgICAgIGNvZGUsIG91dCA9IHJ1bihhcmdzLmJpbmFyeSwgdG1wLCBzY3JpcHQxKQogICAgICAgIGNoZWNrKCJjb25zb2xlIGV4aXQgMCIsIGNvZGUgPT0gMCwgc3RyKGNvZGUpKQogICAgICAgIGNoZWNrKCJyZWdpc3RyYXRpb24gc3VjY2Vzc2Z1bCIsICJSZWdpc3RyYXRpb24gc3VjY2Vzc2Z1bCIgaW4gb3V0KQogICAgICAgIGNoZWNrKCJsb2dpbiBzdWNjZXNzZnVsIiwgIkxvZ2luIHN1Y2Nlc3NmdWwiIGluIG91dCkKICAgICAgICBjaGVjaygidGFzayBzYXZlZCBtZXNzYWdlIiwgIlRhc2tzIHNhdmVkIHRvIHRhc2tzLnR4dCIgaW4gb3V0KQogICAgICAgIHdpdGggb3Blbihvcy5wYXRoLmpvaW4odG1wLCAidXNlcnMudHh0IikpIGFzIGY6CiAgICAgICAgICAgIHVzZXJzID0gZi5yZWFkKCkKICAgICAgICBjaGVjaygiY29uc29sZSBuZXcgYWNjb3VudCBoYXNoZWQiLAogICAgICAgICAgICAgICJUZXN0UGFzczEyMyIgbm90IGluIHVzZXJzIGFuZCAicGJrZGYyJDEwMDAwMCQiIGluIHVzZXJzLCB1c2Vyc1s6NjBdKQogICAgICAgIGNoZWNrKCJjb25zb2xlIGZpcnN0IHVzZXIgQURNSU4iLCAiQURNSU4iIGluIHVzZXJzKQogICAgICAgIHdpdGggb3Blbihvcy5wYXRoLmpvaW4odG1wLCAidGFza3MudHh0IikpIGFzIGY6CiAgICAgICAgICAgIHRhc2tzID0gZi5yZWFkKCkKICAgICAgICBjaGVjaygiY29uc29sZSB0YXNrIHBlcnNpc3RlZCBpbiBkYXNoYm9hcmQgZm9ybWF0IiwKICAgICAgICAgICAgICAiMXxDb25zb2xlVGFza3w4fDh8MjAyNi0xMS0yMHxQZW5kaW5nIiBpbiB0YXNrcywgdGFza3MpCgogICAgICAgICMgU2Vzc2lvbiAyIChmcmVzaCBwcm9jZXNzKTogVGFzayBTdGF0dXMgYW5kIERlYWRsaW5lIEFsZXJ0CiAgICAgICAgIyBtdXN0IG5vdyB3b3JrIFdJVEhPVVQgcnVubmluZyBUYXNrIFByaW9yaXRpemF0aW9uIGZpcnN0IOKAlAogICAgICAgICMgdGhpcyBpcyB0aGUgUGhhc2UgNiBmaXguIFRoZW4gcGFzc3dvcmQgY2hhbmdlICsgcmUtbG9naW4uCiAgICAgICAgc2NyaXB0MiA9ICgKICAgICAgICAgICAgIjJcbnRlc3R1c2VyXG5UZXN0UGFzczEyM1xuXG5cbiIgICMgbG9naW4KICAgICAgICAgICAgIjEzXG4xXG4yXG5cblxuIiAgICAgICAgICAgICAgICAgICMgdGFzayBzdGF0dXM6IHRhc2sgMSAtPiBJbiBQcm9ncmVzcwogICAgICAgICAgICAiMTRcbjIwMjYtMTEtMTBcblxuXG4iICAgICAgICAgICAgICMgZGVhZGxpbmUgYWxlcnQKICAgICAgICAgICAgIjRcblRlc3RQYXNzMTIzXG5DaGFuZ2VkMTIzXG5cblxuIiAgIyBwYXNzd29yZCBjaGFuZ2UgKG1lbnUgND8pCiAgICAgICAgICAgICIwXG4iCiAgICAgICAgKQogICAgICAgIGNvZGUsIG91dCA9IHJ1bihhcmdzLmJpbmFyeSwgdG1wLCBzY3JpcHQyKQogICAgICAgIGNoZWNrKCJzZXNzaW9uMiBleGl0IDAiLCBjb2RlID09IDAsIHN0cihjb2RlKSkKICAgICAgICBjaGVjaygidGFzayBzdGF0dXMgaW4gbmV3IHNlc3Npb24iLCAiQ29uc29sZVRhc2siIGluIG91dCBhbmQKICAgICAgICAgICAgICAiU3RhdHVzIHVwZGF0ZWQgc3VjY2Vzc2Z1bGx5IiBpbiBvdXQsIG91dFstNTAwOl0pCiAgICAgICAgY2hlY2soImRlYWRsaW5lIFVQQ09NSU5HIGluIG5ldyBzZXNzaW9uIiwKICAgICAgICAgICAgICAiVVBDT01JTkc6IENvbnNvbGVUYXNrIiBpbiBvdXQgb3IgIkluIFByb2dyZXNzIiBpbiBvdXQsIG91dFstNTAwOl0pCiAgICAgICAgd2l0aCBvcGVuKG9zLnBhdGguam9pbih0bXAsICJ0YXNrcy50eHQiKSkgYXMgZjoKICAgICAgICAgICAgdGFza3MyID0gZi5yZWFkKCkKICAgICAgICBjaGVjaygidGFzayBzdGF0dXMgcGVyc2lzdGVkIiwKICAgICAgICAgICAgICAiMXxDb25zb2xlVGFza3w4fDh8MjAyNi0xMS0yMHxJbiBQcm9ncmVzcyIgaW4gdGFza3MyLCB0YXNrczIpCgogICAgICAgICMgTWVudSA0IGlzIENoYW5nZSBQYXNzd29yZCAobWFpbi5jcHApOyB2ZXJpZnkgYnkgcmUtbG9naW4uCiAgICAgICAgc2NyaXB0MyA9ICIyXG50ZXN0dXNlclxuQ2hhbmdlZDEyM1xuXG5cbjBcbiIKICAgICAgICBjb2RlLCBvdXQgPSBydW4oYXJncy5iaW5hcnksIHRtcCwgc2NyaXB0MykKICAgICAgICBjaGVjaygicGFzc3dvcmQgY2hhbmdlICsgcmUtbG9naW4iLCAiTG9naW4gc3VjY2Vzc2Z1bCIgaW4gb3V0LCBvdXRbLTMwMDpdKQoKICAgICAgICAjIE9sZCBwbGFpbnRleHQgYWNjb3VudCBtaWdyYXRpb24gdmlhIGNvbnNvbGUgbG9naW4uCiAgICAgICAgd2l0aCBvcGVuKG9zLnBhdGguam9pbih0bXAsICJ1c2Vycy50eHQiKSwgImEiKSBhcyBmOgogICAgICAgICAgICBmLndyaXRlKCJvbGR1c2VyIE9sZFBhc3MxMjMgVVNFUlxuIikKICAgICAgICBjb2RlLCBvdXQgPSBydW4oYXJncy5iaW5hcnksIHRtcCwgIjJcbm9sZHVzZXJcbk9sZFBhc3MxMjNcblxuXG4wXG4iKQogICAgICAgIGNoZWNrKCJjb25zb2xlIG9sZC1wbGFpbnRleHQgbG9naW4iLCAiTG9naW4gc3VjY2Vzc2Z1bCIgaW4gb3V0KQogICAgICAgIHdpdGggb3Blbihvcy5wYXRoLmpvaW4odG1wLCAidXNlcnMudHh0IikpIGFzIGY6CiAgICAgICAgICAgIGNoZWNrKCJjb25zb2xlIG9sZCBhY2NvdW50IG1pZ3JhdGVkIiwKICAgICAgICAgICAgICAgICAgIk9sZFBhc3MxMjMiIG5vdCBpbiBmLnJlYWQoKSkKICAgIGZpbmFsbHk6CiAgICAgICAgc2h1dGlsLnJtdHJlZSh0bXAsIGlnbm9yZV9lcnJvcnM9VHJ1ZSkKICAgIHByaW50KGYiXG5jb25zb2xlX3Rlc3Q6IHtQQVNTfSBwYXNzZWQsIHtGQUlMfSBmYWlsZWQiKQogICAgcmV0dXJuIDEgaWYgRkFJTCBlbHNlIDAKCgppZiBfX25hbWVfXyA9PSAiX19tYWluX18iOgogICAgc3lzLmV4aXQobWFpbigpKQo=
+#!/usr/bin/env python3
+"""Automated console-app regression test.
+
+Runs the console binary in a fresh temporary directory with scripted
+stdin, then checks stdout and the data files it wrote. No real
+passwords are used; all test accounts live in the temporary directory.
+
+Usage:
+    python3 tests/console_test.py --binary path/to/project
+
+Exit code 0 = all checks passed, 1 = at least one check failed.
+"""
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+
+PASS = 0
+FAIL = 0
+
+
+def check(name, cond, detail=""):
+    global PASS, FAIL
+    if cond:
+        PASS += 1
+        print(f"  PASS {name}")
+    else:
+        FAIL += 1
+        print(f"  FAIL {name} {detail}")
+
+
+def run(binary, data_dir, script):
+    proc = subprocess.run([binary], input=script, capture_output=True,
+                          text=True, cwd=data_dir, timeout=30)
+    return proc.returncode, proc.stdout
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--binary", required=True)
+    args = ap.parse_args()
+    tmp = tempfile.mkdtemp(prefix="pdps-console-test-")
+    print(f"data dir: {tmp}")
+    try:
+        # Session 1: register (first user = ADMIN, hashed), login,
+        # prioritise a task (persists to tasks.txt), logout via menu 0.
+        # Menu numbers are taken from the console main menu; the exact
+        # prompt text is not asserted, only the outcomes below.
+        script1 = (
+            "1\ntestuser\nTestPass123\n\n\n"   # register
+            "2\ntestuser\nTestPass123\n\n\n"  # login
+            "11\n1\nConsoleTask\n8\n8\n2026-11-20\n\n\n"  # prioritise 1 task
+            "0\n"
+        )
+        code, out = run(args.binary, tmp, script1)
+        check("console exit 0", code == 0, str(code))
+        check("registration successful", "Registration successful" in out)
+        check("login successful", "Login successful" in out)
+        check("task saved message", "Tasks saved to tasks.txt" in out)
+        with open(os.path.join(tmp, "users.txt")) as f:
+            users = f.read()
+        check("console new account hashed",
+              "TestPass123" not in users and "pbkdf2$100000$" in users, users[:60])
+        check("console first user ADMIN", "ADMIN" in users)
+        with open(os.path.join(tmp, "tasks.txt")) as f:
+            tasks = f.read()
+        check("console task persisted in dashboard format",
+              "1|ConsoleTask|8|8|2026-11-20|Pending" in tasks, tasks)
+
+        # Session 2 (fresh process): Task Status and Deadline Alert
+        # must now work WITHOUT running Task Prioritization first —
+        # this is the Phase 6 fix. Then password change + re-login.
+        script2 = (
+            "2\ntestuser\nTestPass123\n\n\n"  # login
+            "13\n1\n2\n\n\n"                  # task status: task 1 -> In Progress
+            "14\n2026-11-10\n\n\n"             # deadline alert
+            "4\nTestPass123\nChanged123\n\n\n"  # password change (menu 4?)
+            "0\n"
+        )
+        code, out = run(args.binary, tmp, script2)
+        check("session2 exit 0", code == 0, str(code))
+        check("task status in new session", "ConsoleTask" in out and
+              "Status updated successfully" in out, out[-500:])
+        check("deadline UPCOMING in new session",
+              "UPCOMING: ConsoleTask" in out or "In Progress" in out, out[-500:])
+        with open(os.path.join(tmp, "tasks.txt")) as f:
+            tasks2 = f.read()
+        check("task status persisted",
+              "1|ConsoleTask|8|8|2026-11-20|In Progress" in tasks2, tasks2)
+
+        # Menu 4 is Change Password (main.cpp); verify by re-login.
+        script3 = "2\ntestuser\nChanged123\n\n\n0\n"
+        code, out = run(args.binary, tmp, script3)
+        check("password change + re-login", "Login successful" in out, out[-300:])
+
+        # Old plaintext account migration via console login.
+        with open(os.path.join(tmp, "users.txt"), "a") as f:
+            f.write("olduser OldPass123 USER\n")
+        code, out = run(args.binary, tmp, "2\nolduser\nOldPass123\n\n\n0\n")
+        check("console old-plaintext login", "Login successful" in out)
+        with open(os.path.join(tmp, "users.txt")) as f:
+            check("console old account migrated",
+                  "OldPass123" not in f.read())
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    print(f"\nconsole_test: {PASS} passed, {FAIL} failed")
+    return 1 if FAIL else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
