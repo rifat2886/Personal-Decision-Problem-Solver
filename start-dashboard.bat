@@ -1,1 +1,34 @@
-QGVjaG8gb2ZmClJFTSBQZXJzb25hbCBEZWNpc2lvbiAmIFByb2JsZW0gU29sdmVyIOKAlCBkYXNoYm9hcmQgc3RhcnRlciAoV2luZG93cyAxMSkKUkVNIERvdWJsZS1jbGljayB0aGlzIGZpbGUsIHRoZW4gb3BlbiBodHRwOi8vMTI3LjAuMC4xOjgwMDAvIGluIHlvdXIgYnJvd3Nlci4KUkVNIEl0IGJ1aWxkcyB0aGUgQysrIHNlcnZlciBpZiBuZWVkZWQuIERhdGEgZmlsZXMgbGl2ZSBpbiB0aGlzIGZvbGRlciwKUkVNIHRoZSBzYW1lIGZpbGVzIHRoZSBjb25zb2xlIGFwcCB1c2VzLgpSRU0KUkVNIFNFQ1VSSVRZOiB0aGlzIHNlcnZlciBpcyBmb3IgeW91ciBvd24gY29tcHV0ZXIgb25seSAobG9jYWxob3N0KS4KUkVNIERvIE5PVCBwdXQgaXQgb24gdGhlIHB1YmxpYyBpbnRlcm5ldC4gU2VlIFNFQ1VSSVRZLm1kLgpjZCAvZCAiJX5kcDAiCmlmIG5vdCBleGlzdCBjcHBfc2VydmVyLmV4ZSAoCiAgZWNobyBCdWlsZGluZyB0aGUgQysrIHNlcnZlciBmb3IgdGhlIGZpcnN0IHRpbWUsIHBsZWFzZSB3YWl0Li4uCiAgd2hlcmUgZysrID5udWwgMj5udWwKICBpZiBlcnJvcmxldmVsIDEgKAogICAgZWNobyBFUlJPUjogZysrIChNaW5HVy13NjQpIHdhcyBub3QgZm91bmQuCiAgICBlY2hvIEluc3RhbGwgTWluR1ctdzY0IEdDQywgYWRkIGl0IHRvIFBBVEgsIHRoZW4gZG91YmxlLWNsaWNrIHRoaXMgZmlsZSBhZ2Fpbi4KICAgIGVjaG8gU2VlIFJVTi5tZCBmb3IgdGhlIGRvd25sb2FkIGxpbmsgYW5kIHN0ZXBzLgogICAgcGF1c2UKICAgIGV4aXQgL2IgMQogICkKICBnKysgLXN0ZD1jKysxNyAtV2FsbCAtV2V4dHJhIC1wdGhyZWFkIC1vIGNwcF9zZXJ2ZXIuZXhlIGRhc2hib2FyZFxjcHBfc2VydmVyLmNwcCAtbHdzMl8zMgogIGlmIGVycm9ybGV2ZWwgMSAoCiAgICBlY2hvIEVSUk9SOiB0aGUgYnVpbGQgZmFpbGVkLiBTZWUgdGhlIG1lc3NhZ2VzIGFib3ZlLCBvciBSVU4ubWQgdHJvdWJsZXNob290aW5nLgogICAgcGF1c2UKICAgIGV4aXQgL2IgMQogICkKICBlY2hvIEJ1aWxkIGZpbmlzaGVkLgopCmVjaG8uCmVjaG8gRGFzaGJvYXJkIGlzIHJlYWR5OiBvcGVuIGh0dHA6Ly8xMjcuMC4wLjE6ODAwMC8gaW4geW91ciBicm93c2VyLgplY2hvIEZpcnN0IHRpbWU/IENsaWNrICJMb2dpbiAvIFJlZ2lzdGVyIiwgdGhlbiBSZWdpc3Rlci4KZWNobyBUaGUgZmlyc3QgYWNjb3VudCB5b3UgY3JlYXRlIGJlY29tZXMgQURNSU4uCmVjaG8gVG8gc3RvcCB0aGUgc2VydmVyLCBjbG9zZSB0aGlzIHdpbmRvdyBvciBwcmVzcyBDdHJsK0MuCmNwcF9zZXJ2ZXIuZXhlIC0tcG9ydCA4MDAwIC0tZGF0YS1kaXIgLgpwYXVzZQo=
+@echo off
+REM Personal Decision & Problem Solver — dashboard starter (Windows 11)
+REM Double-click this file, then open http://127.0.0.1:8000/ in your browser.
+REM It builds the C++ server if needed. Data files live in this folder,
+REM the same files the console app uses.
+REM
+REM SECURITY: this server is for your own computer only (localhost).
+REM Do NOT put it on the public internet. See SECURITY.md.
+cd /d "%~dp0"
+if not exist cpp_server.exe (
+  echo Building the C++ server for the first time, please wait...
+  where g++ >nul 2>nul
+  if errorlevel 1 (
+    echo ERROR: g++ (MinGW-w64) was not found.
+    echo Install MinGW-w64 GCC, add it to PATH, then double-click this file again.
+    echo See RUN.md for the download link and steps.
+    pause
+    exit /b 1
+  )
+  g++ -std=c++17 -Wall -Wextra -pthread -o cpp_server.exe dashboard\cpp_server.cpp -lws2_32
+  if errorlevel 1 (
+    echo ERROR: the build failed. See the messages above, or RUN.md troubleshooting.
+    pause
+    exit /b 1
+  )
+  echo Build finished.
+)
+echo.
+echo Dashboard is ready: open http://127.0.0.1:8000/ in your browser.
+echo First time? Click "Login / Register", then Register.
+echo The first account you create becomes ADMIN.
+echo To stop the server, close this window or press Ctrl+C.
+cpp_server.exe --port 8000 --data-dir .
+pause
