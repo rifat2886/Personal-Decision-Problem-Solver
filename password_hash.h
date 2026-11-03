@@ -1,1 +1,229 @@
-I2lmbmRlZiBQQVNTV09SRF9IQVNIX0gKI2RlZmluZSBQQVNTV09SRF9IQVNIX0gKCi8vIFBhc3N3b3JkIGhhc2hpbmcgZm9yIHVzZXJzLnR4dCwgc2hhcmVkIGJ5IHRoZSBjb25zb2xlIGFwcCBhbmQgdGhlCi8vIEMrKyBkYXNoYm9hcmQgc2VydmVyICh0aGUgUHl0aG9uIGZhbGxiYWNrIGltcGxlbWVudHMgdGhlIGlkZW50aWNhbAovLyBmb3JtYXQgd2l0aCBoYXNobGliLnBia2RmMl9obWFjKS4KLy8KLy8gRm9ybWF0IChvbmUgZmllbGQsIG5vIHNwYWNlcywgc28gdGhlIGV4aXN0aW5nIDMtZmllbGQgdXNlcnMudHh0Ci8vIHBhcnNpbmcgInVzZXJuYW1lIGNyZWRlbnRpYWwgUk9MRSIga2VlcHMgd29ya2luZyB1bmNoYW5nZWQpOgovLyAgIHBia2RmMiQxMDAwMDAkPHNhbHQtaGV4IDMyIGNoYXJzPiQ8aGFzaC1oZXggNjQgY2hhcnM+Ci8vIHdoZXJlIGhhc2ggPSBQQktERjItSE1BQy1TSEEyNTYocGFzc3dvcmQsIHNhbHQtYnl0ZXMsIDEwMDAwMCwgMzIgYnl0ZXMpLgovLyBQQktERjItSE1BQy1TSEEyNTYgaXMgYSByZWNvZ25pc2VkLCBzdGFuZGFyZCBwYXNzd29yZCBLREYgKFJGQyA4MDE4KS4KLy8gQXJnb24yaWQgd291bGQgbmVlZCBhbiBleHRlcm5hbCBsaWJyYXJ5LCB3aGljaCB0aGlzIHByb2plY3QgZG9lcyBub3QKLy8gZGVwZW5kIG9uOyBQQktERjIgd2l0aCAxMDBrIGl0ZXJhdGlvbnMgaXMgdGhlIHN0ZGxpYi1jb21wYXRpYmxlIGNob2ljZQovLyB0aGF0IFB5dGhvbidzIGhhc2hsaWIgY2FuIHJlcHJvZHVjZSBleGFjdGx5LgovLwovLyBNaWdyYXRpb24gKGJhY2t3YXJkIGNvbXBhdGlibGUsIG5vIHNpbGVudCBmb3JtYXQgYnJlYWspOgovLyAtIE5ldyByZWdpc3RyYXRpb25zIHN0b3JlIG9ubHkgdGhlIGhhc2gsIG5ldmVyIHBsYWludGV4dC4KLy8gLSBPbiBsb2dpbiwgYSBzdG9yZWQgcGxhaW50ZXh0IGNyZWRlbnRpYWwgdGhhdCBtYXRjaGVzIGlzIGFjY2VwdGVkCi8vICAgb25jZSBhbmQgaW1tZWRpYXRlbHkgcmV3cml0dGVuIGFzIGEgaGFzaCAodXBncmFkZSBvbiBsb2dpbiksIHVuZGVyCi8vICAgdGhlIHVzZXJzLnR4dCBsb2NrLiBBZnRlciB0aGF0IGxvZ2luLCBubyBwbGFpbnRleHQgcmVtYWlucyBmb3IKLy8gICB0aGF0IHVzZXIuIE9sZCBhY2NvdW50cyB0aGVyZWZvcmUga2VlcCB3b3JraW5nLCBhbmQgbmV3IGFjY291bnRzCi8vICAgYXJlIG5ldmVyIHBsYWludGV4dC4KLy8gLSBQYXNzd29yZCBjaGFuZ2UgYWx3YXlzIHN0b3JlcyB0aGUgbmV3IHBhc3N3b3JkIGFzIGEgaGFzaC4KLy8gLSBIYXNoZXMgYXJlIG5ldmVyIHJldHVybmVkIGJ5IGFueSBBUEkgKGFkbWluL3VzZXJzIHJldHVybgovLyAgIHVzZXJuYW1lICsgcm9sZSBvbmx5KSBhbmQgbmV2ZXIgbG9nZ2VkLgoKI2luY2x1ZGUgPGFycmF5PgojaW5jbHVkZSA8Y3N0ZGludD4KI2luY2x1ZGUgPHJhbmRvbT4KI2luY2x1ZGUgPHNzdHJlYW0+CiNpbmNsdWRlIDxzdHJpbmc+CiNpbmNsdWRlIDx2ZWN0b3I+CgpuYW1lc3BhY2UgcGRwc19oYXNoIHsKCmlubGluZSBzdGQ6OmFycmF5PHN0ZDo6dWludDMyX3QsIDY0PiBrVGFibGUoKSB7CiAgICByZXR1cm4gezB4NDI4YTJmOTgsIDB4NzEzNzQ0OTEsIDB4YjVjMGZiY2YsIDB4ZTliNWRiYTUsIDB4Mzk1NmMyNWIsCiAgICAgICAgICAgIDB4NTlmMTExZjEsIDB4OTIzZjgyYTQsIDB4YWIxYzVlZDUsIDB4ZDgwN2FhOTgsIDB4MTI4MzViMDEsCiAgICAgICAgICAgIDB4MjQzMTg1YmUsIDB4NTUwYzdkYzMsIDB4NzJiZTVkNzQsIDB4ODBkZWIxZmUsIDB4OWJkYzA2YTcsCiAgICAgICAgICAgIDB4YzE5YmYxNzQsIDB4ZTQ5YjY5YzEsIDB4ZWZiZTQ3ODYsIDB4MGZjMTlkYzYsIDB4MjQwY2ExY2MsCiAgICAgICAgICAgIDB4MmRlOTJjNmYsIDB4NGE3NDg0YWEsIDB4NWNiMGE5ZGMsIDB4NzZmOTg4ZGEsIDB4OTgzZTUxNTIsCiAgICAgICAgICAgIDB4YTgzMWM2NmQsIDB4YjAwMzI3YzgsIDB4YmY1OTdmYzcsIDB4YzZlMDBiZjMsIDB4ZDVhNzkxNDcsCiAgICAgICAgICAgIDB4MDZjYTYzNTEsIDB4MTQyOTI5NjcsIDB4MjdiNzBhODUsIDB4MmUxYjIxMzgsIDB4NGQyYzZkZmMsCiAgICAgICAgICAgIDB4NTMzODBkMTMsIDB4NjUwYTczNTQsIDB4NzY2YTBhYmIsIDB4ODFjMmM5MmUsIDB4OTI3MjJjODUsCiAgICAgICAgICAgIDB4YTJiZmU4YTEsIDB4YTgxYTY2NGIsIDB4YzI0YjhiNzAsIDB4Yzc2YzUxYTMsIDB4ZDE5MmU4MTksCiAgICAgICAgICAgIDB4ZDY5OTA2MjQsIDB4ZjQwZTM1ODUsIDB4MTA2YWEwNzAsIDB4MTlhNGMxMTYsIDB4MWUzNzZjMDgsCiAgICAgICAgICAgIDB4Mjc0ODc3NGMsIDB4MzRiMGJjYjUsIDB4MzkxYzBjYjMsIDB4NGVkOGFhNGEsIDB4NWI5Y2NhNGYsCiAgICAgICAgICAgIDB4NjgyZTZmZjMsIDB4NzQ4ZjgyZWUsIDB4NzhhNTYzNmYsIDB4ODRjODc4MTQsIDB4OGNjNzAyMDgsCiAgICAgICAgICAgIDB4OTBiZWZmZmEsIDB4YTQ1MDZjZWIsIDB4YmVmOWEzZjcsIDB4YzY3MTc4ZjJ9Owp9CgppbmxpbmUgc3RkOjp1aW50MzJfdCByb3RyKHN0ZDo6dWludDMyX3QgeCwgaW50IG4pIHsKICAgIHJldHVybiAoeCA+PiBuKSB8ICh4IDw8ICgzMiAtIG4pKTsKfQoKaW5saW5lIHN0ZDo6dmVjdG9yPHVuc2lnbmVkIGNoYXI+IHNoYTI1NigKICAgIGNvbnN0IHVuc2lnbmVkIGNoYXIqIGRhdGEsIHN0ZDo6c2l6ZV90IGxlbikgewogICAgc3RkOjp1aW50MzJfdCBoWzhdID0gezB4NmEwOWU2NjcsIDB4YmI2N2FlODUsIDB4M2M2ZWYzNzIsIDB4YTU0ZmY1M2EsCiAgICAgICAgICAgICAgICAgICAgICAgICAgMHg1MTBlNTI3ZiwgMHg5YjA1Njg4YywgMHgxZjgzZDlhYiwgMHg1YmUwY2QxOX07CiAgICBzdGQ6OnZlY3Rvcjx1bnNpZ25lZCBjaGFyPiBtc2coZGF0YSwgZGF0YSArIGxlbik7CiAgICBzdGQ6OnVpbnQ2NF90IGJpdHMgPSBzdGF0aWNfY2FzdDxzdGQ6OnVpbnQ2NF90PihsZW4pICogODsKICAgIG1zZy5wdXNoX2JhY2soMHg4MCk7CiAgICB3aGlsZSAoKG1zZy5zaXplKCkgJSA2NCkgIT0gNTYpIG1zZy5wdXNoX2JhY2soMCk7CiAgICBmb3IgKGludCBpID0gNzsgaSA+PSAwOyAtLWkpCiAgICAgICAgbXNnLnB1c2hfYmFjayhzdGF0aWNfY2FzdDx1bnNpZ25lZCBjaGFyPigoYml0cyA+PiAoaSAqIDgpKSAmIDB4ZmYpKTsKICAgIGF1dG8gdGFibGUgPSBrVGFibGUoKTsKICAgIGZvciAoc3RkOjpzaXplX3Qgb2ZmID0gMDsgb2ZmIDwgbXNnLnNpemUoKTsgb2ZmICs9IDY0KSB7CiAgICAgICAgc3RkOjp1aW50MzJfdCB3WzY0XTsKICAgICAgICBmb3IgKGludCBpID0gMDsgaSA8IDE2OyArK2kpCiAgICAgICAgICAgIHdbaV0gPSAoc3RhdGljX2Nhc3Q8c3RkOjp1aW50MzJfdD4obXNnW29mZiArIGkgKiA0XSkgPDwgMjQpIHwKICAgICAgICAgICAgICAgICAgIChzdGF0aWNfY2FzdDxzdGQ6OnVpbnQzMl90Pihtc2dbb2ZmICsgaSAqIDQgKyAxXSkgPDwgMTYpIHwKICAgICAgICAgICAgICAgICAgIChzdGF0aWNfY2FzdDxzdGQ6OnVpbnQzMl90Pihtc2dbb2ZmICsgaSAqIDQgKyAyXSkgPDwgOCkgfAogICAgICAgICAgICAgICAgICAgc3RhdGljX2Nhc3Q8c3RkOjp1aW50MzJfdD4obXNnW29mZiArIGkgKiA0ICsgM10pOwogICAgICAgIGZvciAoaW50IGkgPSAxNjsgaSA8IDY0OyArK2kpIHsKICAgICAgICAgICAgc3RkOjp1aW50MzJfdCBzMCA9IHJvdHIod1tpIC0gMTVdLCA3KSBeIHJvdHIod1tpIC0gMTVdLCAxOCkgXgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgKHdbaSAtIDE1XSA+PiAzKTsKICAgICAgICAgICAgc3RkOjp1aW50MzJfdCBzMSA9IHJvdHIod1tpIC0gMl0sIDE3KSBeIHJvdHIod1tpIC0gMl0sIDE5KSBeCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAod1tpIC0gMl0gPj4gMTApOwogICAgICAgICAgICB3W2ldID0gd1tpIC0gMTZdICsgczAgKyB3W2kgLSA3XSArIHMxOwogICAgICAgIH0KICAgICAgICBzdGQ6OnVpbnQzMl90IGEgPSBoWzBdLCBiID0gaFsxXSwgYyA9IGhbMl0sIGQgPSBoWzNdLCBlID0gaFs0XSwKICAgICAgICAgICAgICAgICAgICAgIGYgPSBoWzVdLCBnID0gaFs2XSwgaGggPSBoWzddOwogICAgICAgIGZvciAoaW50IGkgPSAwOyBpIDwgNjQ7ICsraSkgewogICAgICAgICAgICBzdGQ6OnVpbnQzMl90IHMxID0gcm90cihlLCA2KSBeIHJvdHIoZSwgMTEpIF4gcm90cihlLCAyNSk7CiAgICAgICAgICAgIHN0ZDo6dWludDMyX3QgY2ggPSAoZSAmIGYpIF4gKCh+ZSkgJiBnKTsKICAgICAgICAgICAgc3RkOjp1aW50MzJfdCB0MSA9IGhoICsgczEgKyBjaCArIHRhYmxlW2ldICsgd1tpXTsKICAgICAgICAgICAgc3RkOjp1aW50MzJfdCBzMCA9IHJvdHIoYSwgMikgXiByb3RyKGEsIDEzKSBeIHJvdHIoYSwgMjIpOwogICAgICAgICAgICBzdGQ6OnVpbnQzMl90IG1qID0gKGEgJiBiKSBeIChhICYgYykgXiAoYiAmIGMpOwogICAgICAgICAgICBzdGQ6OnVpbnQzMl90IHQyID0gczAgKyBtajsKICAgICAgICAgICAgaGggPSBnOyBnID0gZjsgZiA9IGU7IGUgPSBkICsgdDE7IGQgPSBjOyBjID0gYjsgYiA9IGE7IGEgPSB0MSArIHQyOwogICAgICAgIH0KICAgICAgICBoWzBdICs9IGE7IGhbMV0gKz0gYjsgaFsyXSArPSBjOyBoWzNdICs9IGQ7CiAgICAgICAgaFs0XSArPSBlOyBoWzVdICs9IGY7IGhbNl0gKz0gZzsgaFs3XSArPSBoaDsKICAgIH0KICAgIHN0ZDo6dmVjdG9yPHVuc2lnbmVkIGNoYXI+IG91dCgzMik7CiAgICBmb3IgKGludCBpID0gMDsgaSA8IDg7ICsraSkgewogICAgICAgIG91dFtpICogNF0gPSBzdGF0aWNfY2FzdDx1bnNpZ25lZCBjaGFyPigoaFtpXSA+PiAyNCkgJiAweGZmKTsKICAgICAgICBvdXRbaSAqIDQgKyAxXSA9IHN0YXRpY19jYXN0PHVuc2lnbmVkIGNoYXI+KChoW2ldID4+IDE2KSAmIDB4ZmYpOwogICAgICAgIG91dFtpICogNCArIDJdID0gc3RhdGljX2Nhc3Q8dW5zaWduZWQgY2hhcj4oKGhbaV0gPj4gOCkgJiAweGZmKTsKICAgICAgICBvdXRbaSAqIDQgKyAzXSA9IHN0YXRpY19jYXN0PHVuc2lnbmVkIGNoYXI+KGhbaV0gJiAweGZmKTsKICAgIH0KICAgIHJldHVybiBvdXQ7Cn0KCmlubGluZSBzdGQ6OnZlY3Rvcjx1bnNpZ25lZCBjaGFyPiBobWFjU2hhMjU2KAogICAgY29uc3Qgc3RkOjp2ZWN0b3I8dW5zaWduZWQgY2hhcj4mIGtleSwKICAgIGNvbnN0IHN0ZDo6dmVjdG9yPHVuc2lnbmVkIGNoYXI+JiBtc2cpIHsKICAgIHN0ZDo6dmVjdG9yPHVuc2lnbmVkIGNoYXI+IGsgPSBrZXk7CiAgICBpZiAoay5zaXplKCkgPiA2NCkgewogICAgICAgIGF1dG8gaCA9IHNoYTI1NihrLmRhdGEoKSwgay5zaXplKCkpOwogICAgICAgIGsuYXNzaWduKGguYmVnaW4oKSwgaC5lbmQoKSk7CiAgICB9CiAgICBrLnJlc2l6ZSg2NCwgMCk7CiAgICBzdGQ6OnZlY3Rvcjx1bnNpZ25lZCBjaGFyPiBpcGFkKDY0KSwgb3BhZCg2NCk7CiAgICBmb3IgKGludCBpID0gMDsgaSA8IDY0OyArK2kpIHsKICAgICAgICBpcGFkW2ldID0ga1tpXSBeIDB4MzY7CiAgICAgICAgb3BhZFtpXSA9IGtbaV0gXiAweDVjOwogICAgfQogICAgc3RkOjp2ZWN0b3I8dW5zaWduZWQgY2hhcj4gaW5uZXIgPSBpcGFkOwogICAgaW5uZXIuaW5zZXJ0KGlubmVyLmVuZCgpLCBtc2cuYmVnaW4oKSwgbXNnLmVuZCgpKTsKICAgIGF1dG8gaW5uZXJIYXNoID0gc2hhMjU2KGlubmVyLmRhdGEoKSwgaW5uZXIuc2l6ZSgpKTsKICAgIHN0ZDo6dmVjdG9yPHVuc2lnbmVkIGNoYXI+IG91dGVyID0gb3BhZDsKICAgIG91dGVyLmluc2VydChvdXRlci5lbmQoKSwgaW5uZXJIYXNoLmJlZ2luKCksIGlubmVySGFzaC5lbmQoKSk7CiAgICByZXR1cm4gc2hhMjU2KG91dGVyLmRhdGEoKSwgb3V0ZXIuc2l6ZSgpKTsKfQoKaW5saW5lIHN0ZDo6dmVjdG9yPHVuc2lnbmVkIGNoYXI+IHBia2RmMigKICAgIGNvbnN0IHN0ZDo6c3RyaW5nJiBwYXNzd29yZCwgY29uc3Qgc3RkOjp2ZWN0b3I8dW5zaWduZWQgY2hhcj4mIHNhbHQsCiAgICBpbnQgaXRlcmF0aW9ucywgc3RkOjpzaXplX3QgZGtMZW4pIHsKICAgIHN0ZDo6dmVjdG9yPHVuc2lnbmVkIGNoYXI+IHB3KHBhc3N3b3JkLmJlZ2luKCksIHBhc3N3b3JkLmVuZCgpKTsKICAgIHN0ZDo6dmVjdG9yPHVuc2lnbmVkIGNoYXI+IG91dDsKICAgIHN0ZDo6dWludDMyX3QgYmxvY2sgPSAxOwogICAgd2hpbGUgKG91dC5zaXplKCkgPCBka0xlbikgewogICAgICAgIHN0ZDo6dmVjdG9yPHVuc2lnbmVkIGNoYXI+IG1zZyA9IHNhbHQ7CiAgICAgICAgbXNnLnB1c2hfYmFjayhzdGF0aWNfY2FzdDx1bnNpZ25lZCBjaGFyPigoYmxvY2sgPj4gMjQpICYgMHhmZikpOwogICAgICAgIG1zZy5wdXNoX2JhY2soc3RhdGljX2Nhc3Q8dW5zaWduZWQgY2hhcj4oKGJsb2NrID4+IDE2KSAmIDB4ZmYpKTsKICAgICAgICBtc2cucHVzaF9iYWNrKHN0YXRpY19jYXN0PHVuc2lnbmVkIGNoYXI+KChibG9jayA+PiA4KSAmIDB4ZmYpKTsKICAgICAgICBtc2cucHVzaF9iYWNrKHN0YXRpY19jYXN0PHVuc2lnbmVkIGNoYXI+KGJsb2NrICYgMHhmZikpOwogICAgICAgIGF1dG8gdSA9IGhtYWNTaGEyNTYocHcsIG1zZyk7CiAgICAgICAgYXV0byB0ID0gdTsKICAgICAgICBmb3IgKGludCBpID0gMTsgaSA8IGl0ZXJhdGlvbnM7ICsraSkgewogICAgICAgICAgICB1ID0gaG1hY1NoYTI1NihwdywgdSk7CiAgICAgICAgICAgIGZvciAoc3RkOjpzaXplX3QgaiA9IDA7IGogPCB0LnNpemUoKTsgKytqKSB0W2pdIF49IHVbal07CiAgICAgICAgfQogICAgICAgIG91dC5pbnNlcnQob3V0LmVuZCgpLCB0LmJlZ2luKCksIHQuZW5kKCkpOwogICAgICAgICsrYmxvY2s7CiAgICB9CiAgICBvdXQucmVzaXplKGRrTGVuKTsKICAgIHJldHVybiBvdXQ7Cn0KCmlubGluZSBzdGQ6OnN0cmluZyB0b0hleChjb25zdCBzdGQ6OnZlY3Rvcjx1bnNpZ25lZCBjaGFyPiYgYnl0ZXMpIHsKICAgIHN0YXRpYyBjb25zdCBjaGFyKiBoZXggPSAiMDEyMzQ1Njc4OWFiY2RlZiI7CiAgICBzdGQ6OnN0cmluZyBzOwogICAgZm9yICh1bnNpZ25lZCBjaGFyIGIgOiBieXRlcykgewogICAgICAgIHMgKz0gaGV4W2IgPj4gNF07CiAgICAgICAgcyArPSBoZXhbYiAmIDB4MGZdOwogICAgfQogICAgcmV0dXJuIHM7Cn0KCmlubGluZSBib29sIGZyb21IZXgoY29uc3Qgc3RkOjpzdHJpbmcmIGhleCwKICAgICAgICAgICAgICAgICAgICBzdGQ6OnZlY3Rvcjx1bnNpZ25lZCBjaGFyPiYgb3V0KSB7CiAgICBpZiAoaGV4LnNpemUoKSAlIDIgIT0gMCkgcmV0dXJuIGZhbHNlOwogICAgb3V0LmNsZWFyKCk7CiAgICBhdXRvIHZhbCA9IFtdKGNoYXIgYykgLT4gaW50IHsKICAgICAgICBpZiAoYyA+PSAnMCcgJiYgYyA8PSAnOScpIHJldHVybiBjIC0gJzAnOwogICAgICAgIGlmIChjID49ICdhJyAmJiBjIDw9ICdmJykgcmV0dXJuIGMgLSAnYScgKyAxMDsKICAgICAgICBpZiAoYyA+PSAnQScgJiYgYyA8PSAnRicpIHJldHVybiBjIC0gJ0EnICsgMTA7CiAgICAgICAgcmV0dXJuIC0xOwogICAgfTsKICAgIGZvciAoc3RkOjpzaXplX3QgaSA9IDA7IGkgPCBoZXguc2l6ZSgpOyBpICs9IDIpIHsKICAgICAgICBpbnQgaGkgPSB2YWwoaGV4W2ldKSwgbG8gPSB2YWwoaGV4W2kgKyAxXSk7CiAgICAgICAgaWYgKGhpIDwgMCB8fCBsbyA8IDApIHJldHVybiBmYWxzZTsKICAgICAgICBvdXQucHVzaF9iYWNrKHN0YXRpY19jYXN0PHVuc2lnbmVkIGNoYXI+KChoaSA8PCA0KSB8IGxvKSk7CiAgICB9CiAgICByZXR1cm4gdHJ1ZTsKfQoKaW5saW5lIGJvb2wgaXNIYXNoZWQoY29uc3Qgc3RkOjpzdHJpbmcmIHN0b3JlZCkgewogICAgcmV0dXJuIHN0b3JlZC5yZmluZCgicGJrZGYyJCIsIDApID09IDA7Cn0KCmlubGluZSBzdGQ6OnN0cmluZyBoYXNoUGFzc3dvcmQoY29uc3Qgc3RkOjpzdHJpbmcmIHBhc3N3b3JkKSB7CiAgICBzdGQ6OnJhbmRvbV9kZXZpY2UgcmQ7CiAgICBzdGQ6OnZlY3Rvcjx1bnNpZ25lZCBjaGFyPiBzYWx0KDE2KTsKICAgIGZvciAoYXV0byYgYiA6IHNhbHQpIGIgPSBzdGF0aWNfY2FzdDx1bnNpZ25lZCBjaGFyPihyZCgpICYgMHhmZik7CiAgICBhdXRvIGRrID0gcGJrZGYyKHBhc3N3b3JkLCBzYWx0LCAxMDAwMDAsIDMyKTsKICAgIHJldHVybiAicGJrZGYyJDEwMDAwMCQiICsgdG9IZXgoc2FsdCkgKyAiJCIgKyB0b0hleChkayk7Cn0KCmlubGluZSBib29sIHZlcmlmeVBhc3N3b3JkKGNvbnN0IHN0ZDo6c3RyaW5nJiBwYXNzd29yZCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgY29uc3Qgc3RkOjpzdHJpbmcmIHN0b3JlZCkgewogICAgaWYgKCFpc0hhc2hlZChzdG9yZWQpKSByZXR1cm4gcGFzc3dvcmQgPT0gc3RvcmVkOwogICAgLy8gcGJrZGYyJGl0ZXJhdGlvbnMkc2FsdEhleCRoYXNoSGV4CiAgICBzdGQ6OnZlY3RvcjxzdGQ6OnN0cmluZz4gcGFydHM7CiAgICBzdGQ6OnNpemVfdCBzdGFydCA9IDA7CiAgICB3aGlsZSAodHJ1ZSkgewogICAgICAgIHN0ZDo6c2l6ZV90IHBvcyA9IHN0b3JlZC5maW5kKCckJywgc3RhcnQpOwogICAgICAgIGlmIChwb3MgPT0gc3RkOjpzdHJpbmc6Om5wb3MpIHsKICAgICAgICAgICAgcGFydHMucHVzaF9iYWNrKHN0b3JlZC5zdWJzdHIoc3RhcnQpKTsKICAgICAgICAgICAgYnJlYWs7CiAgICAgICAgfQogICAgICAgIHBhcnRzLnB1c2hfYmFjayhzdG9yZWQuc3Vic3RyKHN0YXJ0LCBwb3MgLSBzdGFydCkpOwogICAgICAgIHN0YXJ0ID0gcG9zICsgMTsKICAgIH0KICAgIGlmIChwYXJ0cy5zaXplKCkgIT0gNCB8fCBwYXJ0c1swXSAhPSAicGJrZGYyIikgcmV0dXJuIGZhbHNlOwogICAgaW50IGl0ZXJhdGlvbnMgPSAwOwogICAgdHJ5IHsKICAgICAgICBpdGVyYXRpb25zID0gc3RkOjpzdG9pKHBhcnRzWzFdKTsKICAgIH0gY2F0Y2ggKC4uLikgewogICAgICAgIHJldHVybiBmYWxzZTsKICAgIH0KICAgIGlmIChpdGVyYXRpb25zIDwgMSB8fCBpdGVyYXRpb25zID4gMTAwMDAwMCkgcmV0dXJuIGZhbHNlOwogICAgc3RkOjp2ZWN0b3I8dW5zaWduZWQgY2hhcj4gc2FsdDsKICAgIGlmICghZnJvbUhleChwYXJ0c1syXSwgc2FsdCkgfHwgc2FsdC5lbXB0eSgpKSByZXR1cm4gZmFsc2U7CiAgICBhdXRvIGRrID0gcGJrZGYyKHBhc3N3b3JkLCBzYWx0LCBpdGVyYXRpb25zLCAzMik7CiAgICBzdGQ6OnN0cmluZyBnb3QgPSB0b0hleChkayk7CiAgICBpZiAoZ290LnNpemUoKSAhPSBwYXJ0c1szXS5zaXplKCkpIHJldHVybiBmYWxzZTsKICAgIGludCBkaWZmID0gMDsKICAgIGZvciAoc3RkOjpzaXplX3QgaSA9IDA7IGkgPCBnb3Quc2l6ZSgpOyArK2kpCiAgICAgICAgZGlmZiB8PSAoZ290W2ldIF4gcGFydHNbM11baV0pOwogICAgcmV0dXJuIGRpZmYgPT0gMDsKfQoKfSAgLy8gbmFtZXNwYWNlIHBkcHNfaGFzaAoKI2VuZGlmCg==
+#ifndef PASSWORD_HASH_H
+#define PASSWORD_HASH_H
+
+// Password hashing for users.txt, shared by the console app and the
+// C++ dashboard server (the Python fallback implements the identical
+// format with hashlib.pbkdf2_hmac).
+//
+// Format (one field, no spaces, so the existing 3-field users.txt
+// parsing "username credential ROLE" keeps working unchanged):
+//   pbkdf2$100000$<salt-hex 32 chars>$<hash-hex 64 chars>
+// where hash = PBKDF2-HMAC-SHA256(password, salt-bytes, 100000, 32 bytes).
+// PBKDF2-HMAC-SHA256 is a recognised, standard password KDF (RFC 8018).
+// Argon2id would need an external library, which this project does not
+// depend on; PBKDF2 with 100k iterations is the stdlib-compatible choice
+// that Python's hashlib can reproduce exactly.
+//
+// Migration (backward compatible, no silent format break):
+// - New registrations store only the hash, never plaintext.
+// - On login, a stored plaintext credential that matches is accepted
+//   once and immediately rewritten as a hash (upgrade on login), under
+//   the users.txt lock. After that login, no plaintext remains for
+//   that user. Old accounts therefore keep working, and new accounts
+//   are never plaintext.
+// - Password change always stores the new password as a hash.
+// - Hashes are never returned by any API (admin/users return
+//   username + role only) and never logged.
+
+#include <array>
+#include <cstdint>
+#include <random>
+#include <sstream>
+#include <string>
+#include <vector>
+
+namespace pdps_hash {
+
+inline std::array<std::uint32_t, 64> kTable() {
+    return {0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b,
+            0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01,
+            0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7,
+            0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
+            0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152,
+            0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
+            0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
+            0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+            0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819,
+            0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08,
+            0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f,
+            0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+            0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
+}
+
+inline std::uint32_t rotr(std::uint32_t x, int n) {
+    return (x >> n) | (x << (32 - n));
+}
+
+inline std::vector<unsigned char> sha256(
+    const unsigned char* data, std::size_t len) {
+    std::uint32_t h[8] = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+                          0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
+    std::vector<unsigned char> msg(data, data + len);
+    std::uint64_t bits = static_cast<std::uint64_t>(len) * 8;
+    msg.push_back(0x80);
+    while ((msg.size() % 64) != 56) msg.push_back(0);
+    for (int i = 7; i >= 0; --i)
+        msg.push_back(static_cast<unsigned char>((bits >> (i * 8)) & 0xff));
+    auto table = kTable();
+    for (std::size_t off = 0; off < msg.size(); off += 64) {
+        std::uint32_t w[64];
+        for (int i = 0; i < 16; ++i)
+            w[i] = (static_cast<std::uint32_t>(msg[off + i * 4]) << 24) |
+                   (static_cast<std::uint32_t>(msg[off + i * 4 + 1]) << 16) |
+                   (static_cast<std::uint32_t>(msg[off + i * 4 + 2]) << 8) |
+                   static_cast<std::uint32_t>(msg[off + i * 4 + 3]);
+        for (int i = 16; i < 64; ++i) {
+            std::uint32_t s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^
+                               (w[i - 15] >> 3);
+            std::uint32_t s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^
+                               (w[i - 2] >> 10);
+            w[i] = w[i - 16] + s0 + w[i - 7] + s1;
+        }
+        std::uint32_t a = h[0], b = h[1], c = h[2], d = h[3], e = h[4],
+                      f = h[5], g = h[6], hh = h[7];
+        for (int i = 0; i < 64; ++i) {
+            std::uint32_t s1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+            std::uint32_t ch = (e & f) ^ ((~e) & g);
+            std::uint32_t t1 = hh + s1 + ch + table[i] + w[i];
+            std::uint32_t s0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+            std::uint32_t mj = (a & b) ^ (a & c) ^ (b & c);
+            std::uint32_t t2 = s0 + mj;
+            hh = g; g = f; f = e; e = d + t1; d = c; c = b; b = a; a = t1 + t2;
+        }
+        h[0] += a; h[1] += b; h[2] += c; h[3] += d;
+        h[4] += e; h[5] += f; h[6] += g; h[7] += hh;
+    }
+    std::vector<unsigned char> out(32);
+    for (int i = 0; i < 8; ++i) {
+        out[i * 4] = static_cast<unsigned char>((h[i] >> 24) & 0xff);
+        out[i * 4 + 1] = static_cast<unsigned char>((h[i] >> 16) & 0xff);
+        out[i * 4 + 2] = static_cast<unsigned char>((h[i] >> 8) & 0xff);
+        out[i * 4 + 3] = static_cast<unsigned char>(h[i] & 0xff);
+    }
+    return out;
+}
+
+inline std::vector<unsigned char> hmacSha256(
+    const std::vector<unsigned char>& key,
+    const std::vector<unsigned char>& msg) {
+    std::vector<unsigned char> k = key;
+    if (k.size() > 64) {
+        auto h = sha256(k.data(), k.size());
+        k.assign(h.begin(), h.end());
+    }
+    k.resize(64, 0);
+    std::vector<unsigned char> ipad(64), opad(64);
+    for (int i = 0; i < 64; ++i) {
+        ipad[i] = k[i] ^ 0x36;
+        opad[i] = k[i] ^ 0x5c;
+    }
+    std::vector<unsigned char> inner = ipad;
+    inner.insert(inner.end(), msg.begin(), msg.end());
+    auto innerHash = sha256(inner.data(), inner.size());
+    std::vector<unsigned char> outer = opad;
+    outer.insert(outer.end(), innerHash.begin(), innerHash.end());
+    return sha256(outer.data(), outer.size());
+}
+
+inline std::vector<unsigned char> pbkdf2(
+    const std::string& password, const std::vector<unsigned char>& salt,
+    int iterations, std::size_t dkLen) {
+    std::vector<unsigned char> pw(password.begin(), password.end());
+    std::vector<unsigned char> out;
+    std::uint32_t block = 1;
+    while (out.size() < dkLen) {
+        std::vector<unsigned char> msg = salt;
+        msg.push_back(static_cast<unsigned char>((block >> 24) & 0xff));
+        msg.push_back(static_cast<unsigned char>((block >> 16) & 0xff));
+        msg.push_back(static_cast<unsigned char>((block >> 8) & 0xff));
+        msg.push_back(static_cast<unsigned char>(block & 0xff));
+        auto u = hmacSha256(pw, msg);
+        auto t = u;
+        for (int i = 1; i < iterations; ++i) {
+            u = hmacSha256(pw, u);
+            for (std::size_t j = 0; j < t.size(); ++j) t[j] ^= u[j];
+        }
+        out.insert(out.end(), t.begin(), t.end());
+        ++block;
+    }
+    out.resize(dkLen);
+    return out;
+}
+
+inline std::string toHex(const std::vector<unsigned char>& bytes) {
+    static const char* hex = "0123456789abcdef";
+    std::string s;
+    for (unsigned char b : bytes) {
+        s += hex[b >> 4];
+        s += hex[b & 0x0f];
+    }
+    return s;
+}
+
+inline bool fromHex(const std::string& hex,
+                    std::vector<unsigned char>& out) {
+    if (hex.size() % 2 != 0) return false;
+    out.clear();
+    auto val = [](char c) -> int {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        return -1;
+    };
+    for (std::size_t i = 0; i < hex.size(); i += 2) {
+        int hi = val(hex[i]), lo = val(hex[i + 1]);
+        if (hi < 0 || lo < 0) return false;
+        out.push_back(static_cast<unsigned char>((hi << 4) | lo));
+    }
+    return true;
+}
+
+inline bool isHashed(const std::string& stored) {
+    return stored.rfind("pbkdf2$", 0) == 0;
+}
+
+inline std::string hashPassword(const std::string& password) {
+    std::random_device rd;
+    std::vector<unsigned char> salt(16);
+    for (auto& b : salt) b = static_cast<unsigned char>(rd() & 0xff);
+    auto dk = pbkdf2(password, salt, 100000, 32);
+    return "pbkdf2$100000$" + toHex(salt) + "$" + toHex(dk);
+}
+
+inline bool verifyPassword(const std::string& password,
+                           const std::string& stored) {
+    if (!isHashed(stored)) return password == stored;
+    // pbkdf2$iterations$saltHex$hashHex
+    std::vector<std::string> parts;
+    std::size_t start = 0;
+    while (true) {
+        std::size_t pos = stored.find('$', start);
+        if (pos == std::string::npos) {
+            parts.push_back(stored.substr(start));
+            break;
+        }
+        parts.push_back(stored.substr(start, pos - start));
+        start = pos + 1;
+    }
+    if (parts.size() != 4 || parts[0] != "pbkdf2") return false;
+    int iterations = 0;
+    try {
+        iterations = std::stoi(parts[1]);
+    } catch (...) {
+        return false;
+    }
+    if (iterations < 1 || iterations > 1000000) return false;
+    std::vector<unsigned char> salt;
+    if (!fromHex(parts[2], salt) || salt.empty()) return false;
+    auto dk = pbkdf2(password, salt, iterations, 32);
+    std::string got = toHex(dk);
+    if (got.size() != parts[3].size()) return false;
+    int diff = 0;
+    for (std::size_t i = 0; i < got.size(); ++i)
+        diff |= (got[i] ^ parts[3][i]);
+    return diff == 0;
+}
+
+}  // namespace pdps_hash
+
+#endif
