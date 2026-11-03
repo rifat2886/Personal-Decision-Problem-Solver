@@ -1,1 +1,78 @@
-IyBGaWxlLXRvLWNvbnRyaWJ1dG9yLXRvLWZlYXR1cmUgbWFwcGluZyAoYXVkaXRlZCAyMDI2LTExLTAzKQoKU291cmNlIG9mIHRydXRoOiBgZ2l0IGxvZyBvcmlnaW4vbWFpbmAgYXV0aG9ycyBhbmQgYnJhbmNoIGFuY2VzdHJ5LApyZS1jaGVja2VkIGZvciB0aGlzIG1hc3RlciB0YXNrLiBNYWluIEhFQUQgaXMgZjIxODY1YzsgUFIgIzY0IGJyYW5jaApIRUFEIGJlZm9yZSB0aGlzIHJvdW5kIHdhcyBiNzRmMzczOyA1NSByZW1vdGUgYnJhbmNoZXMsIG5vbmUgZGVsZXRlZC4KCiMjIENvbnRyaWJ1dG9ycyAobWFpbiBicmFuY2ggY29tbWl0cykKCi0gUmlmYXQgKHJpZmF0Mjg4NiAvICJSaWZhdCIpOiA5NyBjb21taXRzIOKAlCBTeXN0ZW0gQ29yZSAmCiAgQXV0aGVudGljYXRpb24sIFJlZ2lzdHJhdGlvbiwgTG9naW4vTG9nb3V0LCBQcm9maWxlLCBBZG1pbiwKICBQYXNzd29yZCBWYWxpZGF0aW9uICYgQ2hhbmdlLCBUaW1lIEFsbG9jYXRpb24sIFN0dWR5IFBsYW5uZXIsCiAgRGFzaGJvYXJkICYgQysrIEJhY2tlbmQuCi0gVW1tYSBIYWJpYmEgTnVyaXlhIChudXJpeWEyNzcyKTogMjEgY29tbWl0cyDigJQgRGFpbHkgRGVjaXNpb24sCiAgUHJpb3JpdHkgQ2FsY3VsYXRvciwgVGFzayBQcmlvcml0aXphdGlvbiwgQ29tcGFyZSBPcHRpb25zLAogIFRhc2sgU3RhdHVzLCBEZWFkbGluZSBBbGVydCwgRGVjaXNpb24gRXhwbGFuYXRpb24sIE11bHRpLVRhc2sKICAodmlhIHRoZSByZXN0b3JlZCBhbGdvcml0aG0sIHNlZSBiZWxvdyksIFNlYXJjaCAmIEhpc3RvcnksCiAgRXJyb3IgSGFuZGxpbmcsIEJhY2t1cCAmIFJlc3RvcmUsIENvbnRyb2wgUGFuZWwuCi0gU3dlZXR5IEFrdGVyIChzd2VldHkyODAzKTogMjEgY29tbWl0cyDigJQgQnVkZ2V0IE1hbmFnZW1lbnQsCiAgSW5jb21lICYgRXhwZW5zZSwgU2F2aW5ncyBHb2FscywgSGFiaXQgVHJhY2tlciwgSGFiaXQgU3RyZWFrLAogIFdlZWtseS9Nb250aGx5IFJlcG9ydHMsIFRYVC9DU1YgRXhwb3J0LCBQcm9ibGVtIFNvbHZlciwKICBEYWlseSBTdW1tYXJ5LCBIYWJpdCBEZWNpc2lvbiwgU2F2aW5ncyBHb2FsIENhbGN1bGF0b3IuCi0gY29waWxvdC1zd2UtYWdlbnRbYm90XTogMSBjb21taXQgKDIgaW5jbHVkZSBsaW5lcyByZW1vdmVkKSDigJQKICBub3QgYSB0ZWFtIG1lbWJlciwgbm90IGNvdW50ZWQgYXMgYSBjb250cmlidXRpb24uCgojIyBCcmFuY2ggc3RhdHVzCgotIEV2ZXJ5IHRlYW1tYXRlIGJyYW5jaCAoTnVyaXlhIDIxIHBhdGNoIGJyYW5jaGVzLCBTd2VldHkgcGF0Y2gKICBicmFuY2hlcywgYnVkZ2V0L2hhYml0L3JlcG9ydCBicmFuY2hlcykgaXMgYW4gYW5jZXN0b3Igb2YgbWFpbiwKICBleGNlcHQgdGhlIFBSICM2NCBicmFuY2ggaXRzZWxmIGFuZCBgcmlmYXQyODg2LXBhdGNoLTlgLCB3aG9zZQogIHNvbGUgY2hhbmdlIGRlbGV0ZXMgYWRtaW4uY3BwIGFuZCB3aGljaCBpcyBkZWxpYmVyYXRlbHkgTk9UCiAgbWVyZ2VkLgotIFRoZSBvbmx5IHRlYW1tYXRlIGZpbGVzIGV2ZXIgb24gYSBicmFuY2ggYnV0IG5vdCBvbiBtYWluIGFyZQogIFN3ZWV0eSdzIGBsb2dpY19wcmlvcml0eS5jcHBgLCBgbG9naWNfcHJpb3JpdHkuaGAgYW5kCiAgYGxvZ2ljX3ByaW9yaXR5X3Rlc3QuY3BwYCAobWVyZ2VkIGluIFBSICMxMywgMjAyNi0xMC0yNSwgZGVsZXRlZAogIDIwMjYtMTAtMzApLiBJdHMgcHJpb3JpdHkvY29tcGFyZS90YXNrIGZvcm11bGFzIGFyZSBzdXBlcnNlZGVkCiAgYnkgTnVyaXlhJ3MgbW9kdWxlcyAoZGlmZmVyZW50IGZvcm11bGFzLCBrZXB0KTsgaXRzIG11bHRpLXRhc2sKICBlbmVyZ3kvdGltZS1idWRnZXQgZGFpbHkgZGVjaXNpb24gd2FzIHJlc3RvcmVkIGluIFBSICM2MyBhcwogIGBtdWx0aV90YXNrX2RlY2lzaW9uLmgvLmNwcGAgKG1lbnUgNDMpIHdpdGggYSBkaXN0aW5jdAogIGBNdWx0aVRhc2tJdGVtYCBzdHJ1Y3QuIEl0cyB0ZXN0IGZpbGUgaGFzIGl0cyBvd24gYG1haW4oKWAsIHNvCiAgaXQgaXMgTk9UIGJ1aWx0IGludG8gdGhlIHByb2R1Y3Rpb24gYXBwOyBDSSBidWlsZHMgaXQgc3RhbmRhbG9uZQogIGluIGEgdGVtcG9yYXJ5IGRpcmVjdG9yeSBmcm9tIGl0cyBvd24gYnJhbmNoIChzZWUKICBgLmdpdGh1Yi93b3JrZmxvd3MvY2kueW1sYCkuIE5vIGR1cGxpY2F0ZSBpbnRlZ3JhdGlvbiBvZiB0aGUKICBzYW1lIGNvZGUgZnJvbSBtdWx0aXBsZSBicmFuY2hlcyB3YXMgZG9uZS4KCiMjIE1hcHBpbmc6IGZpbGUgLT4gY29udHJpYnV0b3IgLT4gZmVhdHVyZSAtPiB3aGVyZSBpdCBpcyB2ZXJpZmllZAoKfCBGaWxlIHwgQ29udHJpYnV0b3IgfCBGZWF0dXJlIHwgQ29uc29sZSB8IERhc2hib2FyZC9BUEkgfAp8LS0tfC0tLXwtLS18LS0tfC0tLXwKfCByZWdpc3RyYXRpb24uY3BwLCBsb2dpbi5jcHAsIGxvZ291dC5jcHAsIHByb2ZpbGUuY3BwLCBhZG1pbi5jcHAsIHBhc3N3b3JkX3ZhbGlkYXRpb24uY3BwLCBwYXNzd29yZF9jaGFuZ2UuY3BwIHwgUmlmYXQgfCBSZWdpc3RyYXRpb24sIExvZ2luL0xvZ291dCwgUHJvZmlsZSwgQWRtaW4sIFBhc3N3b3JkIFZhbGlkYXRpb24gJiBDaGFuZ2UgfCBtZW51cyAxLTUgfCAvYXBpL3JlZ2lzdGVyLCAvYXBpL2xvZ2luLCAvYXBpL2xvZ291dCwgL2FwaS9tZSwgL2FwaS91c2VycywgL2FwaS9hZG1pbiwgL2FwaS9jaGFuZ2UtcGFzc3dvcmQgfAp8IG1haW4uY3BwLCBjb250cm9sLmNwcCwgaW5wdXRfdmFsaWRhdGlvbi5jcHAsIGhpc3RvcnkuY3BwLCBkZWNpc2lvbl9zdG9yZS5oLCBmaWxlX2xvY2suaCwgcGFzc3dvcmRfaGFzaC5oLCB0YXNrX3N0b3JlLmggfCBSaWZhdCAoc2hhcmVkIGluZnJhKSB8IFN5c3RlbSBDb3JlLCBJbnB1dCBWYWxpZGF0aW9uLCBIaXN0b3J5LCBEZWNpc2lvbiBTdG9yZSwgRmlsZSBMb2NraW5nLCBQYXNzd29yZCBIYXNoaW5nLCBUYXNrIFN0b3JlIHwgYWxsIG1lbnVzIHwgYWxsIGVuZHBvaW50cyB8CnwgdGltZV9hbGxvY2F0aW9uLmNwcCB8IFJpZmF0IHwgVGltZSBBbGxvY2F0aW9uIHwgbWVudSAzMiB8IC9hcGkvdGltZS1hbGxvY2F0aW9uIHwKfCBzdHVkeV9wbGFubmVyLmNwcCB8IFJpZmF0IHwgU3R1ZHkgUGxhbm5lciB8IG1lbnUgMzEgfCAvYXBpL3N0dWR5LXBsYW5uZXIgfAp8IGRhaWx5X2RlY2lzaW9uLmNwcCB8IE51cml5YSB8IERhaWx5IERlY2lzaW9uIE1ha2VyIHwgbWVudSA5IHwgL2FwaS9kYWlseS1kZWNpc2lvbiB8CnwgcHJpb3JpdHlfY2FsY3VsYXRvci5jcHAgfCBOdXJpeWEgfCBQcmlvcml0eSBDYWxjdWxhdG9yIHwgbWVudSAxMCB8IC9hcGkvcHJpb3JpdHkgfAp8IHRhc2tfcHJpb3JpdGl6YXRpb24uY3BwLCB0YXNrX2RhdGEuaCB8IE51cml5YSB8IFRhc2sgUHJpb3JpdGl6YXRpb24gfCBtZW51IDExIHwgL2FwaS90YXNrcyAoY3JlYXRlKSB8CnwgdGFza19zdGF0dXMuY3BwIHwgTnVyaXlhIHwgVGFzayBTdGF0dXMgfCBtZW51IDEzIHwgL2FwaS90YXNrcyAoUEFUQ0gpLCBUYXNrIFN0YXR1cyBzZWN0aW9uIHwKfCBkZWFkbGluZV9hbGVydC5jcHAgfCBOdXJpeWEgfCBEZWFkbGluZSBBbGVydHMgfCBtZW51IDE0IHwgL2FwaS9kZWFkbGluZXMgfAp8IGRlY2lzaW9uX2V4cGxhbmF0aW9uLmNwcCB8IE51cml5YSB8IERlY2lzaW9uIEV4cGxhbmF0aW9uIHwgbWVudSAxNSB8IC9hcGkvZGVjaXNpb24tZXhwbGFuYXRpb24gfAp8IGNvbXBhcmVfb3B0aW9ucy5jcHAgfCBOdXJpeWEgfCBDb21wYXJlIE9wdGlvbnMgfCBtZW51IDEyIHwgL2FwaS9jb21wYXJlLW9wdGlvbnMgfAp8IG11bHRpX3Rhc2tfZGVjaXNpb24uY3BwIChyZXN0b3JlZCBTd2VldHkgYWxnb3JpdGhtLCBOdXJpeWEncyBhc3NpZ25lZCBhcmVhIGluIHRoZSB0YXNrIGxpc3QpIHwgU3dlZXR5IGFsZ29yaXRobSwgcmVzdG9yZWQgaW4gUFIgIzYzIHwgTXVsdGktVGFzayBEZWNpc2lvbiB8IG1lbnUgNDMgfCAvYXBpL211bHRpLXRhc2sgfAp8IHNlYXJjaF9oaXN0b3J5LmNwcCwgZmlsdGVyX3NvcnQuY3BwIHwgU3dlZXR5IChzZWFyY2gpLCBOdXJpeWEgKGZpbHRlci9zb3J0KSB8IFNlYXJjaCAmIEhpc3RvcnkgfCBtZW51cyAxNi0xNywgMjggfCAvYXBpL2RlY2lzaW9ucz9zZWFyY2g9LCBTZWFyY2ggJiBIaXN0b3J5IHNlY3Rpb24gfAp8IGJhY2t1cF9yZXN0b3JlLmNwcCwgZXJyb3JfaGFuZGxlci5jcHAgfCBOdXJpeWEgfCBCYWNrdXAgJiBSZXN0b3JlLCBFcnJvciBIYW5kbGluZyB8IG1lbnVzIDI3LCA0MiB8IC9hcGkvYmFja3VwLCAvYXBpL3Jlc3RvcmUsIC9hcGkvZXJyb3ItbG9nIHwKfCBidWRnZXQuY3BwIHwgU3dlZXR5IHwgQnVkZ2V0IE1hbmFnZW1lbnQgfCBtZW51IDM3IHwgL2FwaS9idWRnZXQgfAp8IGluY29tZV9leHBlbnNlLmNwcCB8IFN3ZWV0eSB8IEluY29tZSAmIEV4cGVuc2UgVHJhY2tpbmcgfCBtZW51cyAxOC0xOSB8IC9hcGkvdHJhbnNhY3Rpb25zIHwKfCBzYXZpbmdzX2dvYWwuY3BwIHwgU3dlZXR5IHwgU2F2aW5ncyBHb2FscywgU2F2aW5ncyBHb2FsIENhbGN1bGF0b3IgfCBtZW51cyAyMCwgNDAgfCAvYXBpL3NhdmluZ3MsIC9hcGkvc2F2aW5ncy9hZGQsIC9hcGkvc2F2aW5ncy1jYWxjdWxhdG9yIHwKfCBoYWJpdC5jcHAsIGhhYml0X3N0cmVhay5jcHAgfCBTd2VldHkgfCBIYWJpdCBUcmFja2VyLCBIYWJpdCBTdHJlYWssIEhhYml0IERlY2lzaW9uIHwgbWVudXMgMjEtMjIsIDM5LCA0MSB8IC9hcGkvaGFiaXRzLCAvYXBpL2hhYml0LWRlY2lzaW9uLCAvYXBpL2hhYml0LXN0cmVhay1jYWxjIHwKfCBwZXJpb2RfcmVwb3J0LmNwcCwgcmVwb3J0LmNwcCB8IFN3ZWV0eSB8IFdlZWtseS9Nb250aGx5IFJlcG9ydHMsIERhaWx5IFN1bW1hcnkgfCBtZW51cyAyMy0yNiwgMzYgfCAvYXBpL3JlcG9ydHMsIC9hcGkvZGFpbHktc3VtbWFyeSB8CnwgZXhwb3J0X3JlcG9ydC5jcHAgfCBTd2VldHkgfCBUWFQvQ1NWIEV4cG9ydCB8IG1lbnVzIDM1LCAzOCB8IC9hcGkvZXhwb3J0IHwKfCBwcm9ibGVtLmNwcCB8IFN3ZWV0eSB8IFByb2JsZW0gU29sdmVyIHwgbWVudSAzMCB8IC9hcGkvcHJvYmxlbS1zb2x2ZXIgfAp8IGRlbGV0ZV9jb25maXJtYXRpb24uY3BwIHwgTnVyaXlhIHwgRGVsZXRlIENvbmZpcm1hdGlvbiB8IG1lbnUgMzMgfCAoY29uc29sZSBvbmx5OyBkYXNoYm9hcmQgaGFzIG5vIGRlbGV0ZSBlbmRwb2ludCBieSBkZXNpZ24pIHwKCiMjIERhdGEgZmlsZXMgKGFsbCBzaGFyZWQsIHNhbWUgZm9ybWF0cywgY29uc29sZSArIGJvdGggc2VydmVycykKCnVzZXJzLnR4dCAoYHVzZXJuYW1lIGNyZWRlbnRpYWwgUk9MRWAsIGNyZWRlbnRpYWwgbm93IGEgUEJLREYyIGhhc2gKZm9yIG5ldy9taWdyYXRlZCBhY2NvdW50cywgcGxhaW50ZXh0IG9ubHkgdW50aWwgYW4gb2xkIGFjY291bnQncwpuZXh0IGxvZ2luKSwgZGVjaXNpb25zLnR4dCwgdGFza3MudHh0LCB0cmFuc2FjdGlvbnMudHh0LApzYXZpbmdzX2dvYWxzLnR4dCwgaGFiaXRfbG9nLnR4dCwgZGFpbHlfcmVwb3J0LnR4dCwKZmluYW5jaWFsX3JlcG9ydC50eHQvLmNzdiwgZXJyb3JfbG9nLnR4dCwgZGVjaXNpb25zX2JhY2t1cC50eHQuCg==
+# File-to-contributor-to-feature mapping (audited 2026-11-03)
+
+Source of truth: `git log origin/main` authors and branch ancestry,
+re-checked for this master task. Main HEAD is f21865c; PR #64 branch
+HEAD before this round was b74f373; 55 remote branches, none deleted.
+
+## Contributors (main branch commits)
+
+- Rifat (rifat2886 / "Rifat"): 97 commits — System Core &
+  Authentication, Registration, Login/Logout, Profile, Admin,
+  Password Validation & Change, Time Allocation, Study Planner,
+  Dashboard & C++ Backend.
+- Umma Habiba Nuriya (nuriya2772): 21 commits — Daily Decision,
+  Priority Calculator, Task Prioritization, Compare Options,
+  Task Status, Deadline Alert, Decision Explanation, Multi-Task
+  (via the restored algorithm, see below), Search & History,
+  Error Handling, Backup & Restore, Control Panel.
+- Sweety Akter (sweety2803): 21 commits — Budget Management,
+  Income & Expense, Savings Goals, Habit Tracker, Habit Streak,
+  Weekly/Monthly Reports, TXT/CSV Export, Problem Solver,
+  Daily Summary, Habit Decision, Savings Goal Calculator.
+- copilot-swe-agent[bot]: 1 commit (2 include lines removed) —
+  not a team member, not counted as a contribution.
+
+## Branch status
+
+- Every teammate branch (Nuriya 21 patch branches, Sweety patch
+  branches, budget/habit/report branches) is an ancestor of main,
+  except the PR #64 branch itself and `rifat2886-patch-9`, whose
+  sole change deletes admin.cpp and which is deliberately NOT
+  merged.
+- The only teammate files ever on a branch but not on main are
+  Sweety's `logic_priority.cpp`, `logic_priority.h` and
+  `logic_priority_test.cpp` (merged in PR #13, 2026-10-25, deleted
+  2026-10-30). Its priority/compare/task formulas are superseded
+  by Nuriya's modules (different formulas, kept); its multi-task
+  energy/time-budget daily decision was restored in PR #63 as
+  `multi_task_decision.h/.cpp` (menu 43) with a distinct
+  `MultiTaskItem` struct. Its test file has its own `main()`, so
+  it is NOT built into the production app; CI builds it standalone
+  in a temporary directory from its own branch (see
+  `.github/workflows/ci.yml`). No duplicate integration of the
+  same code from multiple branches was done.
+
+## Mapping: file -> contributor -> feature -> where it is verified
+
+| File | Contributor | Feature | Console | Dashboard/API |
+|---|---|---|---|---|
+| registration.cpp, login.cpp, logout.cpp, profile.cpp, admin.cpp, password_validation.cpp, password_change.cpp | Rifat | Registration, Login/Logout, Profile, Admin, Password Validation & Change | menus 1-5 | /api/register, /api/login, /api/logout, /api/me, /api/users, /api/admin, /api/change-password |
+| main.cpp, control.cpp, input_validation.cpp, history.cpp, decision_store.h, file_lock.h, password_hash.h, task_store.h | Rifat (shared infra) | System Core, Input Validation, History, Decision Store, File Locking, Password Hashing, Task Store | all menus | all endpoints |
+| time_allocation.cpp | Rifat | Time Allocation | menu 32 | /api/time-allocation |
+| study_planner.cpp | Rifat | Study Planner | menu 31 | /api/study-planner |
+| daily_decision.cpp | Nuriya | Daily Decision Maker | menu 9 | /api/daily-decision |
+| priority_calculator.cpp | Nuriya | Priority Calculator | menu 10 | /api/priority |
+| task_prioritization.cpp, task_data.h | Nuriya | Task Prioritization | menu 11 | /api/tasks (create) |
+| task_status.cpp | Nuriya | Task Status | menu 13 | /api/tasks (PATCH), Task Status section |
+| deadline_alert.cpp | Nuriya | Deadline Alerts | menu 14 | /api/deadlines |
+| decision_explanation.cpp | Nuriya | Decision Explanation | menu 15 | /api/decision-explanation |
+| compare_options.cpp | Nuriya | Compare Options | menu 12 | /api/compare-options |
+| multi_task_decision.cpp (restored Sweety algorithm, Nuriya's assigned area in the task list) | Sweety algorithm, restored in PR #63 | Multi-Task Decision | menu 43 | /api/multi-task |
+| search_history.cpp, filter_sort.cpp | Sweety (search), Nuriya (filter/sort) | Search & History | menus 16-17, 28 | /api/decisions?search=, Search & History section |
+| backup_restore.cpp, error_handler.cpp | Nuriya | Backup & Restore, Error Handling | menus 27, 42 | /api/backup, /api/restore, /api/error-log |
+| budget.cpp | Sweety | Budget Management | menu 37 | /api/budget |
+| income_expense.cpp | Sweety | Income & Expense Tracking | menus 18-19 | /api/transactions |
+| savings_goal.cpp | Sweety | Savings Goals, Savings Goal Calculator | menus 20, 40 | /api/savings, /api/savings/add, /api/savings-calculator |
+| habit.cpp, habit_streak.cpp | Sweety | Habit Tracker, Habit Streak, Habit Decision | menus 21-22, 39, 41 | /api/habits, /api/habit-decision, /api/habit-streak-calc |
+| period_report.cpp, report.cpp | Sweety | Weekly/Monthly Reports, Daily Summary | menus 23-26, 36 | /api/reports, /api/daily-summary |
+| export_report.cpp | Sweety | TXT/CSV Export | menus 35, 38 | /api/export |
+| problem.cpp | Sweety | Problem Solver | menu 30 | /api/problem-solver |
+| delete_confirmation.cpp | Nuriya | Delete Confirmation | menu 33 | (console only; dashboard has no delete endpoint by design) |
+
+## Data files (all shared, same formats, console + both servers)
+
+users.txt (`username credential ROLE`, credential now a PBKDF2 hash
+for new/migrated accounts, plaintext only until an old account's
+next login), decisions.txt, tasks.txt, transactions.txt,
+savings_goals.txt, habit_log.txt, daily_report.txt,
+financial_report.txt/.csv, error_log.txt, decisions_backup.txt.
