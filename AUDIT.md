@@ -2,7 +2,11 @@
 
 Source of truth: `git log origin/main` authors and branch ancestry,
 re-checked for this master task. Main HEAD is f21865c; PR #64 branch
-HEAD before this round was b74f373; 55 remote branches, none deleted.
+HEAD after the 2026-11-03 plain-text restore is 6cd41e9 (the
+earlier 63fb546 push stored all 30 files as base64 blobs, which
+made the branch unbuildable; that error was found by a fresh clone
+audit and fixed file-by-file in plain text, with no file deleted);
+55 remote branches, none deleted.
 
 ## Contributors (main branch commits)
 
@@ -48,8 +52,8 @@ HEAD before this round was b74f373; 55 remote branches, none deleted.
 |---|---|---|---|---|
 | registration.cpp, login.cpp, logout.cpp, profile.cpp, admin.cpp, password_validation.cpp, password_change.cpp | Rifat | Registration, Login/Logout, Profile, Admin, Password Validation & Change | menus 1-5 | /api/register, /api/login, /api/logout, /api/me, /api/users, /api/admin, /api/change-password |
 | main.cpp, control.cpp, input_validation.cpp, history.cpp, decision_store.h, file_lock.h, password_hash.h, task_store.h | Rifat (shared infra) | System Core, Input Validation, History, Decision Store, File Locking, Password Hashing, Task Store | all menus | all endpoints |
-| time_allocation.cpp | Rifat | Time Allocation | menu 32 | /api/time-allocation |
-| study_planner.cpp | Rifat | Study Planner | menu 31 | /api/study-planner |
+| time_allocation.cpp | Rifat | Time Allocation | menu 6 | /api/time-allocation |
+| study_planner.cpp | Rifat | Study Planner | menu 7 | /api/study-planner |
 | daily_decision.cpp | Nuriya | Daily Decision Maker | menu 9 | /api/daily-decision |
 | priority_calculator.cpp | Nuriya | Priority Calculator | menu 10 | /api/priority |
 | task_prioritization.cpp, task_data.h | Nuriya | Task Prioritization | menu 11 | /api/tasks (create) |
@@ -58,16 +62,16 @@ HEAD before this round was b74f373; 55 remote branches, none deleted.
 | decision_explanation.cpp | Nuriya | Decision Explanation | menu 15 | /api/decision-explanation |
 | compare_options.cpp | Nuriya | Compare Options | menu 12 | /api/compare-options |
 | multi_task_decision.cpp (restored Sweety algorithm, Nuriya's assigned area in the task list) | Sweety algorithm, restored in PR #63 | Multi-Task Decision | menu 43 | /api/multi-task |
-| search_history.cpp, filter_sort.cpp | Sweety (search), Nuriya (filter/sort) | Search & History | menus 16-17, 28 | /api/decisions?search=, Search & History section |
-| backup_restore.cpp, error_handler.cpp | Nuriya | Backup & Restore, Error Handling | menus 27, 42 | /api/backup, /api/restore, /api/error-log |
+| search_history.cpp, filter_sort.cpp | Sweety (search), Nuriya (filter/sort) | Search & History | menus 28-30 | /api/decisions?search=, Search & History section |
+| backup_restore.cpp, error_handler.cpp | Nuriya | Backup & Restore, Error Handling | menus 31-33 | /api/backup, /api/restore, /api/error-log |
 | budget.cpp | Sweety | Budget Management | menu 37 | /api/budget |
-| income_expense.cpp | Sweety | Income & Expense Tracking | menus 18-19 | /api/transactions |
-| savings_goal.cpp | Sweety | Savings Goals, Savings Goal Calculator | menus 20, 40 | /api/savings, /api/savings/add, /api/savings-calculator |
-| habit.cpp, habit_streak.cpp | Sweety | Habit Tracker, Habit Streak, Habit Decision | menus 21-22, 39, 41 | /api/habits, /api/habit-decision, /api/habit-streak-calc |
-| period_report.cpp, report.cpp | Sweety | Weekly/Monthly Reports, Daily Summary | menus 23-26, 36 | /api/reports, /api/daily-summary |
-| export_report.cpp | Sweety | TXT/CSV Export | menus 35, 38 | /api/export |
-| problem.cpp | Sweety | Problem Solver | menu 30 | /api/problem-solver |
-| delete_confirmation.cpp | Nuriya | Delete Confirmation | menu 33 | (console only; dashboard has no delete endpoint by design) |
+| income_expense.cpp | Sweety | Income & Expense Tracking | menus 16-18, 38 | /api/transactions |
+| savings_goal.cpp | Sweety | Savings Goals, Savings Goal Calculator | menus 19-21, 39 | /api/savings, /api/savings/add, /api/savings-calculator |
+| habit.cpp, habit_streak.cpp | Sweety | Habit Tracker, Habit Streak, Habit Decision | menus 22-23, 40-41 | /api/habits, /api/habit-decision, /api/habit-streak-calc |
+| period_report.cpp, report.cpp | Sweety | Weekly/Monthly Reports, Daily Summary | menus 24-25, 36 | /api/reports, /api/daily-summary |
+| export_report.cpp | Sweety | TXT/CSV Export | menus 26-27 | /api/export |
+| problem.cpp | Sweety | Problem Solver | menu 35 | /api/problem-solver |
+| delete_confirmation.cpp | Nuriya | Delete Confirmation | menu 34 | (console only; dashboard has no delete endpoint by design) |
 
 ## Data files (all shared, same formats, console + both servers)
 
