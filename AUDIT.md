@@ -8,6 +8,20 @@ made the branch unbuildable; that error was found by a fresh clone
 audit and fixed file-by-file in plain text, with no file deleted);
 55 remote branches, none deleted.
 
+## 2026-11-03 follow-up round (after f38fc78)
+- Verified f38fc78 from a fresh clone: all files plain text
+  (no base64 blobs), `make` builds clean, 0 warnings.
+- Topbar fix: dashboard/style.css — at 375px the title was cut
+  off; now the brand container shrinks and the title wraps to
+  two lines under 420px. Verified at 375px, 768px, 1280px: no
+  horizontal overflow, full title visible at 375px.
+- TESTING.md corrected: console test needs an absolute binary
+  path, and the CI section now states plainly that
+  `.github/workflows/ci.yml` is not on the branch and CI has
+  NOT run (Workflows permission, see SECURITY.md / PR comment).
+- No teammate branch, commit, file or contribution was deleted;
+  no public deployment was done.
+
 ## Contributors (main branch commits)
 
 - Rifat (rifat2886 / "Rifat"): 97 commits — System Core &
