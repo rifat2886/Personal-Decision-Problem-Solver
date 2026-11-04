@@ -620,8 +620,20 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         string username, password;
         if (!jsonStringField(req.body, "username", username) || !jsonStringField(req.body, "password", password))
             return sendErr(fd, 400, "Username and password are required.");
-        if (username.empty() || username.find(' ') != string::npos)
-            return sendErr(fd, 400, "Username must not be empty or contain spaces.");
+        // Security (public launch review, 2026-11-05): a username is written
+        // verbatim to users.txt and used as the owner field in pipe-delimited
+        // records. Any whitespace/control character (including a newline) or
+        // '|' would split a record line and let a crafted registration
+        // overwrite another user's line in users.txt (account takeover in
+        // txt mode, verified before this fix). Reject all of them here, in
+        // both servers and in the console (input_validation.cpp), so a
+        // username is always a single safe token. Postgres mode was not
+        // vulnerable to the takeover (username is a column value), but the
+        // same rule keeps txt and Postgres usernames identical.
+        bool badUsername = username.empty();
+        for (unsigned char c : username) if (c <= ' ' || c == '|') badUsername = true;
+        if (badUsername)
+            return sendErr(fd, 400, "Username must not be empty or contain spaces, control characters, or '|'.");
         bool letter = false, digit = false;
         for (char c : password) { if (isalpha((unsigned char)c)) letter = true; if (isdigit((unsigned char)c)) digit = true; }
         if (password.size() < 8 || !letter || !digit)
