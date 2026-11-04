@@ -7,6 +7,11 @@
 
 let token = sessionStorage.getItem("pdps_token") || "";
 let username = sessionStorage.getItem("pdps_user") || "";
+// Auth gate: isLoggedIn is true ONLY after the server has verified
+// a session (a successful login, or /api/me on page load/refresh).
+// A token sitting in sessionStorage alone never shows the dashboard.
+let isLoggedIn = false;
+const PUBLIC_SECTIONS = ["landing", "auth"];
 
 function el(id) { return document.getElementById(id); }
 
@@ -57,6 +62,39 @@ el("menuBtn").addEventListener("click", () => setNav(!el("sidebar").classList.co
 const navBackdrop = el("navBackdrop"); if (navBackdrop) navBackdrop.addEventListener("click", () => setNav(false));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") setNav(false); });
 
+function setLoggedIn(name) {
+  username = name || "";
+  el("who").textContent = name ? ("Logged in as " + name) : "";
+  el("logoutBtn").classList.toggle("hidden", !name);
+}
+
+// Single place that flips the whole UI between logged-out and
+// logged-in: body class (which hides protected nav buttons),
+// topbar user text, and the Logout button.
+function setAuthState(loggedIn, name) {
+  isLoggedIn = loggedIn;
+  document.body.classList.toggle("logged-in", loggedIn);
+  document.body.classList.toggle("logged-out", !loggedIn);
+  setLoggedIn(name || "");
+  if (!loggedIn) setNav(false);
+}
+
+function clearSession() {
+  token = "";
+  sessionStorage.removeItem("pdps_token");
+  sessionStorage.removeItem("pdps_user");
+  setAuthState(false, "");
+}
+
+// Session expired / invalid on any protected call: drop the local
+// token at once and send the user to the Login page (auth), never
+// to a dashboard section.
+function forceLogoutToLogin(message) {
+  clearSession();
+  if (message) showMsg("loginMsg", message, false);
+  showSection("auth");
+}
+
 async function api(path, options) {
   const res = await fetch(path, Object.assign({
     headers: {
@@ -65,17 +103,22 @@ async function api(path, options) {
     }
   }, options || {}));
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || ("Request failed: " + res.status));
+  if (!res.ok) {
+    if (res.status === 401 && path !== "/api/login" && path !== "/api/register") {
+      forceLogoutToLogin("Session expired. Please log in again.");
+      throw new Error("Session expired. Please log in again.");
+    }
+    throw new Error(data.error || ("Request failed: " + res.status));
+  }
   return data;
 }
 
-function setLoggedIn(name) {
-  username = name || "";
-  el("who").textContent = name ? ("Logged in as " + name) : "";
-  el("logoutBtn").classList.toggle("hidden", !name);
-}
-
 function showSection(name) {
+  // Auth gate for navigation: before a verified login, only the
+  // Welcome (landing) and Login / Register (auth) pages may open.
+  // Any other request is redirected to Login. This is UI gating;
+  // the server still rejects unauthenticated API calls with 401.
+  if (!isLoggedIn && !PUBLIC_SECTIONS.includes(name)) name = "auth";
   document.querySelectorAll("section").forEach(s => s.classList.toggle("active", s.id === name));
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.section === name));
   setNav(false);
@@ -99,10 +142,9 @@ document.querySelectorAll("nav button").forEach(b => {
 
 el("logoutBtn").addEventListener("click", async () => {
   try { await api("/api/logout", { method: "POST", body: "{}" }); } catch (e) {}
-  token = ""; username = "";
-  sessionStorage.removeItem("pdps_token");
-  sessionStorage.removeItem("pdps_user");
-  setLoggedIn("");
+  // Logout hides the dashboard at once: protected nav buttons are
+  // hidden by the logged-out body class, and Welcome is shown.
+  clearSession();
   showSection("landing");
 });
 
@@ -114,7 +156,9 @@ el("loginBtn").addEventListener("click", async () => {
     token = data.token;
     sessionStorage.setItem("pdps_token", token);
     sessionStorage.setItem("pdps_user", data.username);
-    setLoggedIn(data.username + " (" + data.role + ")");
+    // The login response itself is the server verification that
+    // unlocks the full dashboard.
+    setAuthState(true, data.username + " (" + data.role + ")");
     showMsg("loginMsg", "Login successful.", true);
     showSection("overview");
   } catch (e) { showMsg("loginMsg", e.message, false); }
@@ -575,10 +619,27 @@ el("elBtn").addEventListener("click", async () => {
 });
 
 // -- init -----------------------------------------------------------
-if (token && username) {
-  setLoggedIn(username);
-  showSection("overview");
-} else {
-  setLoggedIn("");
-  showSection("landing");
+// Start logged out, on Welcome, with protected nav hidden — even if
+// a token is in sessionStorage. The dashboard is shown ONLY if the
+// server verifies that token with /api/me. A stale, forged, or
+// expired token therefore never shows the dashboard on refresh:
+// /api/me returns 401, api() forces a logout to the Login page,
+// and the local token is cleared. If the server is unreachable,
+// the page stays on Welcome and no dashboard data is shown.
+// Capture the stored credentials BEFORE setAuthState(false, ""),
+// because setLoggedIn("") clears the username variable.
+const storedToken = token, storedUser = username;
+setAuthState(false, "");
+showSection("landing");
+if (storedToken && storedUser) {
+  api("/api/me").then(me => {
+    username = me.username;
+    sessionStorage.setItem("pdps_user", me.username);
+    setAuthState(true, me.username + " (" + me.role + ")");
+    showSection("overview");
+  }).catch(() => {
+    // 401 case is already handled by api(): forced logout to Login.
+    // Any other failure (server down) simply leaves the page on
+    // Welcome with the dashboard hidden.
+  });
 }
