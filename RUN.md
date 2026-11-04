@@ -174,3 +174,27 @@ Safety rules for LAN mode (no exceptions):
   NEVER put this server on the public internet: it has no HTTPS of
   its own, and login traffic on the local network is unencrypted.
 - Use a strong password, and stop the server when you are done.
+
+## PostgreSQL mode (Route 2, Phase 1 — code only, not deployed)
+
+Local txt mode is unchanged: run the server without DATABASE_URL
+and it reads/writes the same .txt files as the console app.
+
+Postgres mode (local test, or Render + Neon later — see
+docs/route2-phase1.md for the full plan, limits, and rollback):
+
+1. Start a local PostgreSQL database (test database only).
+2. Run the server with DATABASE_URL set, for example:
+   `DATABASE_URL=postgres://user@localhost:5432/pdps_test ./cpp_server --port 8000`
+   The server creates the schema itself on first start. If the
+   connection fails, it exits — it does NOT fall back to txt.
+3. Migrate txt data (test copy only, source is read-only):
+   `python3 tools/migrate_txt_to_pg.py --data-dir /path/to/test-copy`
+   See docs/route2-phase1.md for backup and rollback steps.
+4. Test Postgres mode:
+   `python3 tests/pg_test.py --server-cmd ./cpp_server --port 8190 --database-url postgres://user@localhost:5432/pdps_test`
+
+CORS (only for direct cross-origin calls; the recommended
+production path is a Vercel /api proxy, which needs no CORS):
+`CORS_ORIGINS=https://<your-frontend-origin> ./cpp_server`
+A wildcard "*" is ignored on purpose. See docs/route2-phase1.md.
