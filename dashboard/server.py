@@ -903,22 +903,42 @@ class Handler(BaseHTTPRequestHandler):
                                         "count": len(selected)})
 
         if path == "/api/backup" and method == "POST":
+            # Per-user backup (same redesign as cpp_server.cpp): keep
+            # other users' (and hidden legacy) backup rows, then append
+            # only the caller's current visible rows. Format unchanged,
+            # so old backups stay readable.
             lines = [ln for ln in read_lines(data_dir, "decisions.txt") if owner_visible((ln.split("|")[5] if len(ln.split("|")) >= 6 else ""), user, data_dir)]
             # Mirror backup_restore.cpp: refuse to create an empty
             # backup when there is no source file at all.
             if not os.path.exists(os.path.join(data_dir, "decisions.txt")):
                 return self.send_error_json(400, "No decision file found to back up.")
-            write_lines(data_dir, "decisions_backup.txt", lines)
+            kept_backup = []
+            if os.path.exists(os.path.join(data_dir, "decisions_backup.txt")):
+                kept_backup = [ln for ln in read_lines(data_dir, "decisions_backup.txt") if not owner_visible((ln.split("|")[5] if len(ln.split("|")) >= 6 else ""), user, data_dir)]
+            write_lines(data_dir, "decisions_backup.txt", kept_backup + lines)
             return self.send_json(200, {"backedUp": len(lines)})
 
         if path == "/api/restore" and method == "POST":
+            body = self.read_json()
+            if not isinstance(body, dict) or body.get("confirm") is not True:
+                return self.send_error_json(400, "Restore requires confirm:true in the request body. This replaces your current decisions with your backup.")
             if not os.path.exists(os.path.join(data_dir, "decisions_backup.txt")):
                 return self.send_error_json(400, "No backup file found.")
             lines = [ln for ln in read_lines(data_dir, "decisions_backup.txt") if owner_visible((ln.split("|")[5] if len(ln.split("|")) >= 6 else ""), user, data_dir)]
+            if not lines:
+                return self.send_error_json(400, "No backup found for this user. Nothing was changed.")
             current = read_lines(data_dir, "decisions.txt")
             kept = [ln for ln in current if not owner_visible((ln.split("|")[5] if len(ln.split("|")) >= 6 else ""), user, data_dir)]
-            write_lines(data_dir, "decisions.txt", kept + lines)
-            return self.send_json(200, {"restored": len(lines)})
+            kept_ids = {ln.split("|")[0] for ln in kept if ln.split("|")}
+            restored, skipped = [], 0
+            for ln in lines:
+                parts = ln.split("|")
+                if len(parts) < 5 or not parts[0].isdigit() or not valid_date(parts[1]) or parts[0] in kept_ids:
+                    skipped += 1
+                    continue
+                restored.append(ln)
+            write_lines(data_dir, "decisions.txt", kept + restored)
+            return self.send_json(200, {"restored": len(restored), "skipped": skipped})
 
         # ---- new sections (mirror the console modules of the same name) ----
         if path == "/api/info" and method == "GET":
