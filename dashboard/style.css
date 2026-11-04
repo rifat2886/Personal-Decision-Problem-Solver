@@ -265,3 +265,15 @@ html { -webkit-text-size-adjust: 100%; }
   .stat .value { font-size: 26px; }
   .chart-bar .label { width: 80px; }
 }
+
+/* ---- auth gate: before login, only Welcome (landing) and
+   Login / Register (auth) navigation is shown. Protected menu
+   buttons and group labels are hidden on desktop and mobile.
+   This is UI gating only; every protected API still requires a
+   valid session on the server (see cpp_server.cpp / server.py). */
+body.logged-out .sidebar button[data-section]:not([data-section="landing"]):not([data-section="auth"]) {
+  display: none !important;
+}
+body.logged-out .sidebar .nav-group {
+  display: none !important;
+}
