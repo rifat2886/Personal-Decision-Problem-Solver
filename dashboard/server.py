@@ -40,6 +40,13 @@ Security notes, stated honestly:
 - Sessions are in-memory bearer tokens (random UUIDs). They are
   NOT passwords and are never written to a file.
 - No username or password is ever written to error_log.txt.
+Route 2, Phase 1 note: this Python server stays txt-only. It is
+the local fallback, NOT the Render target (the C++ server is).
+Its data formats are identical to the PostgreSQL schema in
+dashboard/schema.sql, and the migration tool in tools/ moves txt
+data into that schema; see docs/route2-phase1.md for the
+compatibility check. A full Python Postgres mode was deliberately
+NOT duplicated in Phase 1 (see that doc, "incomplete work").
 - Only Python's standard library is used; there are no dependencies
   to install.
 """
@@ -373,9 +380,20 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):  # keep stdout clean
         pass
 
+    def cors_origin(self):
+        # CORS (Route 2, Phase 1): opt-in, exact origins only from
+        # CORS_ORIGINS; "*" is ignored, as in the C++ server.
+        origin = self.headers.get("Origin") or ""
+        allowed = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",")]
+        return origin if origin and origin in allowed else ""
+
     def send_json(self, status, payload):
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
+        origin = self.cors_origin()
+        if origin:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -452,6 +470,24 @@ class Handler(BaseHTTPRequestHandler):
     def do_DELETE(self):
         self.route()
 
+    def do_OPTIONS(self):
+        # Preflight for /api only, same rules as the C++ server.
+        if self.path.startswith("/api/"):
+            origin = self.cors_origin()
+            if origin:
+                self.send_response(204)
+                self.send_header("Access-Control-Allow-Origin", origin)
+                self.send_header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+                self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+                self.send_header("Access-Control-Max-Age", "86400")
+                self.send_header("Vary", "Origin")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+            else:
+                self.send_error_json(403, "Origin not allowed.")
+        else:
+            self.send_error_json(404, "Not found.")
+
     def route(self):
         parsed = urlparse(self.path)
         path = parsed.path
@@ -469,6 +505,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def route_api(self, method, path, query):
         data_dir = self.data_dir
+
+        # -- health (public, no data; Render health check) ------------
+        if path == "/api/health" and method == "GET":
+            return self.send_json(200, {"ok": True, "backend": "Python", "storage": "txt"})
 
         # -- auth (no token needed) -----------------------------------
         if path == "/api/register" and method == "POST":
@@ -1081,7 +1121,8 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     parser = argparse.ArgumentParser(description="Dashboard API server")
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8000)
+    # Render sets PORT; an explicit --port still wins over it.
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8000")))
     parser.add_argument("--data-dir", default=os.getcwd())
     args = parser.parse_args()
 
