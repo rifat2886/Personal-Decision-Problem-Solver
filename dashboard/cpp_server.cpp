@@ -253,6 +253,27 @@ static bool jsonNumberField(const string& body, const string& key, double& out) 
 static bool jsonIntField(const string& body, const string& key, long long& out) {
     double d; if (!jsonNumberField(body, key, d)) return false; out = (long long)d; return true;
 }
+static bool jsonBoolField(const string& body, const string& key) {
+    string pat = "\"" + key + "\"";
+    size_t p = body.find(pat); if (p == string::npos) return false;
+    p = body.find(':', p + pat.size()); if (p == string::npos) return false;
+    p++; while (p < body.size() && (body[p] == ' ' || body[p] == '\t')) p++;
+    return body.compare(p, 4, "true") == 0;
+}
+// A decision line is valid for restore only if it parses as
+// id|date|type|priority|title[|owner]: numeric id, a valid date and
+// a numeric priority. Malformed backup rows are skipped (counted in
+// "skipped") instead of being written into decisions.txt, where they
+// could break every later read. Owner is checked separately by
+// ownerVisible() before a row is ever restored.
+static bool validDecisionLine(const string& ln) {
+    auto parts = splitPipe(ln);
+    if (parts.size() < 5) return false;
+    for (char c : parts[0]) if (!isdigit((unsigned char)c)) return false;
+    if (!validDate(parts[1])) return false;
+    for (char c : parts[3]) if (!isdigit((unsigned char)c) && c != '-') return false;
+    return true;
+}
 
 // ---------------------------------------------------------------- file IO
 static vector<string> readLines(const string& path) {
@@ -964,12 +985,29 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
     }
 
     if (path == "/api/backup" && method == "POST") {
+        // Per-user backup (public-launch redesign, 2026-11-05): the old
+        // code overwrote the single global backup set with only the
+        // caller's rows, so one user's backup destroyed another user's
+        // backup, and a later restore deleted the first user's data
+        // (verified in the 2026-11-05 review). Now a backup touches
+        // ONLY the caller's own backup rows and leaves every other
+        // user's rows — and hidden legacy rows — untouched. The file /
+        // table format is unchanged, so old backups stay readable:
+        // restore still reads the same decisions_backup.txt / table
+        // and filters by ownerVisible(), exactly as before.
         if (pgMode()) {
             auto allDs = loadDecisions(); vector<Decision> visible;
             for (auto& d : allDs) if (ownerVisible(d.owner, user)) visible.push_back(d);
+            auto users = loadUsers();
+            bool soleUser = users.size() == 1 && users.count(user) == 1;
             string err;
             pgstore::pgExec("BEGIN", {}, err);
-            pgstore::pgExec("DELETE FROM decisions_backup", {}, err);
+            // Delete only this user's backup rows. In the sole-user
+            // case, legacy (NULL-owner) rows are also this user's
+            // visible backup, so they are replaced too; with 2+ users
+            // legacy rows are hidden from everyone and must survive.
+            pgstore::pgExec("DELETE FROM decisions_backup WHERE owner = $1", {user}, err);
+            if (soleUser) pgstore::pgExec("DELETE FROM decisions_backup WHERE owner IS NULL", {}, err);
             for (auto& d : visible) {
                 if (d.owner.empty()) pgstore::pgExec("INSERT INTO decisions_backup (id, record_date, type, priority, title, owner) VALUES ($1,$2,$3,$4,$5,NULL)",
                                                      {d.id, d.date, d.type, to_string(d.priority), d.title}, err);
@@ -983,15 +1021,41 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         FileLock lock("decisions.txt");
         auto allLines = readLines(joinPath(g_dataDir, "decisions.txt")); vector<string> lines;
         for (auto& ln : allLines) { auto p = splitPipe(ln); string owner = p.size() >= 6 ? p[5] : ""; if (ownerVisible(owner, user)) lines.push_back(ln); }
-        writeLines(joinPath(g_dataDir, "decisions_backup.txt"), lines);
+        // Keep other users' (and hidden legacy) backup rows, then
+        // append the caller's current visible rows.
+        vector<string> keptBackup;
+        if (fileExists(joinPath(g_dataDir, "decisions_backup.txt")))
+            for (auto& ln : readLines(joinPath(g_dataDir, "decisions_backup.txt"))) { auto p = splitPipe(ln); string owner = p.size() >= 6 ? p[5] : ""; if (!ownerVisible(owner, user)) keptBackup.push_back(ln); }
+        for (auto& ln : lines) keptBackup.push_back(ln);
+        writeLines(joinPath(g_dataDir, "decisions_backup.txt"), keptBackup);
         return sendJson(fd, 200, "{\"backedUp\":" + to_string(lines.size()) + "}");
     }
     if (path == "/api/restore" && method == "POST") {
+        // Restore requires an explicit confirmation in the request
+        // body ({"confirm": true}), in addition to the frontend's
+        // confirm() dialog. A direct API call without it must not
+        // wipe the caller's current decisions. The backup file /
+        // table is never deleted by a restore, so a restore can be
+        // repeated, and other users' data is never touched.
+        if (!jsonBoolField(req.body, "confirm"))
+            return sendErr(fd, 400, "Restore requires confirm:true in the request body. This replaces your current decisions with your backup.");
         if (pgMode()) {
             auto backup = loadBackupDecisions(); vector<Decision> visible;
             for (auto& d : backup) if (ownerVisible(d.owner, user)) visible.push_back(d);
+            if (visible.empty()) return sendErr(fd, 400, "No backup found for this user. Nothing was changed.");
             auto current = loadDecisions(); vector<Decision> kept;
             for (auto& d : current) if (!ownerVisible(d.owner, user)) kept.push_back(d);
+            // Validate + de-duplicate before writing anything: a
+            // backup row whose id already belongs to a kept (other
+            // user's) decision is skipped, never overwriting it.
+            vector<Decision> restored; long skipped = 0;
+            for (auto& d : visible) {
+                bool idOk = !d.id.empty(); for (char c : d.id) if (!isdigit((unsigned char)c)) idOk = false;
+                bool dup = false; for (auto& k : kept) if (k.id == d.id) dup = true;
+                if (!idOk || !validDate(d.date)) { skipped++; continue; }
+                if (dup) { skipped++; continue; }
+                restored.push_back(d);
+            }
             string err;
             pgstore::pgExec("BEGIN", {}, err);
             pgstore::pgExec("DELETE FROM decisions", {}, err);
@@ -1001,7 +1065,7 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
                 else pgstore::pgExec("INSERT INTO decisions (id, record_date, type, priority, title, owner) VALUES ($1,$2,$3,$4,$5,$6)",
                                      {d.id, d.date, d.type, to_string(d.priority), d.title, d.owner}, err);
             }
-            for (auto& d : visible) {
+            for (auto& d : restored) {
                 if (d.owner.empty()) pgstore::pgExec("INSERT INTO decisions (id, record_date, type, priority, title, owner) VALUES ($1,$2,$3,$4,$5,NULL)",
                                                      {d.id, d.date, d.type, to_string(d.priority), d.title}, err);
                 else pgstore::pgExec("INSERT INTO decisions (id, record_date, type, priority, title, owner) VALUES ($1,$2,$3,$4,$5,$6)",
@@ -1009,17 +1073,27 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
             }
             pgstore::pgExec("SELECT setval('decisions_id_seq', COALESCE((SELECT MAX(id) FROM decisions), 1))", {}, err);
             pgstore::pgExec("COMMIT", {}, err);
-            return sendJson(fd, 200, "{\"restored\":" + to_string(visible.size()) + "}");
+            return sendJson(fd, 200, "{\"restored\":" + to_string(restored.size()) + ",\"skipped\":" + to_string(skipped) + "}");
         }
         if (!fileExists(joinPath(g_dataDir, "decisions_backup.txt"))) return sendErr(fd, 400, "No backup file found.");
         FileLock lock("decisions.txt");
         auto rawBackup = readLines(joinPath(g_dataDir, "decisions_backup.txt")); vector<string> backupLines;
         for (auto& ln : rawBackup) { auto p = splitPipe(ln); string owner = p.size() >= 6 ? p[5] : ""; if (ownerVisible(owner, user)) backupLines.push_back(ln); }
+        if (backupLines.empty()) return sendErr(fd, 400, "No backup found for this user. Nothing was changed.");
         auto current = readLines(joinPath(g_dataDir, "decisions.txt")); vector<string> kept;
         for (auto& ln : current) { auto p = splitPipe(ln); string owner = p.size() >= 6 ? p[5] : ""; if (!ownerVisible(owner, user)) kept.push_back(ln); }
-        for (auto& ln : backupLines) kept.push_back(ln);
+        // Validate each backup row and skip id collisions with kept
+        // rows, instead of writing a malformed or duplicate row.
+        vector<string> restored; long skipped = 0;
+        for (auto& ln : backupLines) {
+            auto p = splitPipe(ln); bool dup = false;
+            for (auto& k : kept) { auto kp = splitPipe(k); if (!kp.empty() && kp[0] == p[0]) dup = true; }
+            if (!validDecisionLine(ln) || dup) { skipped++; continue; }
+            restored.push_back(ln);
+        }
+        for (auto& ln : restored) kept.push_back(ln);
         writeLines(joinPath(g_dataDir, "decisions.txt"), kept);
-        return sendJson(fd, 200, "{\"restored\":" + to_string(backupLines.size()) + "}");
+        return sendJson(fd, 200, "{\"restored\":" + to_string(restored.size()) + ",\"skipped\":" + to_string(skipped) + "}");
     }
 
     // ---- new sections (all mirror the console modules of the same name) ----
