@@ -1089,7 +1089,10 @@ def main():
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f"Dashboard: http://{args.host}:{args.port}/", flush=True)
     print(f"Data directory (same files as the C++ app): {Handler.data_dir}", flush=True)
-    print("Press Ctrl+C to stop. This server binds to localhost only.", flush=True)
+    if args.host in ("127.0.0.1", "localhost"):
+        print("Press Ctrl+C to stop. This server binds to localhost only.", flush=True)
+    else:
+        print("WARNING: LAN mode. Use only on a trusted Wi-Fi network, stop the server when done, and NEVER port-forward it to the public internet.", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
