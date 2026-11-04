@@ -130,3 +130,47 @@ Do not deploy publicly until all of these are done, in this order:
   use a plain ASCII path (the Windows file-lock code uses ANSI paths).
 - If the dashboard page loads but login fails, check that the server
   log shows the same data directory as your console app.
+
+## Mobile (Android / iPhone) — responsive dashboard + same-Wi-Fi access
+
+The dashboard is responsive: on a phone the sidebar becomes a slide-in
+drawer (tap ☰, tap outside the drawer or press Escape to close it),
+forms and buttons are full-width with 44px tap targets, and tables
+scroll horizontally inside their cards. No feature was removed for
+mobile — Registration, Login, Profile, Task Management, Priority,
+Daily Decision, Deadline Alerts, Budget, Habit Tracker and Reports
+all use the same API endpoints as on a laptop. The laptop layout is
+unchanged (all new mobile rules are inside max-width media queries).
+
+### Option A — phone browser on the laptop itself (safest, no network change)
+
+1. Start the dashboard on the laptop as usual (`start-dashboard.bat`
+   on Windows, `./start-dashboard.sh` on Linux/macOS).
+2. On the phone, you cannot reach `127.0.0.1` — that address always
+   means "this device itself". Use Option B instead.
+
+### Option B — phone on the same trusted Wi-Fi network (LAN mode)
+
+1. Connect the laptop and the phone to the SAME trusted home/office
+   Wi-Fi network.
+2. On the laptop, run the LAN starter instead of the normal one:
+   Windows: double-click `start-dashboard-lan.bat`
+   Linux/macOS: `./start-dashboard-lan.sh`
+   (This runs the server with `--host 0.0.0.0`; the normal starters
+   still bind to localhost only, unchanged.)
+3. Find the laptop's local IP: Windows `ipconfig` (IPv4 Address under
+   Wi-Fi), Linux `hostname -I`, macOS `ipconfig getifaddr en0`.
+   Example: `192.168.1.5`.
+4. On the phone browser, open `http://192.168.1.5:8000/` (your own IP,
+   not this example). Register/Login exactly as on the laptop — the
+   same `users.txt` and data files are used.
+5. When done, stop the server on the laptop (close the window /
+   Ctrl+C).
+
+Safety rules for LAN mode (no exceptions):
+- Trusted Wi-Fi only — never public Wi-Fi, never a café/hotel network.
+- If Windows Firewall asks, allow Private networks only, never Public.
+- NEVER port-forward your router, NEVER use a public tunnel, and
+  NEVER put this server on the public internet: it has no HTTPS of
+  its own, and login traffic on the local network is unencrypted.
+- Use a strong password, and stop the server when you are done.
