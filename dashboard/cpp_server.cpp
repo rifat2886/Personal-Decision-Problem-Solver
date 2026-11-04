@@ -47,6 +47,26 @@
 //   Data files (users.txt, etc.) are never served as static files.
 // - Request bodies are capped at 1 MiB; oversized bodies are rejected.
 // - No command execution, no SQL, no user input passed to a shell.
+//
+// Postgres mode (Route 2, Phase 1):
+// - Set DATABASE_URL to run against PostgreSQL instead of .txt
+//   files. Without DATABASE_URL the server is exactly as before.
+// - Postgres mode is mandatory when DATABASE_URL is set: if the
+//   connection or schema creation fails, the server exits instead
+//   of silently falling back to txt files (which would serve a
+//   different, empty data set). See dashboard/pg_store.h.
+// - All SQL uses parameters ($1, $2, ...); user data is never
+//   interpolated into SQL text.
+// - CORS is opt-in via CORS_ORIGINS (comma-separated exact origins,
+//   for example the Vercel frontend origin). Without it, no
+//   Access-Control-Allow-Origin header is sent. "*" is ignored:
+//   a wildcard origin must never be used with Authorization
+//   headers. The recommended production path is a Vercel /api
+//   proxy rewrite, which needs no CORS at all; CORS here is the
+//   fallback for direct Render calls (see docs/route2-phase1.md).
+// - Sessions stay in-memory (12h), as in txt mode. A Render free
+//   service that sleeps or restarts loses sessions; users simply
+//   log in again. Data in Postgres survives sleep/restart.
 
 #ifdef _MSC_VER
 #pragma comment(lib, "ws2_32")
@@ -88,12 +108,22 @@
 // Windows too. It was previously inside the non-Windows branch only,
 // which broke the Windows build. See Issue 1 in AUDIT.md.
 #include "../password_hash.h"
+#include "pg_store.h"
 
 using namespace std;
 
 // ---------------------------------------------------------------- config
 static string g_dataDir = ".";
 static string g_staticDir = ".";
+// Postgres mode: true only when DATABASE_URL was set at startup and
+// pgInit() succeeded. All data-access functions check this first.
+static bool g_pgMode = false;
+static bool pgMode() { return g_pgMode && pgstore::pgIsEnabled(); }
+// CORS allowlist, from CORS_ORIGINS at startup (exact origins only).
+static vector<string> g_corsOrigins;
+// Per-connection CORS origin, set in handleConnection for API
+// requests whose Origin is in the allowlist; empty otherwise.
+static thread_local string g_corsOrigin;
 static mutex g_apiMutex;
 // Sessions: token -> (username, expiry). Tokens expire after 12h;
 // expired tokens are rejected and removed on next use.
@@ -289,12 +319,33 @@ struct Goal { string name, owner; double target = 0, saved = 0; };
 struct Task { string id, title, deadline, status, owner; int urgency = 0, importance = 0; int score() const { return urgency * 2 + importance * 3; } };
 
 static map<string, pair<string, string>> loadUsers() {  // username -> (password, role)
+    if (pgMode()) {
+        map<string, pair<string, string>> users;
+        vector<pgstore::Row> rows; string err;
+        if (pgstore::pgQuery("SELECT username, password_hash, role FROM users ORDER BY username", {}, rows, err))
+            for (auto& r : rows) users[r[0].text] = {r[1].text, r[2].text};
+        return users;
+    }
     map<string, pair<string, string>> users;
     for (auto& line : readLines(joinPath(g_dataDir, "users.txt"))) {
         istringstream is(line); string u, p, r;
         if (is >> u >> p >> r) users[u] = {p, r};
     }
     return users;
+}
+// Postgres helpers used by handlers that read raw lines in txt mode.
+// They return txt-format lines so handler logic stays identical.
+static vector<string> pgHabitLines() {
+    vector<string> out; vector<pgstore::Row> rows; string err;
+    if (!pgstore::pgQuery("SELECT habit, log_date, owner FROM habit_log ORDER BY id", {}, rows, err)) return out;
+    for (auto& r : rows) out.push_back(r[0].text + "|" + r[1].text + (r[2].isNull ? "" : "|" + r[2].text));
+    return out;
+}
+static vector<string> pgErrorLines() {
+    vector<string> out; vector<pgstore::Row> rows; string err;
+    if (!pgstore::pgQuery("SELECT line FROM error_logs ORDER BY id", {}, rows, err)) return out;
+    for (auto& r : rows) out.push_back(r[0].text);
+    return out;
 }
 static bool ownerVisible(const string& owner, const string& user) {
     if (owner == user) return true;
@@ -303,6 +354,12 @@ static bool ownerVisible(const string& owner, const string& user) {
     return users.size() == 1 && users.count(user) == 1;
 }
 static vector<Decision> loadDecisions() {
+    if (pgMode()) {
+        vector<Decision> out; vector<pgstore::Row> rows; string err;
+        if (!pgstore::pgQuery("SELECT id, record_date, type, priority, title, owner FROM decisions ORDER BY id", {}, rows, err)) return out;
+        for (auto& r : rows) { Decision d; d.id = r[0].text; d.date = r[1].text; d.type = r[2].text; try { d.priority = stoi(r[3].text); } catch (...) { continue; } d.title = r[4].text; d.owner = r[5].isNull ? "" : r[5].text; out.push_back(d); }
+        return out;
+    }
     vector<Decision> out;
     for (auto& line : readLines(joinPath(g_dataDir, "decisions.txt"))) {
         auto parts = splitPipe(line); if (parts.size() < 5) continue;
@@ -312,7 +369,32 @@ static vector<Decision> loadDecisions() {
     }
     return out;
 }
+static vector<Decision> loadBackupDecisions() {
+    if (pgMode()) {
+        vector<Decision> out; vector<pgstore::Row> rows; string err;
+        if (!pgstore::pgQuery("SELECT id, record_date, type, priority, title, owner FROM decisions_backup ORDER BY id", {}, rows, err)) return out;
+        for (auto& r : rows) { Decision d; d.id = r[0].text; d.date = r[1].text; d.type = r[2].text; try { d.priority = stoi(r[3].text); } catch (...) { continue; } d.title = r[4].text; d.owner = r[5].isNull ? "" : r[5].text; out.push_back(d); }
+        return out;
+    }
+    vector<Decision> out;
+    for (auto& line : readLines(joinPath(g_dataDir, "decisions_backup.txt"))) {
+        auto parts = splitPipe(line); if (parts.size() < 5) continue;
+        try { Decision d; d.id = parts[0]; d.date = parts[1]; d.type = parts[2]; d.priority = stoi(parts[3]);
+              d.title = parts[4]; d.owner = parts.size() >= 6 ? parts[5] : ""; out.push_back(d); }
+        catch (...) {}
+    }
+    return out;
+}
 static Decision appendDecision(const string& type, int priority, const string& title, const string& owner) {
+    if (pgMode()) {
+        // SERIAL id, like txt mode's global max+1, but atomic in the DB.
+        vector<pgstore::Row> rows; string err;
+        Decision rec; rec.date = todayStr(); rec.type = sanitize(type); rec.priority = priority; rec.title = sanitize(title); rec.owner = owner;
+        if (pgstore::pgQuery("INSERT INTO decisions (record_date, type, priority, title, owner) VALUES ($1,$2,$3,$4,$5) RETURNING id",
+                             {rec.date, rec.type, to_string(rec.priority), rec.title, rec.owner}, rows, err) && !rows.empty())
+            rec.id = rows[0][0].text;
+        return rec;
+    }
     FileLock lock("decisions.txt");
     auto ds = loadDecisions(); long long nextId = 1;
     for (auto& d : ds) { try { nextId = max(nextId, stoll(d.id) + 1); } catch (...) {} }
@@ -325,6 +407,12 @@ static string decisionJson(const Decision& d) {
            ",\"priority\":" + to_string(d.priority) + ",\"title\":" + jsonStr(d.title) + "}";
 }
 static vector<Tx> loadTxs() {
+    if (pgMode()) {
+        vector<Tx> out; vector<pgstore::Row> rows; string err;
+        if (!pgstore::pgQuery("SELECT tx_date, type, category, amount, note, owner FROM transactions ORDER BY id", {}, rows, err)) return out;
+        for (auto& r : rows) { Tx t; t.date = r[0].text; t.type = r[1].text; t.category = r[2].text; try { t.amount = stod(r[3].text); } catch (...) { continue; } t.note = r[4].text; t.owner = r[5].isNull ? "" : r[5].text; out.push_back(t); }
+        return out;
+    }
     vector<Tx> out;
     for (auto& line : readLines(joinPath(g_dataDir, "transactions.txt"))) {
         auto parts = splitPipe(line); if (parts.size() < 5) continue;
@@ -333,6 +421,12 @@ static vector<Tx> loadTxs() {
     return out;
 }
 static vector<Goal> loadGoals() {
+    if (pgMode()) {
+        vector<Goal> out; vector<pgstore::Row> rows; string err;
+        if (!pgstore::pgQuery("SELECT name, target, saved, owner FROM savings_goals ORDER BY id", {}, rows, err)) return out;
+        for (auto& r : rows) { Goal g; g.name = r[0].text; try { g.target = stod(r[1].text); g.saved = stod(r[2].text); } catch (...) { continue; } g.owner = r[3].isNull ? "" : r[3].text; out.push_back(g); }
+        return out;
+    }
     vector<Goal> out;
     for (auto& line : readLines(joinPath(g_dataDir, "savings_goals.txt"))) {
         auto parts = splitPipe(line); if (parts.size() < 3) continue;
@@ -341,11 +435,34 @@ static vector<Goal> loadGoals() {
     return out;
 }
 static void saveGoals(const vector<Goal>& goals) {
+    if (pgMode()) {
+        // Full replace, like the txt rewrite, inside one transaction.
+        string err;
+        pgstore::pgExec("BEGIN", {}, err);
+        pgstore::pgExec("DELETE FROM savings_goals", {}, err);
+        for (auto& g : goals) {
+            if (g.owner.empty()) pgstore::pgExec("INSERT INTO savings_goals (name, target, saved, owner) VALUES ($1,$2,$3,NULL)",
+                                                 {sanitize(g.name), fmtNumRaw(g.target), fmtNumRaw(g.saved)}, err);
+            else pgstore::pgExec("INSERT INTO savings_goals (name, target, saved, owner) VALUES ($1,$2,$3,$4)",
+                                 {sanitize(g.name), fmtNumRaw(g.target), fmtNumRaw(g.saved), sanitize(g.owner)}, err);
+        }
+        pgstore::pgExec("COMMIT", {}, err);
+        return;
+    }
     vector<string> lines;
     for (auto& g : goals) lines.push_back(sanitize(g.name) + "|" + fmtNumRaw(g.target) + "|" + fmtNumRaw(g.saved) + "|" + sanitize(g.owner));
     writeLines(joinPath(g_dataDir, "savings_goals.txt"), lines);
 }
 static vector<Task> loadTasks() {
+    if (pgMode()) {
+        vector<Task> out; vector<pgstore::Row> rows; string err;
+        if (!pgstore::pgQuery("SELECT id, title, urgency, importance, deadline, status, owner FROM tasks ORDER BY id", {}, rows, err)) return out;
+        for (auto& r : rows) { Task t; t.id = r[0].text; t.title = r[1].text; try { t.urgency = stoi(r[2].text); t.importance = stoi(r[3].text); } catch (...) { continue; } t.deadline = r[4].text; t.status = r[5].text; t.owner = r[6].isNull ? "" : r[6].text; out.push_back(t); }
+        sort(out.begin(), out.end(), [](const Task& a, const Task& b) {
+            if (a.score() != b.score()) return a.score() > b.score();
+            return a.id < b.id; });
+        return out;
+    }
     vector<Task> out;
     for (auto& line : readLines(joinPath(g_dataDir, "tasks.txt"))) {
         auto parts = splitPipe(line); if (parts.size() < 6) continue;
@@ -357,6 +474,21 @@ static vector<Task> loadTasks() {
     return out;
 }
 static void saveTasks(const vector<Task>& tasks) {
+    if (pgMode()) {
+        string err;
+        pgstore::pgExec("BEGIN", {}, err);
+        pgstore::pgExec("DELETE FROM tasks", {}, err);
+        for (auto& t : tasks) {
+            if (t.owner.empty()) pgstore::pgExec("INSERT INTO tasks (id, title, urgency, importance, deadline, status, owner) VALUES ($1,$2,$3,$4,$5,$6,NULL)",
+                                                 {t.id, sanitize(t.title), to_string(t.urgency), to_string(t.importance), sanitize(t.deadline), sanitize(t.status)}, err);
+            else pgstore::pgExec("INSERT INTO tasks (id, title, urgency, importance, deadline, status, owner) VALUES ($1,$2,$3,$4,$5,$6,$7)",
+                                 {t.id, sanitize(t.title), to_string(t.urgency), to_string(t.importance), sanitize(t.deadline), sanitize(t.status), sanitize(t.owner)}, err);
+        }
+        // Keep the SERIAL sequence ahead of migrated ids.
+        pgstore::pgExec("SELECT setval('tasks_id_seq', COALESCE((SELECT MAX(id) FROM tasks), 1))", {}, err);
+        pgstore::pgExec("COMMIT", {}, err);
+        return;
+    }
     vector<string> lines;
     for (auto& t : tasks) lines.push_back(sanitize(t.id) + "|" + sanitize(t.title) + "|" + to_string(t.urgency) + "|" + to_string(t.importance) + "|" + sanitize(t.deadline) + "|" + sanitize(t.status) + "|" + sanitize(t.owner));
     writeLines(joinPath(g_dataDir, "tasks.txt"), lines);
@@ -420,7 +552,10 @@ static void sendAll(SocketFd fd, const string& data) {
 }
 static void sendResponse(SocketFd fd, int status, const string& ctype, const string& body) {
     string reason = status == 200 ? "OK" : status == 201 ? "Created" : status == 400 ? "Bad Request" : status == 401 ? "Unauthorized" : status == 404 ? "Not Found" : status == 413 ? "Payload Too Large" : status == 429 ? "Too Many Requests" : status == 403 ? "Forbidden" : "Error";
-    ostringstream os; os << "HTTP/1.1 " << status << " " << reason << "\r\nContent-Type: " << ctype << "\r\nContent-Length: " << body.size() << "\r\nConnection: close\r\n\r\n" << body;
+    ostringstream os; os << "HTTP/1.1 " << status << " " << reason << "\r\nContent-Type: " << ctype << "\r\nContent-Length: " << body.size() << "\r\n";
+    if (!g_corsOrigin.empty())
+        os << "Access-Control-Allow-Origin: " << g_corsOrigin << "\r\nVary: Origin\r\n";
+    os << "Connection: close\r\n\r\n" << body;
     sendAll(fd, os.str());
 }
 static void sendJson(SocketFd fd, int status, const string& body) { sendResponse(fd, status, "application/json", body); }
@@ -463,7 +598,7 @@ static vector<MtTask> parseMtTasks(const string& body, bool& ok) {
 
 static string habitStreakJson(const string& habit, const string& user) {
     int total = 0; vector<string> dates;
-    for (auto& line : readLines(joinPath(g_dataDir, "habit_log.txt"))) {
+    for (auto& line : (pgMode() ? pgHabitLines() : readLines(joinPath(g_dataDir, "habit_log.txt")))) {
         auto p = splitPipe(line);
         string owner = p.size() >= 3 ? p[2] : "";
         if (p.size() >= 2 && p[0] == habit && validDate(p[1]) && ownerVisible(owner, user)) { total++; dates.push_back(p[1]); }
@@ -491,11 +626,18 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         for (char c : password) { if (isalpha((unsigned char)c)) letter = true; if (isdigit((unsigned char)c)) digit = true; }
         if (password.size() < 8 || !letter || !digit)
             return sendErr(fd, 400, "Password must be 8+ characters with a letter and a digit.");
-        FileLock lock("users.txt");
         auto users = loadUsers();
         if (users.count(username)) return sendErr(fd, 400, "Username already exists.");
         string role = users.empty() ? "ADMIN" : "USER";
-        appendLine(joinPath(g_dataDir, "users.txt"), username + " " + pdps_hash::hashPassword(password) + " " + role);
+        if (pgMode()) {
+            string err;
+            if (!pgstore::pgExec("INSERT INTO users (username, password_hash, role) VALUES ($1,$2,$3)",
+                                 {username, pdps_hash::hashPassword(password), role}, err))
+                return sendErr(fd, 400, "Username already exists.");
+        } else {
+            FileLock lock("users.txt");
+            appendLine(joinPath(g_dataDir, "users.txt"), username + " " + pdps_hash::hashPassword(password) + " " + role);
+        }
         return sendJson(fd, 201, "{\"username\":" + jsonStr(username) + ",\"role\":" + jsonStr(role) + "}");
     }
     if (path == "/api/login" && method == "POST") {
@@ -522,11 +664,17 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         // Backward-compatible migration: plaintext that just matched
         // is rewritten as a hash, under the users lock.
         if (!pdps_hash::isHashed(it->second.first)) {
-            FileLock lock("users.txt");
-            auto fresh = loadUsers();
-            vector<string> lines;
-            for (auto& kv : fresh) lines.push_back(kv.first + " " + (kv.first == username ? pdps_hash::hashPassword(password) : kv.second.first) + " " + kv.second.second);
-            writeLines(joinPath(g_dataDir, "users.txt"), lines);
+            if (pgMode()) {
+                string err;
+                pgstore::pgExec("UPDATE users SET password_hash = $1 WHERE username = $2",
+                                {pdps_hash::hashPassword(password), username}, err);
+            } else {
+                FileLock lock("users.txt");
+                auto fresh = loadUsers();
+                vector<string> lines;
+                for (auto& kv : fresh) lines.push_back(kv.first + " " + (kv.first == username ? pdps_hash::hashPassword(password) : kv.second.first) + " " + kv.second.second);
+                writeLines(joinPath(g_dataDir, "users.txt"), lines);
+            }
         }
         string token = makeToken();
         { lock_guard<mutex> lk(g_sessionMutex); Session sess; sess.username = username; sess.expiry = (long long)time(nullptr) + kSessionTTL; g_sessions[token] = sess; }
@@ -536,6 +684,11 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         if (req.auth.rfind("Bearer ", 0) == 0) { lock_guard<mutex> lk(g_sessionMutex); g_sessions.erase(req.auth.substr(7)); }
         return sendJson(fd, 200, "{\"ok\":true}");
     }
+    // Health check (Route 2, Phase 1): public, no data, used by
+    // Render's health check. It deliberately does NOT require a
+    // token, and it reveals nothing except backend + storage mode.
+    if (path == "/api/health" && method == "GET")
+        return sendJson(fd, 200, string("{\"ok\":true,\"backend\":\"C++\",\"storage\":\"") + (pgMode() ? "postgres" : "txt") + "\"}");
     // ---- everything below needs a login ----
     string user = getSessionUser(req);
     if (user.empty()) return sendErr(fd, 401, "Please log in first.");
@@ -554,7 +707,7 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         double tg = 0, sg = 0; for (auto& g : goals) { tg += g.target; sg += g.saved; }
         int pending = 0; for (auto& t : tasks) if (t.status == "Pending") pending++;
         map<string, int> habits;
-        for (auto& line : readLines(joinPath(g_dataDir, "habit_log.txt"))) { auto p = splitPipe(line); string owner = p.size() >= 3 ? p[2] : ""; if (p.size() >= 2 && ownerVisible(owner, user)) habits[p[0]]++; }
+        for (auto& line : (pgMode() ? pgHabitLines() : readLines(joinPath(g_dataDir, "habit_log.txt")))) { auto p = splitPipe(line); string owner = p.size() >= 3 ? p[2] : ""; if (p.size() >= 2 && ownerVisible(owner, user)) habits[p[0]]++; }
         ostringstream os; os << "{\"username\":" << jsonStr(user) << ",\"role\":" << jsonStr(role)
             << ",\"decisions\":" << ds.size() << ",\"tasks\":" << tasks.size() << ",\"tasksPending\":" << pending
             << ",\"income\":" << fmtNum(income) << ",\"expense\":" << fmtNum(expense) << ",\"balance\":" << fmtNum(income - expense)
@@ -590,6 +743,14 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
     }
     if (path.rfind("/api/decisions/", 0) == 0 && method == "DELETE") {
         string id = path.substr(string("/api/decisions/").size());
+        if (pgMode()) {
+            auto allDs = loadDecisions(); bool found = false;
+            for (auto& d : allDs) if (d.id == id && ownerVisible(d.owner, user)) found = true;
+            if (!found) return sendErr(fd, 404, "Decision ID not found.");
+            string err;
+            pgstore::pgExec("DELETE FROM decisions WHERE id = $1", {id}, err);
+            return sendJson(fd, 200, "{\"deleted\":" + jsonStr(id) + "}");
+        }
         FileLock lock("decisions.txt");
         auto lines = readLines(joinPath(g_dataDir, "decisions.txt")); vector<string> kept; bool found = false;
         for (auto& line : lines) { auto p = splitPipe(line); string owner = p.size() >= 6 ? p[5] : ""; if (p.size() >= 1 && p[0] == id && ownerVisible(owner, user)) { found = true; continue; } kept.push_back(line); }
@@ -710,8 +871,14 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         jsonNumberField(req.body, "amount", amount);
         if (!validDate(date) || (type != "income" && type != "expense") || trimStr(category).empty() || amount < 0)
             return sendErr(fd, 400, "Need a real date, type income/expense, a category, and an amount >= 0.");
-        FileLock lock("transactions.txt");
-        appendLine(joinPath(g_dataDir, "transactions.txt"), date + "|" + type + "|" + sanitize(category) + "|" + fmtNumRaw(amount) + "|" + sanitize(note) + "|" + user);
+        if (pgMode()) {
+            string err;
+            pgstore::pgExec("INSERT INTO transactions (tx_date, type, category, amount, note, owner) VALUES ($1,$2,$3,$4,$5,$6)",
+                            {date, type, sanitize(category), fmtNumRaw(amount), sanitize(note), user}, err);
+        } else {
+            FileLock lock("transactions.txt");
+            appendLine(joinPath(g_dataDir, "transactions.txt"), date + "|" + type + "|" + sanitize(category) + "|" + fmtNumRaw(amount) + "|" + sanitize(note) + "|" + user);
+        }
         return sendJson(fd, 201, "{\"date\":" + jsonStr(date) + ",\"type\":" + jsonStr(type) + ",\"category\":" + jsonStr(category) + ",\"amount\":" + fmtNum(amount) + ",\"note\":" + jsonStr(note) + "}");
     }
 
@@ -743,7 +910,7 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
 
     if (path == "/api/habits" && method == "GET") {
         map<string, vector<string>> byHabit;
-        for (auto& line : readLines(joinPath(g_dataDir, "habit_log.txt"))) { auto p = splitPipe(line); string owner = p.size() >= 3 ? p[2] : ""; if (p.size() >= 2 && ownerVisible(owner, user)) byHabit[p[0]].push_back(p[1]); }
+        for (auto& line : (pgMode() ? pgHabitLines() : readLines(joinPath(g_dataDir, "habit_log.txt")))) { auto p = splitPipe(line); string owner = p.size() >= 3 ? p[2] : ""; if (p.size() >= 2 && ownerVisible(owner, user)) byHabit[p[0]].push_back(p[1]); }
         string out = "["; bool first = true;
         for (auto& kv : byHabit) { sort(kv.second.begin(), kv.second.end()); if (!first) out += ","; first = false;
             out += "{\"habit\":" + jsonStr(kv.first) + ",\"dates\":["; bool f2 = true; for (auto& d : kv.second) { if (!f2) out += ","; f2 = false; out += jsonStr(d); } out += "]}"; }
@@ -753,7 +920,8 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         string habit, date; jsonStringField(req.body, "habit", habit); jsonStringField(req.body, "date", date);
         if (date.empty()) date = todayStr();
         if (trimStr(habit).empty() || !validDate(date)) return sendErr(fd, 400, "Need a habit name and a real YYYY-MM-DD date.");
-        { FileLock lock("habit_log.txt"); appendLine(joinPath(g_dataDir, "habit_log.txt"), sanitize(habit) + "|" + date + "|" + user); }
+        if (pgMode()) { string err; pgstore::pgExec("INSERT INTO habit_log (habit, log_date, owner) VALUES ($1,$2,$3)", {sanitize(habit), date, user}, err); }
+        else { FileLock lock("habit_log.txt"); appendLine(joinPath(g_dataDir, "habit_log.txt"), sanitize(habit) + "|" + date + "|" + user); }
         return sendJson(fd, 201, habitStreakJson(habit, user));
     }
     if (path == "/api/habits/streak" && method == "GET") {
@@ -784,6 +952,21 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
     }
 
     if (path == "/api/backup" && method == "POST") {
+        if (pgMode()) {
+            auto allDs = loadDecisions(); vector<Decision> visible;
+            for (auto& d : allDs) if (ownerVisible(d.owner, user)) visible.push_back(d);
+            string err;
+            pgstore::pgExec("BEGIN", {}, err);
+            pgstore::pgExec("DELETE FROM decisions_backup", {}, err);
+            for (auto& d : visible) {
+                if (d.owner.empty()) pgstore::pgExec("INSERT INTO decisions_backup (id, record_date, type, priority, title, owner) VALUES ($1,$2,$3,$4,$5,NULL)",
+                                                     {d.id, d.date, d.type, to_string(d.priority), d.title}, err);
+                else pgstore::pgExec("INSERT INTO decisions_backup (id, record_date, type, priority, title, owner) VALUES ($1,$2,$3,$4,$5,$6)",
+                                     {d.id, d.date, d.type, to_string(d.priority), d.title, d.owner}, err);
+            }
+            pgstore::pgExec("COMMIT", {}, err);
+            return sendJson(fd, 200, "{\"backedUp\":" + to_string(visible.size()) + "}");
+        }
         if (!fileExists(joinPath(g_dataDir, "decisions.txt"))) return sendErr(fd, 400, "No decision file found to back up.");
         FileLock lock("decisions.txt");
         auto allLines = readLines(joinPath(g_dataDir, "decisions.txt")); vector<string> lines;
@@ -792,6 +975,30 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         return sendJson(fd, 200, "{\"backedUp\":" + to_string(lines.size()) + "}");
     }
     if (path == "/api/restore" && method == "POST") {
+        if (pgMode()) {
+            auto backup = loadBackupDecisions(); vector<Decision> visible;
+            for (auto& d : backup) if (ownerVisible(d.owner, user)) visible.push_back(d);
+            auto current = loadDecisions(); vector<Decision> kept;
+            for (auto& d : current) if (!ownerVisible(d.owner, user)) kept.push_back(d);
+            string err;
+            pgstore::pgExec("BEGIN", {}, err);
+            pgstore::pgExec("DELETE FROM decisions", {}, err);
+            for (auto& d : kept) {
+                if (d.owner.empty()) pgstore::pgExec("INSERT INTO decisions (id, record_date, type, priority, title, owner) VALUES ($1,$2,$3,$4,$5,NULL)",
+                                                     {d.id, d.date, d.type, to_string(d.priority), d.title}, err);
+                else pgstore::pgExec("INSERT INTO decisions (id, record_date, type, priority, title, owner) VALUES ($1,$2,$3,$4,$5,$6)",
+                                     {d.id, d.date, d.type, to_string(d.priority), d.title, d.owner}, err);
+            }
+            for (auto& d : visible) {
+                if (d.owner.empty()) pgstore::pgExec("INSERT INTO decisions (id, record_date, type, priority, title, owner) VALUES ($1,$2,$3,$4,$5,NULL)",
+                                                     {d.id, d.date, d.type, to_string(d.priority), d.title}, err);
+                else pgstore::pgExec("INSERT INTO decisions (id, record_date, type, priority, title, owner) VALUES ($1,$2,$3,$4,$5,$6)",
+                                     {d.id, d.date, d.type, to_string(d.priority), d.title, d.owner}, err);
+            }
+            pgstore::pgExec("SELECT setval('decisions_id_seq', COALESCE((SELECT MAX(id) FROM decisions), 1))", {}, err);
+            pgstore::pgExec("COMMIT", {}, err);
+            return sendJson(fd, 200, "{\"restored\":" + to_string(visible.size()) + "}");
+        }
         if (!fileExists(joinPath(g_dataDir, "decisions_backup.txt"))) return sendErr(fd, 400, "No backup file found.");
         FileLock lock("decisions.txt");
         auto rawBackup = readLines(joinPath(g_dataDir, "decisions_backup.txt")); vector<string> backupLines;
@@ -805,7 +1012,7 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
 
     // ---- new sections (all mirror the console modules of the same name) ----
     if (path == "/api/info" && method == "GET")
-        return sendJson(fd, 200, "{\"backend\":\"C++\",\"server\":\"cpp_server.cpp\",\"dataFiles\":[\"users.txt\",\"decisions.txt\",\"tasks.txt\",\"transactions.txt\",\"savings_goals.txt\",\"habit_log.txt\",\"daily_report.txt\",\"financial_report.txt\",\"financial_report.csv\",\"error_log.txt\"]}");
+        return sendJson(fd, 200, string("{\"backend\":\"C++\",\"server\":\"cpp_server.cpp\",\"storage\":\"") + (pgMode() ? "postgres" : "txt") + "\",\"dataFiles\":[\"users.txt\",\"decisions.txt\",\"tasks.txt\",\"transactions.txt\",\"savings_goals.txt\",\"habit_log.txt\",\"daily_report.txt\",\"financial_report.txt\",\"financial_report.csv\",\"error_log.txt\"]}");
     if (path == "/api/users" && method == "GET") {
         // Mirrors admin.cpp: username and role only, never passwords.
         if (role != "ADMIN") return sendErr(fd, 403, "Only an ADMIN can list users.");
@@ -821,6 +1028,11 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         bool letter = false, digit = false;
         for (char c : nw) { if (isalpha((unsigned char)c)) letter = true; if (isdigit((unsigned char)c)) digit = true; }
         if (nw.size() < 8 || !letter || !digit) return sendErr(fd, 400, "Password must be 8+ characters with a letter and a digit.");
+        if (pgMode()) {
+            string err;
+            pgstore::pgExec("UPDATE users SET password_hash = $1 WHERE username = $2", {pdps_hash::hashPassword(nw), user}, err);
+            return sendJson(fd, 200, "{\"ok\":true}");
+        }
         FileLock lock("users.txt");
         // Re-read under the lock so a concurrent register cannot be lost.
         auto fresh = loadUsers(); if (fresh.count(user) && !pdps_hash::verifyPassword(cur, fresh[user].first)) return sendErr(fd, 400, "Wrong current password.");
@@ -931,24 +1143,35 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         // so the console and dashboard share the exported files.
         string format = "txt"; auto fi = query.find("format"); if (fi != query.end()) format = fi->second;
         if (format != "txt" && format != "csv") return sendErr(fd, 400, "Format must be txt or csv.");
-        FileLock lock("transactions.txt");
-        auto allLines = readLines(joinPath(g_dataDir, "transactions.txt")); vector<string> lines;
-        for (auto& ln : allLines) { auto p = splitPipe(ln); string owner = p.size() >= 6 ? p[5] : ""; if (ownerVisible(owner, user)) lines.push_back(ln); }
-        if (!fileExists(joinPath(g_dataDir, "transactions.txt"))) return sendErr(fd, 400, "No transactions file found to export.");
+        vector<string> lines;
+        if (pgMode()) {
+            auto allTxs = loadTxs();
+            for (auto& t : allTxs) if (ownerVisible(t.owner, user))
+                lines.push_back(t.date + "|" + t.type + "|" + t.category + "|" + fmtNumRaw(t.amount) + "|" + t.note + "|" + t.owner);
+            // In Postgres mode the store always exists, so an empty
+            // export is an empty report, not a missing-file error.
+            // The API response (format, filename, content) is unchanged.
+        } else {
+            FileLock lock("transactions.txt");
+            auto allLines = readLines(joinPath(g_dataDir, "transactions.txt"));
+            for (auto& ln : allLines) { auto p = splitPipe(ln); string owner = p.size() >= 6 ? p[5] : ""; if (ownerVisible(owner, user)) lines.push_back(ln); }
+            if (!fileExists(joinPath(g_dataDir, "transactions.txt"))) return sendErr(fd, 400, "No transactions file found to export.");
+        }
         string content;
         if (format == "txt") {
             content = "PERSONAL FINANCIAL REPORT\n========================\n\n";
             for (auto& ln : lines) content += ln + "\n";
-            writeLines(joinPath(g_dataDir, "financial_report.txt"), {content});
-            // writeLines adds a trailing newline per line; rewrite exactly:
-            { ofstream out(joinPath(g_dataDir, "financial_report.txt"), ios::binary); out << content; }
+            if (!pgMode()) {
+                writeLines(joinPath(g_dataDir, "financial_report.txt"), {content});
+                { ofstream out(joinPath(g_dataDir, "financial_report.txt"), ios::binary); out << content; }
+            }
         } else {
             content = "Date,Type,Category,Amount,Note\n";
             for (auto& ln : lines) {
                 auto parts = splitPipe(ln); if (parts.size() < 5) continue;
                 content += parts[0] + "," + parts[1] + "," + parts[2] + "," + parts[3] + ",\"" + parts[4] + "\"\n";
             }
-            { ofstream out(joinPath(g_dataDir, "financial_report.csv"), ios::binary); out << content; }
+            if (!pgMode()) { ofstream out(joinPath(g_dataDir, "financial_report.csv"), ios::binary); out << content; }
         }
         return sendJson(fd, 200, "{\"format\":" + jsonStr(format) + ",\"filename\":" + jsonStr(format == "txt" ? "financial_report.txt" : "financial_report.csv") + ",\"content\":" + jsonStr(content) + "}");
     }
@@ -981,7 +1204,8 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
             return sendErr(fd, 400, "Need income/expenses >= 0, planned > 0, and completed 0..planned.");
         double balance = income - expenses; double rate = completed * 100.0 / planned;
         ostringstream line; line << "User: " << user << ", " << fixed << setprecision(2) << "Income: " << income << ", Expenses: " << expenses << ", Balance: " << balance << ", Habit completion: " << rate << "%";
-        { FileLock lock("daily_report.txt"); appendLine(joinPath(g_dataDir, "daily_report.txt"), line.str()); }
+        if (pgMode()) { string err; pgstore::pgExec("INSERT INTO daily_reports (line) VALUES ($1)", {line.str()}, err); }
+        else { FileLock lock("daily_report.txt"); appendLine(joinPath(g_dataDir, "daily_report.txt"), line.str()); }
         ostringstream os; os << fixed << setprecision(2) << "{\"income\":" << income << ",\"expenses\":" << expenses << ",\"balance\":" << balance << ",\"habitRate\":" << rate << "}";
         return sendJson(fd, 200, os.str());
     }
@@ -1025,7 +1249,7 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
     if (path == "/api/error-log" && method == "GET") {
         // Mirrors menu 33 (showErrorLog): error_log.txt lines only.
         // Log messages never contain passwords (see error_handler.cpp).
-        auto lines = readLines(joinPath(g_dataDir, "error_log.txt"));
+        auto lines = pgMode() ? pgErrorLines() : readLines(joinPath(g_dataDir, "error_log.txt"));
         string out = "["; bool first = true;
         for (auto& ln : lines) { if (!first) out += ","; first = false; out += jsonStr(ln); }
         return sendJson(fd, 200, out + "]");
@@ -1087,7 +1311,24 @@ static void handleConnection(SocketFd clientFd) {
     req.path = qm == string::npos ? target : target.substr(0, qm);
     req.query = qm == string::npos ? "" : target.substr(qm + 1);
 
+    // CORS: only for /api, only for an exact origin in CORS_ORIGINS.
+    // Preflight (OPTIONS) is answered here, before any API handler.
     if (req.path.rfind("/api/", 0) == 0) {
+        auto oi = headers.find("origin");
+        if (oi != headers.end()) {
+            for (auto& o : g_corsOrigins) if (o == oi->second) g_corsOrigin = o;
+        }
+        if (method == "OPTIONS") {
+            if (!g_corsOrigin.empty()) {
+                ostringstream os; os << "HTTP/1.1 204 No Content\r\nAccess-Control-Allow-Origin: " << g_corsOrigin
+                    << "\r\nAccess-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS\r\nAccess-Control-Allow-Headers: Authorization, Content-Type\r\nAccess-Control-Max-Age: 86400\r\nVary: Origin\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+                sendAll(clientFd, os.str());
+            } else {
+                sendErr(clientFd, 403, "Origin not allowed.");
+            }
+            closeSocket(clientFd);
+            return;
+        }
         lock_guard<mutex> lk(g_apiMutex);
         handleApi(clientFd, req, req.path, parseQuery(req.query));
     } else if (method == "GET") {
@@ -1100,6 +1341,9 @@ static void handleConnection(SocketFd clientFd) {
 
 int main(int argc, char** argv) {
     int port = 8000;
+    // Render (and most PaaS hosts) set PORT. An explicit --port
+    // argument still wins over PORT, and PORT wins over 8000.
+    if (const char* penv = getenv("PORT")) { int p = atoi(penv); if (p > 0) port = p; }
     string host = "127.0.0.1";  // default: localhost only, unchanged
     for (int i = 1; i < argc; i++) {
         string arg = argv[i];
@@ -1112,10 +1356,37 @@ int main(int argc, char** argv) {
                  << "same ones the C++ console app reads. Default binds to\n"
                  << "127.0.0.1 only. --host 0.0.0.0 is LAN mode: use only on\n"
                  << "a trusted Wi-Fi network, stop the server when done,\n"
-                 << "and never port-forward it to the public internet.\n";
+                 << "and never port-forward it to the public internet.\n"
+                 << "Env: DATABASE_URL (Postgres mode, mandatory when set),\n"
+                 << "PORT (used when --port is not given), CORS_ORIGINS\n"
+                 << "(comma-separated exact origins, no wildcard).\n";
             return 0;
         }
     }
+    // CORS allowlist: exact origins only; "*" is ignored on purpose.
+    if (const char* cenv = getenv("CORS_ORIGINS")) {
+        stringstream ss(cenv); string item;
+        while (getline(ss, item, ',')) {
+            string o = trimStr(item);
+            if (o.empty()) continue;
+            if (o == "*") { cerr << "WARNING: CORS_ORIGINS contains '*', which is ignored: a wildcard origin must never be used with Authorization headers.\n"; continue; }
+            g_corsOrigins.push_back(o);
+        }
+    }
+    // Postgres mode: DATABASE_URL set -> mandatory, fail fast.
+    // The connection string itself is never printed or logged.
+    if (const char* denv = getenv("DATABASE_URL")) {
+        if (denv[0] != '\0') {
+            string err;
+            if (!pgstore::pgInit(denv, err)) {
+                cerr << "Postgres mode failed (DATABASE_URL is set, so txt fallback is disabled): " << err << "\n";
+                return 1;
+            }
+            g_pgMode = true;
+            cout << "Storage: PostgreSQL (DATABASE_URL set; txt files are not used by this server instance).\n" << flush;
+        }
+    }
+    if (!g_pgMode) cout << "Storage: txt files in " << g_dataDir << " (set DATABASE_URL for PostgreSQL mode).\n" << flush;
     // Static files live next to this source file's installed location:
     // when run from the repo root they are in dashboard/; otherwise
     // fall back to the current directory.
@@ -1138,7 +1409,7 @@ int main(int argc, char** argv) {
     if (bind(serverFd, (sockaddr*)&addr, sizeof(addr)) < 0) { cerr << "Could not bind to " << host << ":" << port << " (is another server running?).\n"; return 1; }
     if (listen(serverFd, 32) < 0) { cerr << "Could not listen.\n"; return 1; }
     cout << "Dashboard (C++ backend): http://" << host << ":" << port << "/\n";
-    cout << "Data directory (same files as the C++ app): " << g_dataDir << "\n";
+    if (!g_pgMode) cout << "Data directory (same files as the C++ app): " << g_dataDir << "\n";
     if (host == "127.0.0.1" || host == "localhost")
         cout << "Press Ctrl+C to stop. This server binds to localhost only.\n" << flush;
     else
