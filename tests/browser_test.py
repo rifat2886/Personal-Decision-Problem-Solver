@@ -84,15 +84,21 @@ def main():
             page.fill("#regUser", "browseruser")
             page.fill("#regPass", "Browser123")
             page.click("#regBtn")
-            page.wait_for_timeout(1500)
+            # Do NOT use a fixed wait here: the C++ server's PBKDF2
+            # (100k iterations, hand-written SHA-256) takes ~1.9s per
+            # register/login on this VM, so a fixed 1500ms wait raced
+            # with login and made "section auth visible" fail (32/33)
+            # even though the product was correct. Wait for the actual
+            # registration message instead (same lesson as mobile_test).
+            page.wait_for_function("document.querySelector('#regMsg').textContent.includes('Registered')")
             check("registration message", "success" in page.content().lower() or "registered" in page.content().lower())
 
             # Login.
             page.fill("#loginUser", "browseruser")
             page.fill("#loginPass", "Browser123")
             page.click("#loginBtn")
-            page.wait_for_timeout(1500)
-            check("login leads to overview", page.url.startswith(base))
+            page.wait_for_function("document.querySelector('section.active').id === 'overview'")
+            check("login leads to overview", page.evaluate("document.querySelector('section.active').id") == "overview")
             page.screenshot(path=os.path.join(outdir, "02-overview.png"))
 
             # Every section loads (click each nav button, section visible).
