@@ -517,8 +517,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_error_json(400, "Invalid JSON.")
             username = body.get("username") or ""
             password = body.get("password") or ""
-            if not username or " " in username:
-                return self.send_error_json(400, "Username must not be empty or contain spaces.")
+            # Security (public launch review, 2026-11-05): see the same
+            # comment in dashboard/cpp_server.cpp. A username with a
+            # newline (via a JSON "\n" escape, which json.loads turns into
+            # a real newline) would split users.txt and overwrite another
+            # user's line (account takeover in txt mode, verified before
+            # this fix). Reject whitespace, control characters and '|'.
+            if not username or any(ord(c) <= 32 or c == "|" for c in username):
+                return self.send_error_json(400, "Username must not be empty or contain spaces, control characters, or '|'.")
             if len(password) < 8 or not any(c.isalpha() for c in password) \
                     or not any(c.isdigit() for c in password):
                 return self.send_error_json(400, "Password must be 8+ characters with a letter and a digit.")
