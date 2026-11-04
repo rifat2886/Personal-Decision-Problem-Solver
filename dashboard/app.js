@@ -222,9 +222,9 @@ el("backupBtn").addEventListener("click", async () => {
   } catch (e) { showMsg("backupMsg", e.message, false); }
 });
 el("restoreBtn").addEventListener("click", async () => {
-  if (!confirm("Restore will replace decisions with the backup. Continue?")) return;
+  if (!confirm("Restore will replace YOUR decisions with YOUR backup. Your current decisions that are not in the backup will be lost. Other users are not affected. Continue?")) return;
   try {
-    const r = await api("/api/restore", { method: "POST", body: "{}" });
+    const r = await api("/api/restore", { method: "POST", body: JSON.stringify({ confirm: true }) });
     showMsg("backupMsg", "Restored " + r.restored + " decisions.", true);
     loadOverview();
   } catch (e) { showMsg("backupMsg", e.message, false); }
