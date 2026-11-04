@@ -59,8 +59,23 @@ all: project cpp_server
 project: $(SOURCES) *.h
 	$(CXX) $(CXXFLAGS) -o project $(SOURCES)
 
-cpp_server: dashboard/cpp_server.cpp password_hash.h
-	$(CXX) $(CXXFLAGS) -pthread -o cpp_server dashboard/cpp_server.cpp
+# Postgres mode (Route 2, Phase 1): link libpq only when pg_config
+# exists, which is the case when libpq-dev is installed. (Do NOT
+# use `pg_config --libs` here: it lists static-link libraries such
+# as -lpgcommon that are not installed as linkable libraries.)
+# Without pg_config, cpp_server.cpp compiles Postgres support out
+# (see pg_store.h) and the server still builds and runs in txt
+# mode — this keeps the Windows/MinGW build working without a new
+# dependency.
+PG_LIBS := $(shell if pg_config --includedir >/dev/null 2>&1; then echo "-lpq"; fi)
+# libpq-fe.h lives in /usr/include/postgresql on Debian, which is
+# NOT a default compiler search path — without this -I flag,
+# __has_include(<libpq-fe.h>) is false and Postgres support is
+# silently compiled out (caught by local Postgres testing).
+PG_CFLAGS := $(shell pg_config --includedir 2>/dev/null | sed 's/^/-I/' | grep -v '^-I$$')
+
+cpp_server: dashboard/cpp_server.cpp dashboard/pg_store.h password_hash.h
+	$(CXX) $(CXXFLAGS) $(PG_CFLAGS) -pthread -o cpp_server dashboard/cpp_server.cpp $(PG_LIBS)
 
 clean:
 	rm -f project project.exe cpp_server cpp_server.exe
