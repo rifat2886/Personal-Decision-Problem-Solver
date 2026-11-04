@@ -45,7 +45,17 @@ applyTheme(localStorage.getItem("pdps_theme") || "light");
 el("themeBtn").addEventListener("click", () => {
   applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 });
-el("menuBtn").addEventListener("click", () => el("sidebar").classList.toggle("open"));
+// Mobile navigation drawer: open/close, backdrop tap and Escape all close it.
+// Desktop layout is unchanged: the drawer styles only apply under 720px.
+function setNav(open) {
+  el("sidebar").classList.toggle("open", open);
+  document.body.classList.toggle("nav-open", open);
+  const btn = el("menuBtn"); if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+  const bd = el("navBackdrop"); if (bd) bd.classList.toggle("show", open);
+}
+el("menuBtn").addEventListener("click", () => setNav(!el("sidebar").classList.contains("open")));
+const navBackdrop = el("navBackdrop"); if (navBackdrop) navBackdrop.addEventListener("click", () => setNav(false));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") setNav(false); });
 
 async function api(path, options) {
   const res = await fetch(path, Object.assign({
@@ -68,7 +78,7 @@ function setLoggedIn(name) {
 function showSection(name) {
   document.querySelectorAll("section").forEach(s => s.classList.toggle("active", s.id === name));
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.section === name));
-  el("sidebar").classList.remove("open");
+  setNav(false);
   if (name === "overview") loadOverview();
   if (name === "history") loadHistory();
   if (name === "tasks") loadTasks();
