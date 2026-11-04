@@ -95,8 +95,18 @@ function forceLogoutToLogin(message) {
   showSection("auth");
 }
 
+// API base (Route 2, Phase 1): by default "" (same origin, as
+// before — local server, and the recommended Vercel /api proxy
+// rewrite for production, which needs no CORS at all). For a
+// direct call to a Render backend, set window.PDPS_API_BASE before
+// app.js loads, for example via dashboard/api-config.js (see the
+// .example file — do NOT commit a real backend URL with secrets):
+//   <script>window.PDPS_API_BASE = "https://<render-service>.onrender.com";</script>
+// The value is a plain origin, never a database string or secret.
+const API_BASE = (typeof window !== "undefined" && window.PDPS_API_BASE ? String(window.PDPS_API_BASE) : "").replace(/\/$/, "");
+
 async function api(path, options) {
-  const res = await fetch(path, Object.assign({
+  const res = await fetch(API_BASE + path, Object.assign({
     headers: {
       "Content-Type": "application/json",
       "Authorization": token ? "Bearer " + token : ""
