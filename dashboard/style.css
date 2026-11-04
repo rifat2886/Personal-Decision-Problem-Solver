@@ -209,3 +209,59 @@ tr:last-child td { border-bottom: 0; }
 .chart-bar .value { color: var(--muted); }
 @media (max-width: 900px) { .grid3 { grid-template-columns: 1fr 1fr; } .hero h1 { font-size: 32px; } }
 @media (max-width: 560px) { .grid3 { grid-template-columns: 1fr; } }
+
+/* ---- Mobile responsive (added, desktop rules above are untouched) ----
+   Everything in this block is inside a max-width media query, so the
+   laptop/desktop layout, colours and spacing do not change at all.
+   On phones the sidebar becomes a slide-in drawer (instead of pushing
+   the whole page down), tap targets reach at least 44px, and long
+   tables/charts stay inside the viewport with horizontal scroll. */
+html { -webkit-text-size-adjust: 100%; }
+.nav-backdrop { display: none; }
+
+@media (max-width: 720px) {
+  /* Drawer navigation: fixed, above content, below the topbar so the
+     hamburger button stays tappable. Backdrop tap closes it (app.js). */
+  .topbar { z-index: 50; }
+  .sidebar {
+    position: fixed; top: var(--topbar-h); left: 0; bottom: 0;
+    width: min(288px, 86vw); flex-basis: auto;
+    height: auto; max-height: calc(100dvh - var(--topbar-h));
+    border-right: 1px solid var(--border); border-bottom: 0;
+    box-shadow: 0 12px 32px rgba(23, 35, 59, 0.25);
+    display: block; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    transform: translateX(-102%); transition: transform 0.18s ease; z-index: 40;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .nav-backdrop {
+    display: none; position: fixed; inset: 0; z-index: 30;
+    background: rgba(15, 23, 42, 0.45);
+  }
+  .nav-backdrop.show { display: block; }
+  body.nav-open { overflow: hidden; }
+  .sidebar button { padding: 12px 14px; min-height: 44px; font-size: 16px; }
+
+  /* Tap targets and forms: 44px minimum, 16px text so iOS does not
+     zoom the page when a field is focused. */
+  .btn { min-height: 44px; padding: 12px 18px; }
+  .iconbtn { width: 44px; height: 44px; }
+  input, select { min-height: 44px; padding: 12px; font-size: 16px; }
+  .actions .btn { flex: 1 1 140px; text-align: center; }
+  td .btn { min-height: 40px; padding: 9px 12px; }
+
+  main { padding: 16px 12px 48px; }
+  h2 { font-size: 22px; }
+  .card { padding: 16px; }
+  table { font-size: 14px; }
+  th, td { padding: 8px 6px; }
+  .rowline { flex-wrap: wrap; }
+  .chart-bar { flex-wrap: wrap; }
+  .chart-bar .label { width: 90px; }
+  .chart-bar .bar { flex: 1 1 120px; }
+}
+
+@media (max-width: 560px) {
+  .hero h1 { font-size: 30px; }
+  .stat .value { font-size: 26px; }
+  .chart-bar .label { width: 80px; }
+}
