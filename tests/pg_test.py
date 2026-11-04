@@ -154,7 +154,8 @@ def main():
         check("backup", s == 200 and json.loads(b).get("backedUp") == 1, b)
         s, b, _ = req(args.port, "POST", "/api/decisions", token=tok_a,
                       body={"type": "Daily", "priority": 10, "title": "TempDecision"})
-        s, b, _ = req(args.port, "POST", "/api/restore", token=tok_a, body={})
+        # Restore now requires explicit confirmation (per-user redesign).
+        s, b, _ = req(args.port, "POST", "/api/restore", token=tok_a, body={"confirm": True})
         check("restore", s == 200 and json.loads(b).get("restored") == 1, b)
         s, b, _ = req(args.port, "GET", "/api/decisions", token=tok_a)
         check("after restore only backed-up decision", s == 200 and "AliceDecision" in b and "TempDecision" not in b, b)
