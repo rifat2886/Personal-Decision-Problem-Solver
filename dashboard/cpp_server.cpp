@@ -13,6 +13,7 @@
 // the C++ console app reads):
 //   ./cpp_server            # http://127.0.0.1:8000/
 //   ./cpp_server --port 8001 --data-dir /path/to/data
+//   ./cpp_server --host 0.0.0.0   # LAN mode only: trusted Wi-Fi only, never the public internet
 //
 // The API is intentionally identical to server.py (same paths, same
 // JSON fields, same validation, same formulas), so dashboard/app.js
@@ -38,7 +39,7 @@
 // Security, stated honestly:
 // - Passwords stay in the C++ plain-text format (users.txt), because
 //   changing it would break existing console users. This server
-//   binds to 127.0.0.1 only and must NOT be exposed to the internet.
+//   binds to 127.0.0.1 by default and must NOT be exposed to the internet.
 // - Sessions are in-memory random tokens (random_device plus a
 //   counter), never passwords, never written to a file, and never
 //   returned except at login.
@@ -1099,14 +1100,19 @@ static void handleConnection(SocketFd clientFd) {
 
 int main(int argc, char** argv) {
     int port = 8000;
+    string host = "127.0.0.1";  // default: localhost only, unchanged
     for (int i = 1; i < argc; i++) {
         string arg = argv[i];
         if (arg == "--port" && i + 1 < argc) port = atoi(argv[++i]);
+        else if (arg == "--host" && i + 1 < argc) host = argv[++i];
         else if (arg == "--data-dir" && i + 1 < argc) g_dataDir = argv[++i];
         else if (arg == "--help") {
-            cout << "Usage: cpp_server [--port 8000] [--data-dir PATH]\n"
+            cout << "Usage: cpp_server [--port 8000] [--host 127.0.0.1] [--data-dir PATH]\n"
                  << "Run from the repository root so the data files are the\n"
-                 << "same ones the C++ console app reads. Binds to 127.0.0.1 only.\n";
+                 << "same ones the C++ console app reads. Default binds to\n"
+                 << "127.0.0.1 only. --host 0.0.0.0 is LAN mode: use only on\n"
+                 << "a trusted Wi-Fi network, stop the server when done,\n"
+                 << "and never port-forward it to the public internet.\n";
             return 0;
         }
     }
@@ -1128,12 +1134,17 @@ int main(int argc, char** argv) {
 #endif
     int opt = 1; setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
     sockaddr_in addr{}; addr.sin_family = AF_INET; addr.sin_port = htons((uint16_t)port);
-    addr.sin_addr.s_addr = inet_addr("127.0.0.1");  // loopback only, never 0.0.0.0
-    if (bind(serverFd, (sockaddr*)&addr, sizeof(addr)) < 0) { cerr << "Could not bind to 127.0.0.1:" << port << " (is another server running?).\n"; return 1; }
+    addr.sin_addr.s_addr = inet_addr(host.c_str());
+    if (bind(serverFd, (sockaddr*)&addr, sizeof(addr)) < 0) { cerr << "Could not bind to " << host << ":" << port << " (is another server running?).\n"; return 1; }
     if (listen(serverFd, 32) < 0) { cerr << "Could not listen.\n"; return 1; }
-    cout << "Dashboard (C++ backend): http://127.0.0.1:" << port << "/\n";
+    cout << "Dashboard (C++ backend): http://" << host << ":" << port << "/\n";
     cout << "Data directory (same files as the C++ app): " << g_dataDir << "\n";
-    cout << "Press Ctrl+C to stop. This server binds to localhost only.\n" << flush;
+    if (host == "127.0.0.1" || host == "localhost")
+        cout << "Press Ctrl+C to stop. This server binds to localhost only.\n" << flush;
+    else
+        cout << "WARNING: LAN mode (" << host << "). Use only on a trusted Wi-Fi\n"
+             << "network, stop the server when done, and NEVER port-forward\n"
+             << "it to the public internet.\n" << flush;
 #ifndef _WIN32
     signal(SIGPIPE, SIG_IGN);
 #endif
