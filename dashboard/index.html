@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Personal Decision & Problem Solver — dashboard connected to the same data files as the C++ app.">
 <title>Personal Decision &amp; Problem Solver — Dashboard</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="topbar">
-  <button class="iconbtn" id="menuBtn" aria-label="Toggle navigation">&#9776;</button>
+  <button class="iconbtn" id="menuBtn" aria-label="Toggle navigation" aria-controls="sidebar" aria-expanded="false">&#9776;</button>
   <div class="brand">
     <span class="brand-mark" aria-hidden="true">PD</span>
     <div>
@@ -55,6 +55,7 @@
   <button data-section="analytics">&#128200; Analytics</button>
   <button data-section="settings">&#9881; Settings</button>
 </nav>
+<div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
 
 <main>
   <div id="globalMsg" role="status"></div>
