@@ -105,6 +105,18 @@ function forceLogoutToLogin(message) {
 // The value is a plain origin, never a database string or secret.
 const API_BASE = (typeof window !== "undefined" && window.PDPS_API_BASE ? String(window.PDPS_API_BASE) : "").replace(/\/$/, "");
 
+// Backend-not-connected message (2026-11-06, iPhone preview 404
+// investigation). On a Vercel preview there is NO backend yet:
+// vercel.json rewrites only /, /index.html, /style.css and /app.js,
+// and there is deliberately no /api rewrite, because no Render
+// backend URL exists yet. So a same-origin /api/* call returns
+// Vercel's static 404, not a backend error. Say that plainly
+// instead of the cryptic "Request failed: 404", and never pretend
+// the registration succeeded. When API_BASE is set (a real Render
+// backend), a 404 is a real backend response and keeps the
+// backend's own message.
+const BACKEND_UNAVAILABLE_MSG = "Backend is not connected yet — this preview is frontend-only. No account was created. Register and Login will work after the Render backend is connected.";
+
 async function api(path, options) {
   const res = await fetch(API_BASE + path, Object.assign({
     headers: {
@@ -114,6 +126,8 @@ async function api(path, options) {
   }, options || {}));
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 404 && !API_BASE)
+      throw new Error(BACKEND_UNAVAILABLE_MSG);
     if (res.status === 401 && path !== "/api/login" && path !== "/api/register") {
       forceLogoutToLogin("Session expired. Please log in again.");
       throw new Error("Session expired. Please log in again.");
@@ -121,6 +135,26 @@ async function api(path, options) {
     throw new Error(data.error || ("Request failed: " + res.status));
   }
   return data;
+}
+
+// On page load, check the public /api/health endpoint. If it
+// answers, a backend is connected and nothing changes. If it
+// returns 404 on the same origin, this is a static-only preview:
+// show the honest banner and disable Register/Login, so a tap
+// cannot look like a registration attempt that "failed for no
+// reason". Any other failure (server down, network error) leaves
+// the buttons enabled, so a transient failure cannot lock the
+// user out of a working local server.
+async function checkBackend() {
+  try {
+    const res = await fetch(API_BASE + "/api/health");
+    if (res.ok) { clearMsg("backendMsg"); return; }
+    if (res.status !== 404) return;
+  } catch (e) { return; }
+  showMsg("backendMsg", BACKEND_UNAVAILABLE_MSG, false);
+  const loginBtn = el("loginBtn"), regBtn = el("regBtn");
+  if (loginBtn) loginBtn.disabled = true;
+  if (regBtn) regBtn.disabled = true;
 }
 
 function showSection(name) {
@@ -641,6 +675,7 @@ el("elBtn").addEventListener("click", async () => {
 const storedToken = token, storedUser = username;
 setAuthState(false, "");
 showSection("landing");
+checkBackend();
 if (storedToken && storedUser) {
   api("/api/me").then(me => {
     username = me.username;
