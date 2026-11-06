@@ -11,7 +11,7 @@ if not exist cpp_server.exe (
   echo Building the C++ server for the first time, please wait...
   where g++ >nul 2>nul
   if errorlevel 1 (
-    echo ERROR: g++ (MinGW-w64) was not found.
+    echo ERROR: g++ MinGW-w64 was not found.
     echo Install MinGW-w64 GCC, add it to PATH, then double-click this file again.
     echo See RUN.md for the download link and steps.
     pause
