@@ -1,0 +1,279 @@
+/* Personal Decision & Problem Solver — dashboard theme.
+   No external fonts or CDNs: system font stack only, so the page
+   works offline on localhost. Light and dark themes are the same
+   variables, switched with [data-theme="dark"] on <html>. */
+:root {
+  --bg: #eef2f7;
+  --surface: #ffffff;
+  --surface-2: #f4f7fb;
+  --text: #17233b;
+  --muted: #5b6b84;
+  --border: #d8e0ec;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #dbeafe;
+  --success: #15803d;
+  --success-soft: #dcfce7;
+  --danger: #b91c1c;
+  --danger-soft: #fee2e2;
+  --warn: #92400e;
+  --warn-soft: #fef3c7;
+  --radius: 14px;
+  --shadow: 0 1px 3px rgba(23, 35, 59, 0.08), 0 8px 24px rgba(23, 35, 59, 0.06);
+  --sidebar-w: 248px;
+  --topbar-h: 64px;
+}
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-2: #16213a;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --border: #334155;
+  --primary: #60a5fa;
+  --primary-hover: #93c5fd;
+  --primary-soft: #1e3a5f;
+  --success: #4ade80;
+  --success-soft: #14532d;
+  --danger: #f87171;
+  --danger-soft: #450a0a;
+  --warn: #fbbf24;
+  --warn-soft: #422006;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+}
+button, input, select { font: inherit; }
+a { color: var(--primary); }
+
+/* ---- top bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  height: var(--topbar-h);
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1 1 auto; }
+.brand > div { min-width: 0; flex: 1 1 auto; }
+.brand-mark {
+  width: 40px; height: 40px; flex: 0 0 40px;
+  display: grid; place-items: center;
+  background: var(--primary); color: #fff; border-radius: 10px;
+  font-weight: 800; letter-spacing: 0.5px;
+}
+.brand strong { display: block; font-size: 16px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-sub { display: block; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.who { font-size: 14px; color: var(--muted); white-space: nowrap; }
+.iconbtn {
+  width: 40px; height: 40px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); border-radius: 10px; cursor: pointer;
+}
+.iconbtn:hover { background: var(--surface-2); }
+#menuBtn { display: none; }
+
+/* ---- layout ---- */
+.layout { display: flex; align-items: flex-start; }
+.sidebar {
+  position: sticky; top: var(--topbar-h);
+  width: var(--sidebar-w); flex: 0 0 var(--sidebar-w);
+  height: calc(100vh - var(--topbar-h)); overflow-y: auto;
+  padding: 14px 12px 24px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+.nav-group {
+  padding: 14px 10px 6px; font-size: 11.5px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.sidebar button {
+  display: block; width: 100%; text-align: left;
+  padding: 9px 12px; margin: 2px 0;
+  border: 0; border-radius: 9px; cursor: pointer;
+  background: transparent; color: var(--text); font-size: 15px;
+}
+.sidebar button:hover { background: var(--surface-2); }
+.sidebar button.active { background: var(--primary-soft); color: var(--primary); font-weight: 700; }
+main { flex: 1; min-width: 0; padding: 24px 28px 48px; }
+section { display: none; }
+section.active { display: block; animation: fade 0.15s ease-in; }
+@keyframes fade { from { opacity: 0.4; } to { opacity: 1; } }
+h2 { margin: 4px 0 6px; font-size: 26px; letter-spacing: -0.3px; }
+h3 { margin: 0 0 12px; font-size: 17px; }
+.muted { color: var(--muted); margin: 0 0 16px; max-width: 760px; }
+
+/* ---- cards, grids, forms ---- */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 20px; margin: 0 0 16px;
+}
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin: 0 0 16px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-2 .card { margin-bottom: 0; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
+.stat .label { color: var(--muted); font-size: 13.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.stat .value { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; margin: 2px 0; }
+.stat .sub { color: var(--muted); font-size: 13.5px; }
+label { display: block; margin: 0 0 12px; font-weight: 600; font-size: 14.5px; }
+input, select {
+  display: block; width: 100%; margin-top: 5px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 9px;
+  background: var(--surface); color: var(--text);
+}
+input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: var(--primary); }
+.btn {
+  border: 1px solid var(--border); border-radius: 9px; cursor: pointer;
+  padding: 10px 16px; font-weight: 650; background: var(--surface); color: var(--text);
+}
+.btn:hover { background: var(--surface-2); }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+.hidden { display: none !important; }
+
+/* ---- messages and states ---- */
+.msg, #globalMsg > div { border-radius: 9px; padding: 11px 14px; margin: 12px 0 0; font-size: 15px; }
+.msg-ok, #globalMsg > .ok { background: var(--success-soft); color: var(--success); border: 1px solid var(--success); }
+.msg-err, #globalMsg > .err { background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger); }
+.msg-warn { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn); }
+.empty { color: var(--muted); padding: 18px 4px; text-align: center; border: 1px dashed var(--border); border-radius: 9px; }
+.loading { color: var(--muted); padding: 12px 4px; }
+.loading::after { content: ""; display: inline-block; width: 14px; height: 14px; margin-left: 8px; vertical-align: -2px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- tables and lists ---- */
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th { text-align: left; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; }
+th, td { padding: 9px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+.badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: var(--primary-soft); color: var(--primary); }
+.badge-ok { background: var(--success-soft); color: var(--success); }
+.badge-warn { background: var(--warn-soft); color: var(--warn); }
+.badge-danger { background: var(--danger-soft); color: var(--danger); }
+.rowline { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.rowline:last-child { border-bottom: 0; }
+.progress { height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; margin: 6px 0; }
+.progress > div { height: 100%; background: var(--primary); }
+
+/* ---- responsive ---- */
+@media (max-width: 900px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  main { padding: 18px 16px 40px; }
+}
+@media (max-width: 720px) {
+  #menuBtn { display: block; }
+  .brand-sub, .who { display: none; }
+  .brand strong { font-size: 15px; }
+  .layout { display: block; }
+  .sidebar { position: static; width: auto; height: auto; border-right: 0; border-bottom: 1px solid var(--border); display: none; }
+  .sidebar.open { display: block; }
+  .grid { grid-template-columns: 1fr 1fr; }
+  .card { overflow-x: auto; }
+  table { min-width: 560px; }
+}
+@media (max-width: 420px) {
+  .grid { grid-template-columns: 1fr; }
+  .brand-mark { width: 34px; height: 34px; flex-basis: 34px; }
+  /* Fix: at 375px the long title was cut off by the viewport because
+     the brand text container could not shrink and the title was
+     forced onto one line. Let it wrap onto two lines inside a
+     taller topbar, so the full title stays visible. */
+  .topbar { height: auto; min-height: 64px; padding: 10px 12px; gap: 8px; align-items: flex-start; }
+  .brand { gap: 8px; align-items: flex-start; }
+  .brand strong { white-space: normal; font-size: 15px; line-height: 1.25; }
+  .iconbtn { flex-shrink: 0; }
+}
+
+/* Landing hero + charts (Phase 5, own design) */
+.hero { padding: 24px 4px 8px; }
+.hero .eyebrow { letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; font-size: 13px; margin: 0 0 8px; }
+.hero h1 { font-size: 42px; line-height: 1.1; margin: 0 0 12px; }
+.hero-sub { font-size: 17px; color: var(--muted); max-width: 720px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 16px 0; }
+.chart-bar { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.chart-bar .label { width: 110px; flex-shrink: 0; }
+.chart-bar .bar { height: 22px; border-radius: 6px; background: var(--accent); min-width: 4px; }
+.chart-bar .bar.expense { background: #dc2626; }
+.chart-bar .bar.savings { background: #059669; }
+.chart-bar .value { color: var(--muted); }
+@media (max-width: 900px) { .grid3 { grid-template-columns: 1fr 1fr; } .hero h1 { font-size: 32px; } }
+@media (max-width: 560px) { .grid3 { grid-template-columns: 1fr; } }
+
+/* ---- Mobile responsive (added, desktop rules above are untouched) ----
+   Everything in this block is inside a max-width media query, so the
+   laptop/desktop layout, colours and spacing do not change at all.
+   On phones the sidebar becomes a slide-in drawer (instead of pushing
+   the whole page down), tap targets reach at least 44px, and long
+   tables/charts stay inside the viewport with horizontal scroll. */
+html { -webkit-text-size-adjust: 100%; }
+.nav-backdrop { display: none; }
+
+@media (max-width: 720px) {
+  /* Drawer navigation: fixed, above content, below the topbar so the
+     hamburger button stays tappable. Backdrop tap closes it (app.js). */
+  .topbar { z-index: 50; }
+  .sidebar {
+    position: fixed; top: var(--topbar-h); left: 0; bottom: 0;
+    width: min(288px, 86vw); flex-basis: auto;
+    height: auto; max-height: calc(100dvh - var(--topbar-h));
+    border-right: 1px solid var(--border); border-bottom: 0;
+    box-shadow: 0 12px 32px rgba(23, 35, 59, 0.25);
+    display: block; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    transform: translateX(-102%); transition: transform 0.18s ease; z-index: 40;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .nav-backdrop {
+    display: none; position: fixed; inset: 0; z-index: 30;
+    background: rgba(15, 23, 42, 0.45);
+  }
+  .nav-backdrop.show { display: block; }
+  body.nav-open { overflow: hidden; }
+  .sidebar button { padding: 12px 14px; min-height: 44px; font-size: 16px; }
+
+  /* Tap targets and forms: 44px minimum, 16px text so iOS does not
+     zoom the page when a field is focused. */
+  .btn { min-height: 44px; padding: 12px 18px; }
+  .iconbtn { width: 44px; height: 44px; }
+  input, select { min-height: 44px; padding: 12px; font-size: 16px; }
+  .actions .btn { flex: 1 1 140px; text-align: center; }
+  td .btn { min-height: 40px; padding: 9px 12px; }
+
+  main { padding: 16px 12px 48px; }
+  h2 { font-size: 22px; }
+  .card { padding: 16px; }
+  table { font-size: 14px; }
+  th, td { padding: 8px 6px; }
+  .rowline { flex-wrap: wrap; }
+  .chart-bar { flex-wrap: wrap; }
+  .chart-bar .label { width: 90px; }
+  .chart-bar .bar { flex: 1 1 120px; }
+}
+
+@media (max-width: 560px) {
+  .hero h1 { font-size: 30px; }
+  .stat .value { font-size: 26px; }
+  .chart-bar .label { width: 80px; }
+}
+
+/* ---- auth gate: before login, only Welcome (landing) and
+   Login / Register (auth) navigation is shown. Protected menu
+   buttons and group labels are hidden on desktop and mobile.
+   This is UI gating only; every protected API still requires a
+   valid session on the server (see cpp_server.cpp / server.py). */
+body.logged-out .sidebar button[data-section]:not([data-section="landing"]):not([data-section="auth"]) {
+  display: none !important;
+}
+body.logged-out .sidebar .nav-group {
+  display: none !important;
+}

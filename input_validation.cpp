@@ -8,9 +8,12 @@ bool validUsername(const std::string& username)
     if (username.empty())
         return false;
 
-    for (char ch : username)
+    for (unsigned char ch : username)
     {
-        if (ch == ' ')
+        // Security (public launch review, 2026-11-05): same rule as the
+        // dashboard servers — a username must be a single safe token, so
+        // it can never split a users.txt line or a pipe-delimited record.
+        if (ch <= ' ' || ch == '|')
             return false;
     }
 

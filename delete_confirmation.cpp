@@ -1,4 +1,6 @@
 #include "delete_confirmation.h"
+#include "data_owner.h"
+#include "file_lock.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -24,6 +26,10 @@ void confirmDelete(const string& id)
         return;
     }
 
+    // Lock only after the user confirms, so a dashboard write cannot
+    // interleave with this read-modify-rename, and the lock is not
+    // held while waiting for the user's y/n answer.
+    FileLock lock("decisions.txt");
     ifstream source("decisions.txt");
 
     if (!source)
@@ -48,7 +54,8 @@ void confirmDelete(const string& id)
         size_t separator = line.find('|');
 
         if (separator != string::npos &&
-            line.substr(0, separator) == id)
+            line.substr(0, separator) == id &&
+            lineVisibleFor(line, 5))
         {
             found = true;
             continue;

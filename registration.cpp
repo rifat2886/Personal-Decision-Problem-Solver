@@ -1,4 +1,6 @@
 #include "registration.h"
+#include "file_lock.h"
+#include "password_hash.h"
 #include "password_validation.h"
 #include "input_validation.h"
 
@@ -8,6 +10,9 @@
 
 bool registerUser()
 {
+    // Hold the users lock for the whole register flow, so a
+    // dashboard register/change-password cannot interleave.
+    FileLock lock("users.txt");
     std::string username, password;
 
     std::cout << "Enter username: ";
@@ -54,7 +59,8 @@ bool registerUser()
         return false;
     }
 
-    output << username << ' ' << password << ' '
+    // New accounts store only a PBKDF2 hash, never plaintext.
+    output << username << ' ' << pdps_hash::hashPassword(password) << ' '
            << (firstUser ? "ADMIN" : "USER") << '\n';
 
     std::cout << "Registration successful!\n";

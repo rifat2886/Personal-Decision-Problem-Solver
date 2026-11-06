@@ -1,5 +1,6 @@
 #include "task_status.h"
 #include "task_data.h"
+#include "task_store.h"
 
 #include <iostream>
 #include <limits>
@@ -7,6 +8,9 @@ using namespace std;
 
 void taskStatusManager() {
     cout << "\n===== TASK STATUS MANAGER =====\n";
+
+    // Load persisted tasks (console + dashboard share tasks.txt).
+    pdps_tasks::loadTasks();
 
     if (taskList.empty()) {
         cout << "No tasks found. Use Task Prioritization first.\n";
@@ -52,5 +56,6 @@ void taskStatusManager() {
     else
         taskList[number - 1].status = "Completed";
 
+    pdps_tasks::saveTasks(taskList);
     cout << "Status updated successfully.\n";
 }

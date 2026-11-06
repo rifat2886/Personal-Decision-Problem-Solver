@@ -1,4 +1,5 @@
 #include "history.h"
+#include "data_owner.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -37,6 +38,7 @@ void decisionHistory() {
     int count = 0;
 
     while (getline(file, line)) {
+        if (!lineVisibleFor(line, 5)) continue;
         cout << ++count << ". " << line << '\n';
     }
 
@@ -65,7 +67,7 @@ void filterSortHistory() {
     }
 
     while (getline(file, line)) {
-        records.push_back(line);
+        if (lineVisibleFor(line, 5)) records.push_back(line);
     }
     file.close();
 
@@ -113,7 +115,10 @@ void backupHistory() {
         return;
     }
 
-    backup << source.rdbuf();
+    string line;
+    while (getline(source, line)) {
+        if (lineVisibleFor(line, 5)) backup << line << '\n';
+    }
 
     cout << "Backup created successfully.\n";
     writeLog("History backup created.");
@@ -138,6 +143,16 @@ void restoreHistory() {
         return;
     }
 
+    // Restore only the current user's records; preserve other
+    // users' and legacy records already in the history file.
+    vector<string> kept;
+    {
+        ifstream current(HISTORY_FILE);
+        string cur;
+        while (getline(current, cur)) {
+            if (!lineVisibleFor(cur, 5)) kept.push_back(cur);
+        }
+    }
     ofstream destination(HISTORY_FILE);
 
     if (!destination) {
@@ -145,7 +160,11 @@ void restoreHistory() {
         return;
     }
 
-    destination << backup.rdbuf();
+    for (auto& ln : kept) destination << ln << '\n';
+    string line;
+    while (getline(backup, line)) {
+        if (lineVisibleFor(line, 5)) destination << line << '\n';
+    }
 
     cout << "History restored successfully.\n";
     writeLog("History restored.");
@@ -163,9 +182,19 @@ void deleteHistory() {
         return;
     }
 
+    // Delete only the current user's records; preserve others.
+    vector<string> kept;
+    {
+        ifstream current(HISTORY_FILE);
+        string cur;
+        while (getline(current, cur)) {
+            if (!lineVisibleFor(cur, 5)) kept.push_back(cur);
+        }
+    }
     ofstream file(HISTORY_FILE, ios::trunc);
 
     if (file) {
+        for (auto& ln : kept) file << ln << '\n';
         cout << "History deleted successfully.\n";
         writeLog("History deleted.");
     }

@@ -1,19 +1,28 @@
 #ifndef DECISION_STORE_H
 #define DECISION_STORE_H
 
+#include "file_lock.h"
+#include "data_owner.h"
 #include <fstream>
 #include <string>
 
 // Shared decision store used by the menu modules.
 // Format (one record per line, as expected by filter_sort.cpp and
 // delete_confirmation.cpp):
-//   id|date|type|priority|title
+//   id|date|type|priority|title|owner
+// Records written before per-user isolation have no owner field;
+// they are legacy records (see data_owner.h) and are never deleted
+// or silently assigned by this store.
 // The date field is "-" when the caller has no date. Titles and types
 // are sanitised so a user-supplied '|' cannot break the format.
 inline void appendDecisionRecord(const std::string& type,
                                  int priority,
                                  const std::string& title)
 {
+    // Hold the decisions lock for the whole count-then-append, so
+    // a dashboard write cannot interleave and duplicate an id.
+    // The dashboard C++ server uses the same lock file.
+    FileLock lock("decisions.txt");
     std::string safeType = type;
     std::string safeTitle = title;
     for (char& ch : safeType)
@@ -33,7 +42,7 @@ inline void appendDecisionRecord(const std::string& type,
     std::ofstream file("decisions.txt", std::ios::app);
     if (file)
         file << (count + 1) << "|-" << '|' << safeType << '|'
-             << priority << '|' << safeTitle << '\n';
+             << priority << '|' << safeTitle << '|' << g_currentUser << '\n';
 }
 
 #endif

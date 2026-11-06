@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Personal Decision & Problem Solver — dashboard connected to the same data files as the C++ app.">
+<title>Personal Decision &amp; Problem Solver — Dashboard</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="logged-out">
+<header class="topbar">
+  <button class="iconbtn" id="menuBtn" aria-label="Toggle navigation" aria-controls="sidebar" aria-expanded="false">&#9776;</button>
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">PD</span>
+    <div>
+      <strong>Personal Decision &amp; Problem Solver</strong>
+      <span class="brand-sub">Dashboard &middot; same data files as the C++ app</span>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button class="iconbtn" id="themeBtn" title="Toggle light / dark mode" aria-label="Toggle light / dark mode">&#9788;</button>
+    <span id="who" class="who"></span>
+    <button class="btn btn-primary hidden" id="logoutBtn">Logout</button>
+  </div>
+</header>
+
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Main navigation">
+  <div class="nav-group">Main</div>
+  <button data-section="landing">&#127968; Home</button>
+  <button data-section="auth">&#128272; Login / Register</button>
+  <button data-section="overview">&#128202; Overview</button>
+  <button data-section="history">&#128269; Search &amp; History</button>
+  <div class="nav-group">Decisions</div>
+  <button data-section="daily">&#127919; Daily Decision</button>
+  <button data-section="tasks">&#9989; Task Management</button>
+  <button data-section="taskstatus">&#8635; Task Status</button>
+  <button data-section="priority">&#11088; Priority</button>
+  <button data-section="compare">&#9878; Compare Options</button>
+  <button data-section="explanation">&#128161; Decision Explanation</button>
+  <button data-section="deadlines">&#9200; Deadline Alerts</button>
+  <div class="nav-group">Finance</div>
+  <button data-section="budget">&#128176; Budget</button>
+  <button data-section="finance">&#128200; Income / Expense</button>
+  <button data-section="savings">&#127919; Savings</button>
+  <div class="nav-group">Learning</div>
+  <button data-section="study">&#128218; Study Planner</button>
+  <button data-section="timealloc">&#128338; Time Allocation</button>
+  <div class="nav-group">Personal</div>
+  <button data-section="habits">&#127793; Habit Tracker</button>
+  <button data-section="reports">&#128203; Reports</button>
+  <button data-section="problem">&#129504; Problem Solver</button>
+  <button data-section="profile">&#128100; User Profile</button>
+  <button data-section="admin">&#128272; Admin Panel</button>
+  <button data-section="analytics">&#128200; Analytics</button>
+  <button data-section="settings">&#9881; Settings</button>
+</nav>
+<div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
+
+<main>
+  <div id="globalMsg" role="status"></div>
+
+
+  <section id="landing">
+    <div class="hero">
+      <p class="eyebrow">Personal Decision &amp; Problem Solver</p>
+      <h1>Decide better, every day.</h1>
+      <p class="hero-sub">One app for your decisions, tasks, money, habits and study — built by a three-person team in C++, with a web dashboard that reads and writes the exact same data files as the console app. No fake data, no demo numbers: what you see is what you saved.</p>
+      <div class="actions">
+        <button class="btn btn-primary" id="heroLoginBtn">Log in</button>
+        <button class="btn btn-secondary" id="heroRegBtn">Create an account</button>
+      </div>
+      <p class="muted">No Google or GitHub sign-in, no invitation needed — register here with a username and password, in this app's own login system. Your tasks, budget, habits and history are private to your account: one user cannot see another user's data. First registered user becomes ADMIN.</p>
+    </div>
+    <div class="grid3">
+      <div class="card"><h3>&#129504; Decide</h3><p>Daily decisions, priority scores, task prioritization, compare options, multi-task planning, deadline alerts and plain-language explanations.</p></div>
+      <div class="card"><h3>&#128176; Manage money</h3><p>Budget, income and expense, savings goals, weekly and monthly reports, and TXT/CSV export of your real transactions.</p></div>
+      <div class="card"><h3>&#128214; Build habits</h3><p>Habit tracking with a true consecutive-day streak, study planner, time allocation, and a daily summary report.</p></div>
+    </div>
+    <div class="card">
+      <h3>How it works</h3>
+      <ol>
+        <li><b>Register</b> — the first account is ADMIN, later accounts are USER.</li>
+        <li><b>Log in</b> — you get a session token; it is never your password, and it is never written to a file.</li>
+        <li><b>Use any section</b> — every button calls a real C++ API endpoint, and every change is saved to a plain-text file the console app can also read.</li>
+        <li><b>Back up</b> — Overview has Backup and Restore for your decision records.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>Team</h3>
+      <p><b>Rifat</b> — system core, authentication, profile, admin, password, time allocation, study planner, dashboard and C++ backend. <b>Nuriya</b> — daily decision, priority, tasks, compare, status, deadlines, explanations, multi-task. <b>Sweety</b> — budget, income/expense, savings, habits, streak, reports, export.</p>
+      <p class="muted">Design note: this landing page is our own design, inspired only by the general modern pattern of a hero + feature cards + how-it-works seen on reference sites. No content, text or images were copied from any reference site.</p>
+    </div>
+  </section>
+
+  <section id="auth" class="active">
+    <h2>Welcome back</h2>
+    <p class="muted">Log in or register with this app's own account system — no Google or GitHub account, no invitation, no team membership needed. The first user becomes ADMIN, later users are USER. Usernames cannot contain spaces. Passwords need 8+ characters, a letter and a digit, and are stored as hashes (never as plain text for new accounts).</p>
+    <div id="backendMsg"></div>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Login</h3>
+        <label>Username <input id="loginUser" autocomplete="username"></label>
+        <label>Password <input id="loginPass" type="password" autocomplete="current-password"></label>
+        <button class="btn btn-primary" id="loginBtn">Login</button>
+        <div id="loginMsg"></div>
+      </div>
+      <div class="card">
+        <h3>Register</h3>
+        <label>Username <input id="regUser" autocomplete="username"></label>
+        <label>Password <input id="regPass" type="password" autocomplete="new-password"></label>
+        <button class="btn btn-primary" id="regBtn">Register</button>
+        <div id="regMsg"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="overview">
+    <h2>Overview</h2>
+    <p class="muted">A live summary of your decisions, tasks, money and habits.</p>
+    <div class="grid cards" id="overviewCards"></div>
+    <div class="card">
+      <h3>Finance chart (real totals)</h3>
+      <div id="ovChart"></div>
+      <p class="muted">Bars are drawn from your saved transactions and savings goals only. No data, no bars.</p>
+    </div>
+    <div class="card">
+      <h3>Recent decisions</h3>
+      <div id="overviewDecisions"></div>
+      <div class="actions">
+        <button class="btn btn-primary" id="backupBtn">Backup decisions</button>
+        <button class="btn btn-secondary" id="restoreBtn">Restore from backup</button>
+      </div>
+      <div id="backupMsg"></div>
+    </div>
+  </section>
+
+  <section id="history">
+    <h2>Search &amp; History</h2>
+    <p class="muted">Searches the same decisions.txt the C++ app reads (menu 28–32: history, search, filter, sort). Type a keyword to filter; sort by priority to see what matters most.</p>
+    <div class="card">
+      <label>Search decisions <input id="histSearch" placeholder="Search by title or type…"></label>
+      <label>Type
+        <select id="histType">
+          <option value="">All types</option>
+          <option value="Daily">Daily</option>
+          <option value="MultiTask">MultiTask</option>
+          <option value="Problem">Problem</option>
+        </select>
+      </label>
+      <label>Sort
+        <select id="histSort">
+          <option value="newest">Newest first</option>
+          <option value="priority">Highest priority first</option>
+        </select>
+      </label>
+      <button class="btn btn-primary" id="histBtn">Search history</button>
+      <div id="histMsg"></div>
+    </div>
+    <div class="card"><div id="histList"></div></div>
+    <div class="card">
+      <h3>Error Log (menu 33)</h3>
+      <p class="muted">Same as the C++ Show Error Log: lines from error_log.txt. Log messages never contain passwords.</p>
+      <button class="btn btn-secondary" id="elBtn">Show error log</button>
+      <div id="elList"></div>
+    </div>
+  </section>
+
+  <section id="daily">
+    <h2>Daily Decision</h2>
+    <p class="muted">Same logic as the C++ Daily Decision Maker (menu 9), and the result is saved as a Daily decision record.</p>
+    <div class="card">
+      <label>Available time (minutes, 1–1440) <input id="ddAvailable" type="number" min="1" max="1440"></label>
+      <label>Required time (minutes) <input id="ddRequired" type="number" min="1"></label>
+      <label>Urgency (1–10) <input id="ddUrgency" type="number" min="1" max="10"></label>
+      <label>Importance (1–10) <input id="ddImportance" type="number" min="1" max="10"></label>
+      <label>Energy level (1–10) <input id="ddEnergy" type="number" min="1" max="10"></label>
+      <button class="btn btn-primary" id="ddBtn">Get suggestion</button>
+      <div id="ddMsg"></div>
+    </div>
+    <div class="card">
+      <h3>Multi-Task Daily Decision (menu 43)</h3>
+      <p class="muted">Tasks are sorted by deadline urgency, then accepted only while their energy and time both fit the remaining budgets — the restored Sweety algorithm.</p>
+      <label>Available energy (1–100) <input id="mtEnergy" type="number" min="1" max="100"></label>
+      <label>Available time (minutes, 1–1440) <input id="mtTime" type="number" min="1" max="1440"></label>
+      <div id="mtTasks"></div>
+      <div class="actions">
+        <button class="btn btn-secondary" id="mtAdd">Add task row</button>
+        <button class="btn btn-primary" id="mtBtn">Recommend tasks</button>
+      </div>
+      <div id="mtMsg"></div>
+    </div>
+  </section>
+
+  <section id="tasks">
+    <h2>Task Management</h2>
+    <p class="muted">Tasks are scored exactly like the C++ Task Prioritization: score = urgency × 2 + importance × 3, sorted highest first. Note: the C++ task list is in-memory only, so the dashboard persists tasks in tasks.txt (see dashboard/README.md).</p>
+    <div class="card">
+      <label>Title <input id="taskTitle"></label>
+      <label>Urgency (1–10) <input id="taskUrgency" type="number" min="1" max="10"></label>
+      <label>Importance (1–10) <input id="taskImportance" type="number" min="1" max="10"></label>
+      <label>Deadline (YYYY-MM-DD, optional) <input id="taskDeadline" placeholder="2026-11-20"></label>
+      <button class="btn btn-primary" id="taskAddBtn">Add task</button>
+      <div id="taskMsg"></div>
+    </div>
+    <div class="card"><div id="taskList"></div></div>
+  </section>
+
+  <section id="taskstatus">
+    <h2>Task Status</h2>
+    <p class="muted">Same statuses as the C++ Task Status Manager: Pending, In Progress, Completed. Changing a status here updates the same tasks.txt that Task Management uses.</p>
+    <div class="card"><div id="statusList"></div></div>
+  </section>
+
+  <section id="priority">
+    <h2>Priority Calculator</h2>
+    <p class="muted">Same formula and levels as the C++ Priority Calculator (menu 10): score = urgency × 2 + importance × 3, out of 50.</p>
+    <div class="card">
+      <label>Urgency (1–10) <input id="prUrgency" type="number" min="1" max="10"></label>
+      <label>Importance (1–10) <input id="prImportance" type="number" min="1" max="10"></label>
+      <button class="btn btn-primary" id="prBtn">Calculate</button>
+      <div id="prMsg"></div>
+    </div>
+  </section>
+
+  <section id="explanation">
+    <h2>Decision Explanation</h2>
+    <p class="muted">Same explanation as the C++ Decision Explanation module: the formula, the exact calculation, and what the score means.</p>
+    <div class="card">
+      <label>Urgency (1–10) <input id="exUrgency" type="number" min="1" max="10"></label>
+      <label>Importance (1–10) <input id="exImportance" type="number" min="1" max="10"></label>
+      <button class="btn btn-primary" id="exBtn">Explain</button>
+      <div id="exMsg"></div>
+    </div>
+  </section>
+
+  <section id="deadlines">
+    <h2>Deadline Alerts</h2>
+    <p class="muted">Same alerts as the C++ Deadline Alert module: OVERDUE, DUE TODAY, UPCOMING. Completed tasks are skipped. Leave the date blank to use today.</p>
+    <div class="card">
+      <label>Today's date (optional) <input id="dlDate" type="date"></label>
+      <button class="btn btn-primary" id="dlBtn">Check deadlines</button>
+      <div id="dlMsg"></div>
+    </div>
+    <div class="card"><div id="dlList"></div></div>
+  </section>
+
+  <section id="budget">
+    <h2>Budget Decision</h2>
+    <p class="muted">Same decision as the C++ Budget Decision (menu 37).</p>
+    <div class="card">
+      <label>Monthly income <input id="budIncome" type="number" min="0" step="0.01"></label>
+      <label>Monthly expenses <input id="budExpenses" type="number" min="0" step="0.01"></label>
+      <button class="btn btn-primary" id="budBtn">Decide</button>
+      <div id="budMsg"></div>
+    </div>
+  </section>
+
+  <section id="finance">
+    <h2>Income / Expense</h2>
+    <p class="muted">Transactions are written to transactions.txt in the C++ format: date|type|category|amount|note.</p>
+    <div class="card">
+      <label>Date <input id="txDate" type="date"></label>
+      <label>Type
+        <select id="txType"><option value="income">income</option><option value="expense">expense</option></select>
+      </label>
+      <label>Category <input id="txCategory"></label>
+      <label>Amount <input id="txAmount" type="number" min="0" step="0.01"></label>
+      <label>Note <input id="txNote"></label>
+      <button class="btn btn-primary" id="txBtn">Add transaction</button>
+      <div id="txMsg"></div>
+    </div>
+    <div class="card"><div id="txList"></div></div>
+  </section>
+
+  <section id="savings">
+    <h2>Savings</h2>
+    <p class="muted">Goals are stored in savings_goals.txt as name|target|saved, exactly like the C++ app.</p>
+    <div class="card">
+      <label>Goal name <input id="svName"></label>
+      <label>Target amount <input id="svTarget" type="number" min="0" step="0.01"></label>
+      <button class="btn btn-primary" id="svBtn">Add goal</button>
+      <div id="svMsg"></div>
+    </div>
+    <div class="card">
+      <label>Add to goal (name) <input id="svAddName"></label>
+      <label>Amount <input id="svAddAmount" type="number" min="0" step="0.01"></label>
+      <button class="btn btn-primary" id="svAddBtn">Add savings</button>
+      <div id="svAddMsg"></div>
+    </div>
+    <div class="card"><div id="svList"></div></div>
+    <div class="card">
+      <h3>Savings Goal Calculator (menu 39)</h3>
+      <p class="muted">Same as the C++ Savings Goal calculator: remaining amount and estimated months. Not saved as a goal — a calculation, like the console module.</p>
+      <label>Savings target <input id="scTarget" type="number" min="0" step="0.01"></label>
+      <label>Current savings <input id="scCurrent" type="number" min="0" step="0.01"></label>
+      <label>Expected monthly saving <input id="scMonthly" type="number" min="0" step="0.01"></label>
+      <button class="btn btn-primary" id="scBtn">Calculate</button>
+      <div id="scMsg"></div>
+    </div>
+  </section>
+
+  <section id="study">
+    <h2>Study Planner</h2>
+    <p class="muted">Same plan as the C++ Study Planner: one line per day, total hours = days × hours per day. This plan is calculated, not saved — like the console module.</p>
+    <div class="card">
+      <label>Subject <input id="spSubject" placeholder="Mathematics"></label>
+      <label>Number of days (1–365) <input id="spDays" type="number" min="1" max="365"></label>
+      <label>Study hours per day (1–24) <input id="spHours" type="number" min="1" max="24"></label>
+      <button class="btn btn-primary" id="spBtn">Create plan</button>
+      <div id="spMsg"></div>
+    </div>
+    <div class="card"><div id="spList"></div></div>
+  </section>
+
+  <section id="timealloc">
+    <h2>Time Allocation</h2>
+    <p class="muted">Same check as the C++ Time Allocation module: the four values must each be 0–24, and the total is compared with 24 hours.</p>
+    <div class="card">
+      <label>Sleep hours <input id="taSleep" type="number" min="0" max="24"></label>
+      <label>Study hours <input id="taStudy" type="number" min="0" max="24"></label>
+      <label>Work hours <input id="taWork" type="number" min="0" max="24"></label>
+      <label>Other activity hours <input id="taOther" type="number" min="0" max="24"></label>
+      <button class="btn btn-primary" id="taBtn">Check allocation</button>
+      <div id="taMsg"></div>
+    </div>
+  </section>
+
+  <section id="habits">
+    <h2>Habit Tracker</h2>
+    <p class="muted">Completions go to habit_log.txt as habit|date. The streak is the true consecutive-day streak from the Phase 1 backend fix, not just a total count.</p>
+    <div class="card">
+      <label>Habit name <input id="hbName"></label>
+      <label>Date <input id="hbDate" type="date"></label>
+      <button class="btn btn-primary" id="hbBtn">Mark done</button>
+      <div id="hbMsg"></div>
+    </div>
+    <div class="card">
+      <label>Check streak for habit <input id="hbCheck"></label>
+      <button class="btn btn-primary" id="hbCheckBtn">Check streak</button>
+      <div id="hbCheckMsg"></div>
+      <div id="hbList"></div>
+    </div>
+    <div class="card">
+      <h3>Habit Decision (menu 40)</h3>
+      <p class="muted">Same as the C++ Habit Decision: completion percentage and message. Not saved — a calculation, like the console module.</p>
+      <label>Habits completed today <input id="hdCompleted" type="number" min="0"></label>
+      <label>Habits planned today <input id="hdPlanned" type="number" min="1"></label>
+      <button class="btn btn-primary" id="hdBtn">Decide</button>
+      <div id="hdMsg"></div>
+    </div>
+    <div class="card">
+      <h3>Habit Streak Calculator (menu 41)</h3>
+      <p class="muted">Same as the C++ Habit Streak calculator: previous consecutive days plus today (yes/no). This is different from the true streak above, which is computed from habit_log.txt dates.</p>
+      <label>Previous consecutive days <input id="hsPrev" type="number" min="0"></label>
+      <label>Completed today? <select id="hsToday"><option value="1">Yes</option><option value="0">No</option></select></label>
+      <button class="btn btn-primary" id="hsBtn">Calculate streak</button>
+      <div id="hsMsg"></div>
+    </div>
+  </section>
+
+  <section id="reports">
+    <h2>Reports</h2>
+    <p class="muted">Weekly reports cover the 7 days ending on the given date; monthly reports cover the given YYYY-MM month — the same filtering as the C++ period reports.</p>
+    <div class="card">
+      <label>Month (YYYY-MM) <input id="repMonth" placeholder="2026-11"></label>
+      <button class="btn btn-primary" id="repMonthBtn">Monthly report</button>
+      <label>Week end date <input id="repWeek" type="date"></label>
+      <button class="btn btn-primary" id="repWeekBtn">Weekly report</button>
+      <div id="repMsg"></div>
+    </div>
+    <div class="card">
+      <h3>Daily Summary Report (menu 36)</h3>
+      <p class="muted">Same as the C++ Daily Summary: balance = income − expenses, habit rate = completed × 100 / planned, appended to daily_report.txt.</p>
+      <label>Total income <input id="dsIncome" type="number" min="0" step="0.01"></label>
+      <label>Total expenses <input id="dsExpenses" type="number" min="0" step="0.01"></label>
+      <label>Habits completed today <input id="dsCompleted" type="number" min="0"></label>
+      <label>Habits planned today <input id="dsPlanned" type="number" min="1"></label>
+      <button class="btn btn-primary" id="dsBtn">Create daily summary</button>
+      <div id="dsMsg"></div>
+    </div>
+    <div class="card">
+      <h3>Export TXT / CSV (menus 26–27)</h3>
+      <p class="muted">Same content as the C++ TXT/CSV export of transactions.txt, and the same files (financial_report.txt / .csv) are written in the data directory. Download starts in your browser.</p>
+      <div class="actions">
+        <button class="btn btn-primary" id="exTxtBtn">Download TXT report</button>
+        <button class="btn btn-primary" id="exCsvBtn">Download CSV report</button>
+      </div>
+      <div id="xpMsg"></div>
+    </div>
+  </section>
+
+
+  <section id="compare">
+    <h2>Compare Options</h2>
+    <p class="muted">Same formula as the C++ Compare Options (menu 12, Nuriya): score = benefit × 3 − cost − risk, each 1–10. This comparison is not saved as a decision, like the console module.</p>
+    <div class="card">
+      <label>Option 1 name <input id="cmpName1"></label>
+      <label>Benefit (1–10) <input id="cmpBenefit1" type="number" min="1" max="10"></label>
+      <label>Cost (1–10) <input id="cmpCost1" type="number" min="1" max="10"></label>
+      <label>Risk (1–10) <input id="cmpRisk1" type="number" min="1" max="10"></label>
+      <label>Option 2 name <input id="cmpName2"></label>
+      <label>Benefit (1–10) <input id="cmpBenefit2" type="number" min="1" max="10"></label>
+      <label>Cost (1–10) <input id="cmpCost2" type="number" min="1" max="10"></label>
+      <label>Risk (1–10) <input id="cmpRisk2" type="number" min="1" max="10"></label>
+      <button class="btn btn-primary" id="cmpBtn">Compare</button>
+      <div id="cmpMsg"></div>
+    </div>
+  </section>
+
+  <section id="problem">
+    <h2>Problem Solver</h2>
+    <p class="muted">Same logic as the C++ Problem Solver (menu 35, Sweety): difficulty 1–5 and available time decide the suggestion, and it is saved as a Problem decision record.</p>
+    <div class="card">
+      <label>Problem name <input id="psName"></label>
+      <label>Difficulty (1–5) <input id="psDifficulty" type="number" min="1" max="5"></label>
+      <label>Available time (minutes) <input id="psTime" type="number" min="1"></label>
+      <button class="btn btn-primary" id="psBtn">Solve</button>
+      <div id="psMsg"></div>
+    </div>
+  </section>
+
+  <section id="admin">
+    <h2>Admin Panel</h2>
+    <p class="muted">Same information as the C++ Admin Panel (menu 5, Rifat): registered users with username and role only. Never passwords. Only an ADMIN can open this section; other users see an access message.</p>
+    <div class="card"><div id="adminInfo"></div></div>
+  </section>
+
+  <section id="profile">
+    <h2>User Profile</h2>
+    <p class="muted">Same information as the C++ Profile screen: username and role. Admins also see the registered user list (usernames and roles only, never passwords).</p>
+    <div class="card"><div id="profileInfo"></div></div>
+    <div class="card"><div id="profileUsers"></div></div>
+  </section>
+
+
+  <section id="analytics">
+    <h2>Analytics</h2>
+    <p class="muted">Charts drawn only from your saved data — monthly income vs expense from transactions.txt, and savings progress from savings_goals.txt. No demo or placeholder data.</p>
+    <div class="card"><h3>Monthly income vs expense</h3><div id="anChart"></div></div>
+    <div class="card"><h3>Savings progress</h3><div id="anSavings"></div></div>
+  </section>
+
+  <section id="settings">
+    <h2>Settings</h2>
+    <p class="muted">Theme is saved in this browser only. Password change uses the same rules as the C++ password change: current password must match, new password needs 8+ characters, a letter and a digit.</p>
+    <div class="card">
+      <h3>Appearance</h3>
+      <label>Theme
+        <select id="setTheme"><option value="light">Light</option><option value="dark">Dark</option></select>
+      </label>
+      <button class="btn btn-secondary" id="setThemeBtn">Save theme</button>
+      <div id="setThemeMsg"></div>
+    </div>
+    <div class="card">
+      <h3>Backend</h3>
+      <div id="setBackend"></div>
+    </div>
+    <div class="card">
+      <h3>Change password</h3>
+      <label>Current password <input id="cpCurrent" type="password" autocomplete="current-password"></label>
+      <label>New password <input id="cpNew" type="password" autocomplete="new-password"></label>
+      <button class="btn btn-primary" id="cpBtn">Change password</button>
+      <div id="cpMsg"></div>
+    </div>
+  </section>
+</main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
