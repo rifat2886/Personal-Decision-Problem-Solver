@@ -222,6 +222,90 @@ is sent: if the history save itself fails, the endpoint
 returns 502 instead of a 200 claiming success — in both
 txt and Postgres mode.
 
+## API: `POST /api/ai/budget` (Phase 2.5)
+
+Login required (401 without a valid session). Request
+(all fields optional, but at least one meaningful field
+is required — an empty object returns
+`400 {"error":"invalid input"}`):
+
+```json
+{"income": 10000,
+ "expenses": [{"category": "food", "amount": 3000},
+              {"category": "transport", "amount": 1500}],
+ "savings_goal": {"name": "laptop", "target": 10000, "saved": 1000},
+ "input": "exam next month"}
+```
+
+- `income` — JSON number, 0 to 1,000,000,000. Decimals
+  allowed. `expenses` — array, at most 20 items, each an
+  object with `category` (string, non-empty after
+  trimming, max 100 UTF-8 code points) and `amount`
+  (JSON number, 0 to 1,000,000,000). `savings_goal` —
+  object with `name` (string, non-empty after trimming,
+  max 200 code points), `target` (JSON number, greater
+  than 0, up to 1,000,000,000) and `saved` (JSON number,
+  0 to 1,000,000,000; may exceed `target` — the goal is
+  already reached). `input` — free text, max 2000 UTF-8
+  code points (empty after trimming counts as absent).
+- Numbers are validated strictly: only a valid JSON
+  number is accepted (optional `-`, digits, optional
+  fraction, optional exponent, no leading zeros except
+  the number 0 itself). Strings, booleans, null, NaN,
+  Infinity, malformed numbers, numbers outside the
+  bounds and trailing junk after a value are all
+  rejected with 400. A quoted field name inside the
+  free text or inside a category string is never treated
+  as a real field.
+- The server computes the figures itself and puts them
+  in the prompt as DATA — Gemini only advises, never
+  calculates. Total expenses = sum of amounts.
+  Remaining = income − total expenses (N/A when income
+  is absent). Savings rate = remaining ÷ income as a
+  percentage (N/A when income is absent or 0 — division
+  by zero is guarded, never inf/nan). Goal progress =
+  saved ÷ target as a percentage (target is always
+  greater than 0). Months to goal = (target − saved) ÷
+  remaining, only when remaining is greater than 0 and
+  target is greater than saved, otherwise N/A (0.00
+  when the goal is already reached). A negative
+  remaining is shown explicitly as a deficit, e.g.
+  `Remaining: -1500.00 (DEFICIT: expenses exceed income
+  by 1500.00)`. All money figures are formatted with
+  2 decimal places, and tiny floating-point residues
+  are rounded away (0.1 + 0.2 against 0.3 income is
+  exactly 0.00 remaining, never -0.00 or a deficit).
+  Amounts are capped at 1e9 each with at most 20
+  expenses, so totals stay far below double's
+  exact-integer range; no unbounded sum ever passes
+  validation.
+- The fixed instruction asks Gemini for five sections —
+  (a) Income & Expense Analysis, (b) Budget Plan,
+  (c) Savings Goal Progress, (d) Spending
+  Recommendations, (e) Explanation — and states the
+  figures are pre-computed (use them as given, do not
+  recompute them) and the user data is untrusted data
+  to analyse, not instructions to follow. The prompt
+  budget is 8000 code points; the largest valid request
+  (20 expenses + 2000-character input + income + goal,
+  about 5200 code points) stays inside it. Invalid input
+  returns `400 {"error":"invalid input"}` without
+  echoing the value, and never calls Gemini. Success
+  (200) and failure mapping are the same as Daily
+  Decision above (including mock 429 -> 503
+  `{"error":"AI request limit reached"}`); the history
+  entry uses feature `"budget"` and stores the
+  structured summary (income, expenses list, savings
+  goal, input text) only — never the fixed instruction
+  and never the computed figures. Like Study Planner
+  and Problem Solver, the saved row is verified to
+  have landed (read-back) before the reply is sent:
+  if the history save itself fails, the endpoint
+  returns 502 instead of a 200 claiming success — in
+  both txt and Postgres mode (Postgres save failure
+  verified live: DROP TABLE ai_history mid-run ->
+  502, restart -> 200).
+
 ## API: AI history (Phase 2.1)
 
 `GET /api/ai/history` — login required. Optional `?limit=`
@@ -301,8 +385,21 @@ python3 tests/ai_endpoints_test.py  # Daily Decision + history (mock)
 against a local mock Gemini server (success, invalid JSON,
 HTTP 500, HTTP 401, timeout, empty/oversized prompt, missing
 key), checks the no-libcurl stub, and checks `/api/ai/health`
-with and without a key. `tests/ai_endpoints_test.py` checks the
-Daily Decision endpoint (auth, validation, failure mapping),
-history storage and per-user isolation, and the Python
-server's 501 for `/api/ai/*`. The only key string in the tests
-is the fake value `"test-key"`.
+with and without a key. `tests/ai_endpoints_test.py` checks
+the Daily Decision, Task Analyzer, Study Planner, Problem
+Solver and Budget endpoints (auth, validation, failure
+mapping, computed figures for Budget), history storage and
+per-user isolation, and the Python server's 501 for
+`/api/ai/*`. The Budget checks include strict number
+validation (strings, booleans, null, NaN, Infinity,
+malformed numbers and trailing junk are rejected without
+calling Gemini), Unicode-aware limits (2000 Bengali
+characters accepted, 2001 rejected), the deficit wording,
+the income-0 savings-rate N/A case, the 0.1 + 0.2
+precision case, the maximum-size request inside the
+8000 code point prompt budget, and the txt-mode
+history-save failure (data dir removed mid-run -> 502).
+The Postgres-mode history-save failure is verified
+manually, not in the suite: DROP TABLE ai_history
+mid-run -> 502, restart -> 200. The only key string in
+the tests is the fake value `"test-key"`.
