@@ -260,7 +260,15 @@ def start_cpp(port, data_dir, extra_env):
     env = dict(os.environ)
     env.pop("GEMINI_API_KEY", None)
     env.update(extra_env)
-    cmd = [os.path.join(REPO, "cpp_server"), "--port", str(port),
+    binary = os.path.join(REPO, "cpp_server")
+    # Windows: the build produces cpp_server.exe; use it when the
+    # extensionless name does not exist (Linux is unaffected, the
+    # plain name exists there). CreateProcess would append .exe
+    # itself, but this removes all doubt on a platform we cannot
+    # test locally.
+    if not os.path.exists(binary) and os.path.exists(binary + ".exe"):
+        binary = binary + ".exe"
+    cmd = [binary, "--port", str(port),
            "--data-dir", data_dir]
     return subprocess.Popen(cmd, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, text=True, env=env)
