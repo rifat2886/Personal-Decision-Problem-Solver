@@ -132,6 +132,10 @@ jobs:
         # Safety net: this step must never hang indefinitely again
         # (CI #17: the old MSYS2 `kill`/`wait` hung for 34m because a
         # POSIX SIGTERM does not reliably stop a native MinGW .exe).
+        # CI #18 failed opaquely (server never answered 200; root
+        # cause UNKNOWN from the log), so this step now logs the PID,
+        # working directory, every poll result and the server's own
+        # logs, and the logs are uploaded as an artifact on every run.
         timeout-minutes: 5
         run: |
           # Windows-native process management: Start-Process -PassThru
@@ -141,17 +145,29 @@ jobs:
           # the 200 check fails, and a server that will not stop
           # fails the step loudly instead of hanging forever.
           $srv = $null
+          $ok = $false
           try {
-            $srv = Start-Process -FilePath .\cpp_server.exe -ArgumentList '--port','8127','--data-dir','.' -NoNewWindow -PassThru -RedirectStandardOutput server.log -RedirectStandardError server-error.log
-            $ok = $false
+            Write-Host "working directory: $(Get-Location)"
+            Write-Host "dashboard/index.html present: $(Test-Path dashboard/index.html)"
+            try {
+              $srv = Start-Process -FilePath .\cpp_server.exe -ArgumentList '--port','8127','--data-dir','.' -WorkingDirectory (Get-Location).Path -NoNewWindow -PassThru -RedirectStandardOutput server.log -RedirectStandardError server-error.log -ErrorAction Stop
+            } catch {
+              throw "server process failed to start: $($_.Exception.Message)"
+            }
+            if (-not $srv) { throw "server process failed to start" }
+            Write-Host "started server PID $($srv.Id), HasExited=$($srv.HasExited)"
             for ($i = 0; $i -lt 30; $i++) {
+              $code = $null
+              $exit = $null
               try {
                 $code = (curl.exe -s -o NUL -w "%{http_code}" http://127.0.0.1:8127/)
-                if ($code -eq "200") { $ok = $true; break }
-              } catch { }
+                $exit = $LASTEXITCODE
+              } catch { $exit = "exception: $($_.Exception.Message)" }
+              Write-Host "poll ${i}: curl exit=$exit http=$code server-exited=$($srv.HasExited)"
+              if ($code -eq "200") { $ok = $true; break }
               Start-Sleep -Seconds 1
             }
-            if (-not $ok) { throw "server did not answer 200 on / within 30s" }
+            if (-not $ok) { throw "server did not answer 200 on / within 30s (PID $($srv.Id), HasExited=$($srv.HasExited))" }
             Write-Host "root status: 200"
             if ($srv.HasExited) { throw "server exited unexpectedly after answering 200" }
           }
@@ -161,5 +177,20 @@ jobs:
               try { Wait-Process -Id $srv.Id -Timeout 10 -ErrorAction Stop } catch { }
               if (-not $srv.HasExited) { Write-Error "server did not stop within 10s"; exit 1 }
             }
+            if (-not $ok) {
+              Write-Host "--- server.log ---"
+              if (Test-Path server.log) { Get-Content server.log -ErrorAction SilentlyContinue } else { Write-Host "(no server.log)" }
+              Write-Host "--- server-error.log ---"
+              if (Test-Path server-error.log) { Get-Content server-error.log -ErrorAction SilentlyContinue } else { Write-Host "(no server-error.log)" }
+            }
           }
           Write-Host "server stopped, exit code check done"
+      - name: Upload server startup logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-server-logs
+          path: |
+            server.log
+            server-error.log
+          if-no-files-found: warn
