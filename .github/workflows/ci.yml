@@ -128,12 +128,38 @@ jobs:
         shell: msys2 {0}
         run: python3 tests/ai_endpoints_test.py
       - name: Server startup and shutdown check
-        shell: msys2 {0}
+        shell: pwsh
+        # Safety net: this step must never hang indefinitely again
+        # (CI #17: the old MSYS2 `kill`/`wait` hung for 34m because a
+        # POSIX SIGTERM does not reliably stop a native MinGW .exe).
+        timeout-minutes: 5
         run: |
-          ./cpp_server.exe --port 8127 --data-dir . > server.log 2>&1 &
-          SRV=$!
-          sleep 2
-          curl -s -o /dev/null -w "root status: %{http_code}\n" http://127.0.0.1:8127/
-          kill $SRV || true
-          wait $SRV 2>/dev/null || true
-          echo "server stopped, exit code check done"
+          # Windows-native process management: Start-Process -PassThru
+          # gives the real Windows PID, Stop-Process ends it with
+          # TerminateProcess, and Wait-Process -Timeout bounds the
+          # shutdown. The finally block guarantees cleanup even when
+          # the 200 check fails, and a server that will not stop
+          # fails the step loudly instead of hanging forever.
+          $srv = $null
+          try {
+            $srv = Start-Process -FilePath .\cpp_server.exe -ArgumentList '--port','8127','--data-dir','.' -NoNewWindow -PassThru -RedirectStandardOutput server.log -RedirectStandardError server-error.log
+            $ok = $false
+            for ($i = 0; $i -lt 30; $i++) {
+              try {
+                $code = (curl.exe -s -o NUL -w "%{http_code}" http://127.0.0.1:8127/)
+                if ($code -eq "200") { $ok = $true; break }
+              } catch { }
+              Start-Sleep -Seconds 1
+            }
+            if (-not $ok) { throw "server did not answer 200 on / within 30s" }
+            Write-Host "root status: 200"
+            if ($srv.HasExited) { throw "server exited unexpectedly after answering 200" }
+          }
+          finally {
+            if ($srv -and -not $srv.HasExited) {
+              Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue
+              try { Wait-Process -Id $srv.Id -Timeout 10 -ErrorAction Stop } catch { }
+              if (-not $srv.HasExited) { Write-Error "server did not stop within 10s"; exit 1 }
+            }
+          }
+          Write-Host "server stopped, exit code check done"
