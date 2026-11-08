@@ -1,8 +1,10 @@
-# Gemini AI Integration — Phase 1 (foundation)
+# Gemini AI Integration — Phase 1 (foundation) + Phase 2.1 (history + Daily Decision)
 
-Status: Phase 1 only. The Gemini client exists, `/api/ai/health`
-reports its state, and mock tests pass. No AI feature endpoint
-exists yet — those come in later phases.
+Status: Phase 2.1 done. The Gemini client exists,
+`/api/ai/health` reports its state, `POST /api/ai/daily-decision`
+is the first AI feature endpoint, and every successful AI reply
+is stored in per-user AI history. The other five feature
+endpoints come in later phases (2.2–2.6).
 
 ## Environment variables
 
@@ -57,6 +59,88 @@ Response (example):
 
 The response never contains the key or any fragment of it.
 
+## API: `POST /api/ai/daily-decision` (Phase 2.1)
+
+Login required (401 without a valid session). Request:
+
+```json
+{"input": "Should I study math or physics tonight?",
+ "options": ["math", "physics"]}
+```
+
+- `input` — required, non-empty after trimming, max 4000 chars.
+- `options` — optional array, max 10 items, each max 500 chars.
+
+The server prepends a fixed instruction (decision assistant:
+analyse the decision and options, give one clear recommendation
+with short reasons and a brief explanation, keep it concise).
+The user's input is inserted as quoted DATA, never as an
+instruction. Invalid input returns `400 {"error":"invalid input"}`
+without echoing the value, and never calls Gemini.
+
+Success (200):
+
+```json
+{"reply": "<Gemini reply text>", "history_id": 1}
+```
+
+Failure mapping (generic messages only, never the Gemini error
+body or the key):
+
+| Gemini error | HTTP | Body |
+|---|---|---|
+| `not_configured`, `unavailable` | 503 | `{"error":"AI unavailable"}` |
+| `auth_error` | 503 | `{"error":"AI configuration error"}` |
+| `timeout` | 504 | `{"error":"AI request timed out"}` |
+| `request_failed`, `invalid_response`, `invalid_request` | 502 | `{"error":"AI request failed"}` |
+
+## API: AI history (Phase 2.1)
+
+`GET /api/ai/history` — login required. Optional `?limit=`
+(1–100, default 50). Newest first. Response:
+
+```json
+{"history": [{"id": 1, "feature": "daily-decision",
+  "prompt": "Should I study math or physics tonight? [options: math; physics]",
+  "response": "<Gemini reply text>", "created_at": "2026-11-08 13:55:01"}]}
+```
+
+`DELETE /api/ai/history/{id}` — login required. Deletes only
+the caller's own row; returns `{"deleted": true}` or 404 for a
+missing id or someone else's row.
+
+History is saved ONLY on Gemini success — never on failures,
+and the API key is never stored. The stored `prompt` is what the
+user asked (input + options), not the full prompt with the
+server instruction.
+
+## Storage design (Phase 2.1)
+
+Postgres is the primary store; the txt file is the backup used
+when `DATABASE_URL` is unset.
+
+- Postgres: table `ai_history` (`id SERIAL PRIMARY KEY`,
+  `owner TEXT NOT NULL`, `feature`, `prompt`, `response`,
+  `created_at`, all `TEXT NOT NULL` except `id`). Created by
+  `dashboard/schema.sql` and by the server on startup
+  (`dashboard/pg_store.h`). All queries are parameterised and
+  always filtered by owner (`WHERE owner = $1`, newest first).
+- TXT: file `ai_history.txt`, one row per entry:
+  `id|created_at|feature|prompt|response|owner` (owner is the
+  LAST pipe field, like the other stores). Prompt/response may
+  contain `|`, newlines and backslashes, so they are escaped on
+  write (`\` → `\\`, `|` → `\|`, newline → `\n`, CR → `\r`)
+  and unescaped on read, under the same file lock as
+  `decisions.txt`. IDs are sequential (max existing + 1).
+- Owner is mandatory — there are NO legacy rows. A row without
+  an owner is never returned to anyone, and ADMIN gets no
+  exception: history is visible only to its owner.
+
+The Python server (`dashboard/server.py`) has no Gemini code:
+any `/api/ai/*` path returns
+`501 {"error":"AI requires the C++ server"}` (401 without a
+login still comes first).
+
 ## Security rules
 
 - The key comes only from the environment, is sent only as the
@@ -80,12 +164,16 @@ The response never contains the key or any fragment of it.
 ## Tests
 
 ```sh
-python3 tests/gemini_test.py   # mock Gemini server; no real API call
+python3 tests/gemini_test.py        # mock Gemini server; no real API call
+python3 tests/ai_endpoints_test.py  # Daily Decision + history (mock)
 ```
 
-It builds the server, runs a C++ harness against a local mock
-Gemini server (success, invalid JSON, HTTP 500, HTTP 401,
-timeout, empty/oversized prompt, missing key), checks the
-no-libcurl stub, and checks `/api/ai/health` with and without a
-key. The only key string in the tests is the fake value
-`"test-key"`.
+`tests/gemini_test.py` builds the server, runs a C++ harness
+against a local mock Gemini server (success, invalid JSON,
+HTTP 500, HTTP 401, timeout, empty/oversized prompt, missing
+key), checks the no-libcurl stub, and checks `/api/ai/health`
+with and without a key. `tests/ai_endpoints_test.py` checks the
+Daily Decision endpoint (auth, validation, failure mapping),
+history storage and per-user isolation, and the Python
+server's 501 for `/api/ai/*`. The only key string in the tests
+is the fake value `"test-key"`.

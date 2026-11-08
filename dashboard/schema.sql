@@ -100,3 +100,19 @@ CREATE TABLE IF NOT EXISTS error_logs (
     id   SERIAL PRIMARY KEY,
     line TEXT NOT NULL
 );
+
+-- AI history (Gemini integration, Phase 2.1): one row per
+-- successful AI reply. Unlike the other tables, owner is NOT NULL
+-- here: history is always owned by exactly one user, there are no
+-- legacy rows, and the server only ever selects/inserts/deletes
+-- with an explicit owner filter, so one user can never see or
+-- delete another user's history. created_at is a local
+-- "YYYY-MM-DD HH:MM:SS" timestamp string.
+CREATE TABLE IF NOT EXISTS ai_history (
+    id         SERIAL PRIMARY KEY,
+    owner      TEXT NOT NULL,
+    feature    TEXT NOT NULL,
+    prompt     TEXT NOT NULL,
+    response   TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
