@@ -40,6 +40,8 @@ jobs:
         run: python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8124
       - name: Gemini client test (mock, no real API)
         run: python3 tests/gemini_test.py
+      - name: AI endpoints test (mock Gemini, no real API)
+        run: python3 tests/ai_endpoints_test.py
       - name: Dashboard assets check
         run: |
           python3 - << 'PY'
@@ -82,7 +84,11 @@ jobs:
           # installer from GitHub releases failed with HTTP 504 (2026-11-08).
           release: false
           update: true
-          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-curl python
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-curl python make
+          # NOTE: `make` (the MSYS2 package) is needed because
+          # tests/ai_endpoints_test.py builds the server with
+          # `make cpp_server`; mingw-w64-x86_64-make alone only
+          # provides mingw32-make, not `make`.
       - name: Build console and C++ server with MinGW
         shell: msys2 {0}
         run: |
@@ -98,6 +104,9 @@ jobs:
       - name: API test against Python fallback server
         shell: msys2 {0}
         run: python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8126
+      - name: AI endpoints test (mock Gemini, no real API)
+        shell: msys2 {0}
+        run: python3 tests/ai_endpoints_test.py
       - name: Server startup and shutdown check
         shell: msys2 {0}
         run: |
