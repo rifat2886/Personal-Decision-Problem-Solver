@@ -37,7 +37,17 @@ jobs:
       - name: API test against C++ server
         run: python3 tests/api_test.py --server-cmd "./cpp_server" --port 8123
       - name: API test against Python fallback server
-        run: python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8124
+        run: |
+          python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8124 | tee py-api-test.log
+          test "${PIPESTATUS[0]}" -eq 0
+          grep -q "api_test: 36 passed, 0 failed" py-api-test.log
+      - name: Upload Python API test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: py-api-test-log-linux
+          path: py-api-test.log
+          if-no-files-found: warn
       - name: Gemini client test (mock, no real API)
         run: python3 tests/gemini_test.py
       - name: AI endpoints test (mock Gemini, no real API)
@@ -103,7 +113,17 @@ jobs:
         run: python3 tests/api_test.py --server-cmd "./cpp_server.exe" --port 8125
       - name: API test against Python fallback server
         shell: msys2 {0}
-        run: python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8126
+        run: |
+          python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8126 | tee py-api-test.log
+          test "${PIPESTATUS[0]}" -eq 0
+          grep -q "api_test: 36 passed, 0 failed" py-api-test.log
+      - name: Upload Python API test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: py-api-test-log-windows
+          path: py-api-test.log
+          if-no-files-found: warn
       - name: AI endpoints test (mock Gemini, no real API)
         shell: msys2 {0}
         run: python3 tests/ai_endpoints_test.py
