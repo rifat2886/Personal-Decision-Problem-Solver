@@ -108,6 +108,7 @@
 // Windows too. It was previously inside the non-Windows branch only,
 // which broke the Windows build. See Issue 1 in AUDIT.md.
 #include "../password_hash.h"
+#include "gemini_client.h"
 #include "pg_store.h"
 
 using namespace std;
@@ -729,6 +730,18 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
 
     if (path == "/api/me" && method == "GET")
         return sendJson(fd, 200, "{\"username\":" + jsonStr(user) + ",\"role\":" + jsonStr(role) + "}");
+
+    // Gemini AI health (Phase 1): login required, like /api/me.
+    // Reports only whether the libcurl client was compiled in and
+    // whether a key is configured. The key itself (or any fragment
+    // of it) is never included in the response.
+    if (path == "/api/ai/health" && method == "GET") {
+        ostringstream os;
+        os << "{\"available\":" << (gemini::available() ? "true" : "false")
+           << ",\"configured\":" << (gemini::configured() ? "true" : "false")
+           << ",\"model\":" << jsonStr(gemini::modelName()) << "}";
+        return sendJson(fd, 200, os.str());
+    }
 
     if (path == "/api/overview" && method == "GET") {
         auto allDs = loadDecisions(); auto allTxs = loadTxs(); auto allGoals = loadGoals(); auto allTasks = loadTasks();

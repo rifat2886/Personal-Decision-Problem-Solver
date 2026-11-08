@@ -74,8 +74,19 @@ PG_LIBS := $(shell if pg_config --includedir >/dev/null 2>&1; then echo "-lpq"; 
 # silently compiled out (caught by local Postgres testing).
 PG_CFLAGS := $(shell pg_config --includedir 2>/dev/null | sed 's/^/-I/' | grep -v '^-I$$')
 
-cpp_server: dashboard/cpp_server.cpp dashboard/pg_store.h password_hash.h
-	$(CXX) $(CXXFLAGS) $(PG_CFLAGS) -pthread -o cpp_server dashboard/cpp_server.cpp $(PG_LIBS)
+# Gemini (Phase 1): link libcurl only when curl-config exists, which
+# is the case when libcurl dev headers are installed. Without
+# curl-config, gemini_client.cpp compiles the stub (available()
+# returns false, /api/ai/health reports available=false) and the
+# server still builds and runs — this keeps the Windows/MinGW build
+# working without a new dependency. Same opt-in pattern as libpq
+# above. `make project` is unaffected (the console app never links
+# curl).
+CURL_CFLAGS := $(shell if curl-config --cflags >/dev/null 2>&1; then curl-config --cflags; fi)
+CURL_LIBS := $(shell if curl-config --libs >/dev/null 2>&1; then curl-config --libs; fi)
+
+cpp_server: dashboard/cpp_server.cpp dashboard/gemini_client.cpp dashboard/gemini_client.h dashboard/pg_store.h password_hash.h
+	$(CXX) $(CXXFLAGS) $(PG_CFLAGS) $(CURL_CFLAGS) -pthread -o cpp_server dashboard/cpp_server.cpp dashboard/gemini_client.cpp $(PG_LIBS) $(CURL_LIBS)
 
 clean:
 	rm -f project project.exe cpp_server cpp_server.exe
