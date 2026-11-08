@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Build console and C++ server (strict warnings)
         run: |
           g++ -std=c++17 -Wall -Wextra -Wpedantic -o project admin.cpp backup_restore.cpp budget.cpp compare_options.cpp control.cpp daily_decision.cpp deadline_alert.cpp decision_explanation.cpp delete_confirmation.cpp error_handler.cpp export_report.cpp filter_sort.cpp habit.cpp habit_streak.cpp history.cpp income_expense.cpp input_validation.cpp login.cpp logout.cpp main.cpp multi_task_decision.cpp password_change.cpp password_validation.cpp period_report.cpp priority_calculator.cpp problem.cpp profile.cpp registration.cpp report.cpp savings_goal.cpp search_history.cpp study_planner.cpp task_prioritization.cpp task_status.cpp time_allocation.cpp
@@ -53,11 +55,15 @@ jobs:
       - name: Logic-priority test, standalone (own main, never in production build)
         run: |
           mkdir -p /tmp/logic-priority-test
-          git show origin/logic-priority:logic_priority.h > /tmp/logic-priority-test/logic_priority.h || echo "logic-priority branch not available, skipping"
-          git show origin/logic-priority:logic_priority.cpp > /tmp/logic-priority-test/logic_priority.cpp || echo "logic-priority branch not available, skipping"
-          git show origin/logic-priority:logic_priority_test.cpp > /tmp/logic-priority-test/logic_priority_test.cpp || echo "logic-priority branch not available, skipping"
-          if [ -f /tmp/logic-priority-test/logic_priority_test.cpp ]; then
+          if git show origin/logic-priority:logic_priority.h > /tmp/logic-priority-test/logic_priority.h 2>/dev/null \
+            && git show origin/logic-priority:logic_priority.cpp > /tmp/logic-priority-test/logic_priority.cpp 2>/dev/null \
+            && git show origin/logic-priority:logic_priority_test.cpp > /tmp/logic-priority-test/logic_priority_test.cpp 2>/dev/null \
+            && [ -s /tmp/logic-priority-test/logic_priority.h ] \
+            && [ -s /tmp/logic-priority-test/logic_priority.cpp ] \
+            && [ -s /tmp/logic-priority-test/logic_priority_test.cpp ]; then
             cd /tmp/logic-priority-test && g++ -std=c++17 -Wall -Wextra -o logic_priority_test logic_priority.cpp logic_priority_test.cpp && ./logic_priority_test | head -n 20
+          else
+            echo "SKIPPED: logic-priority branch/files not available; standalone test NOT run (not a product-code failure)"
           fi
 
   windows:
