@@ -11,12 +11,48 @@ run) without changing any data files.
 
 Usage: python3 tests/mobile_test.py --server ./cpp_server --port 8140
 """
-import argparse, os, shutil, subprocess, sys, tempfile, time
+import argparse, http.server, json, os, shutil, socket, subprocess, sys, tempfile, threading, time
 PASS = FAIL = 0
 def check(name, cond, detail=""):
     global PASS, FAIL
     if cond: PASS += 1; print(f"  PASS {name}")
     else: FAIL += 1; print(f"  FAIL {name} {detail}")
+
+
+def free_port():
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
+# Mock Gemini server (Phase 3.1, same pattern as browser_test.py):
+# the C++ server is started with GEMINI_API_BASE_URL pointing here
+# and GEMINI_API_KEY=test-key, so no real Gemini API is ever called.
+MOCK_AI_REPLY = "Mocked AI reply.\nSecond line of the reply."
+
+
+class MockGemini(http.server.BaseHTTPRequestHandler):
+    requests = []
+
+    def log_message(self, *args):
+        pass
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        body = self.rfile.read(length) if length else b""
+        MockGemini.requests.append(body.decode("utf-8", "replace"))
+        canned = json.dumps({"candidates": [{"content": {"parts": [
+            {"text": MOCK_AI_REPLY}]}, "finishReason": "STOP"}]}).encode()
+        self._send(200, canned)
+
+    def _send(self, status, body):
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
 def main():
     ap = argparse.ArgumentParser()
@@ -26,8 +62,14 @@ def main():
     from playwright.sync_api import sync_playwright
     tmp = tempfile.mkdtemp(prefix="pdps-mobile-test-")
     base = f"http://127.0.0.1:{args.port}"
+    mock = http.server.ThreadingHTTPServer(("127.0.0.1", 0), MockGemini)
+    mock_port = mock.server_address[1]
+    threading.Thread(target=mock.serve_forever, daemon=True).start()
+    env = dict(os.environ)
+    env["GEMINI_API_KEY"] = "test-key"
+    env["GEMINI_API_BASE_URL"] = f"http://127.0.0.1:{mock_port}/v1beta"
     proc = subprocess.Popen([args.server, "--port", str(args.port), "--data-dir", tmp],
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
     try:
         for _ in range(30):
             try:
@@ -71,6 +113,21 @@ def main():
             page.wait_for_function("document.querySelector('section.active')?.id === 'habits'", timeout=10000)
             page.fill("#hbName", "Reading"); page.click("#hbBtn"); page.wait_for_timeout(1200)
             check("mobile habit mark", "Reading" in page.content() or "done" in page.content().lower())
+            # AI Daily Decision (Phase 3.1) at 390px: drawer nav
+            # reaches it, validation works, mock reply is shown, and
+            # the section has no horizontal overflow.
+            page.click("#menuBtn"); page.click("button[data-section='ai-daily']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'ai-daily'", timeout=10000)
+            check("mobile ai-daily opens via drawer", page.is_visible("section#ai-daily"))
+            page.click("#aiDailyBtn")
+            page.wait_for_function("document.getElementById('aiDailyMsg').textContent.length > 0", timeout=5000)
+            check("mobile ai-daily empty input error", "describe the decision" in page.evaluate("document.getElementById('aiDailyMsg').textContent").lower())
+            page.fill("#aiDailyInput", "Should I study maths or physics tonight?")
+            page.click("#aiDailyBtn")
+            page.wait_for_function("document.getElementById('aiDailyReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            check("mobile ai-daily reply shown", "Mocked AI reply." in page.content())
+            overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
+            check("mobile ai-daily no horizontal overflow", overflow <= 1, str(overflow))
             overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
             check("mobile flow no horizontal overflow", overflow <= 1, str(overflow))
             page.screenshot(path="/tmp/pdps-mobile-390.png")
@@ -86,6 +143,9 @@ def main():
         proc.terminate()
         try: proc.wait(timeout=5)
         except Exception: proc.kill()
+        try: mock.shutdown()
+        except Exception: pass
+        mock.server_close()
         shutil.rmtree(tmp, ignore_errors=True)
     print(f"\nmobile_test: {PASS} passed, {FAIL} failed")
     return 1 if FAIL else 0

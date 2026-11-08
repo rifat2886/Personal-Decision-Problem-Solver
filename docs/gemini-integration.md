@@ -462,6 +462,60 @@ login still comes first).
 - The Python server (`dashboard/server.py`) has no Gemini code
   and must never handle the key.
 
+## Phase 3.1 — AI Daily Decision in the dashboard
+
+The first AI section in the dashboard. It calls only
+`POST /api/ai/daily-decision` (Phase 2.1) — no backend change
+was needed for Phase 3.1.
+
+- UI: new nav group "AI Assistant" (after "Personal") with a
+  button `data-section="ai-daily"`, and a section
+  `<section id="ai-daily">` following the existing section
+  pattern (`<h2>`, `.muted` description, `.card` with the form,
+  an action button, `<div id="aiDailyMsg">`, a warning div and
+  the reply div). The section is protected by the existing
+  auth gate: it is NOT in `PUBLIC_SECTIONS` (landing, auth
+  only), the nav button is hidden by the logged-out body
+  class, and the server still returns 401 without a session.
+- Form: a textarea for the decision and up to 10 optional
+  option rows ("Add option", each row removable; empty rows
+  are ignored and never sent; the `options` field is omitted
+  entirely when no option is given).
+- Validation (client-side, mirrors the server): input trimmed,
+  non-empty, max **4000 UTF-8 BYTES** — counted with
+  `TextEncoder`, not characters (a Bengali character is 3
+  bytes; the UI text says "4000 bytes", never "4000
+  characters"). Each option trimmed, non-empty, max **500
+  bytes**. Validation errors are shown immediately, before
+  any network call.
+- Newline sanitization: `\r`, `\n`, `\t` and other control
+  characters (U+0000–U+001F, U+007F) are replaced with spaces
+  BEFORE sending, because the backend's old JSON helpers
+  (`jsonStringField`/`jsonStringArrayField`, Phase 2.1–2.4) do
+  NOT decode escapes — a `\n` in the request body would
+  otherwise arrive as the letter `n`.
+- Reply: rendered with `esc()` into the reply div (never raw
+  `innerHTML`); line breaks are preserved by the `.ai-reply`
+  CSS class (`white-space: pre-wrap`). The `history_id` is
+  shown next to the success message. If `history_id` is 0,
+  the reply is shown AND a warning is shown that the reply
+  was received but was NOT saved to AI history (this endpoint
+  has no history read-back check — a failed save can still
+  return 200 with `history_id` 0).
+- Loading/error states: the Ask button is disabled and shows
+  "Thinking…" while the call runs (double-submit blocked);
+  an error clears any stale reply. `400 {"error":"invalid
+  input"}` shows a friendly "Invalid input" message; `401`
+  is handled by the shared `api()` (forced logout to Login);
+  `501` explains that AI needs the C++ server; `502`/`503`/
+  `504` show the server's message with a short note. No API
+  key is ever sent, logged or shown by the frontend.
+- Files: `dashboard/index.html`, `dashboard/app.js`,
+  `dashboard/style.css` (new rules only: `textarea`,
+  `.ai-reply`, `.ai-opt-row`, mobile textarea sizing),
+  `tests/browser_test.py`, `tests/auth_gate_test.py`,
+  `tests/mobile_test.py`.
+
 ## Tests
 
 ```sh

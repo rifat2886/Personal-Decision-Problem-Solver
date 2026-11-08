@@ -32,7 +32,7 @@ def check(name, cond, detail=""):
 PROTECTED = ["overview", "history", "daily", "tasks", "taskstatus", "priority",
              "compare", "explanation", "deadlines", "budget", "finance",
              "savings", "study", "timealloc", "habits", "reports", "problem",
-             "profile", "admin", "analytics", "settings"]
+             "profile", "admin", "analytics", "settings", "ai-daily"]
 PUBLIC = ["landing", "auth"]
 
 def nav_visible(page, sec):
@@ -72,11 +72,16 @@ def main():
             page.evaluate("showSection('overview')")
             page.wait_for_timeout(300)
             check("no-login showSection(overview) -> auth", active_section(page) == "auth", str(active_section(page)))
+            page.evaluate("showSection('ai-daily')")
+            page.wait_for_timeout(300)
+            check("no-login showSection(ai-daily) -> auth", active_section(page) == "auth", str(active_section(page)))
             page.evaluate("showSection('landing')")
             status = page.evaluate("fetch('/api/overview').then(r => r.status)")
             check("no-login /api/overview 401", status == 401, str(status))
             status = page.evaluate("fetch('/api/tasks').then(r => r.status)")
             check("no-login /api/tasks 401", status == 401, str(status))
+            status = page.evaluate("fetch('/api/ai/daily-decision', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({input:'test'})}).then(r => r.status)")
+            check("no-login /api/ai/daily-decision 401", status == 401, str(status))
             # 2. Register + login (first user = ADMIN, Alice)
             page.click("button[data-section='auth']")
             page.fill("#regUser", "alice"); page.fill("#regPass", "Alice1234"); page.click("#regBtn")
@@ -86,6 +91,10 @@ def main():
             check("after-login active is overview", active_section(page) == "overview")
             check("after-login all nav visible", all(nav_visible(page, s) for s in PUBLIC + PROTECTED))
             check("after-login logout visible", page.is_visible("#logoutBtn"))
+            page.evaluate("showSection('ai-daily')")
+            page.wait_for_timeout(300)
+            check("after-login ai-daily opens", active_section(page) == "ai-daily", str(active_section(page)))
+            page.evaluate("showSection('overview')")
             # Alice creates a task, capture its id via API
             page.click("button[data-section='tasks']")
             page.fill("#taskTitle", "AliceSecretTask"); page.fill("#taskUrgency", "8"); page.fill("#taskImportance", "8"); page.click("#taskAddBtn")
@@ -120,6 +129,8 @@ def main():
             check("logout button hidden", not page.is_visible("#logoutBtn"))
             status = page.evaluate("fetch('/api/overview').then(r => r.status)")
             check("after-logout /api/overview 401", status == 401, str(status))
+            status = page.evaluate("fetch('/api/ai/daily-decision', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({input:'test'})}).then(r => r.status)")
+            check("after-logout /api/ai/daily-decision 401", status == 401, str(status))
             # 6. Cross-user: Bob must not see Alice's task
             page.click("button[data-section='auth']")
             page.fill("#regUser", "bob"); page.fill("#regPass", "Bob12345"); page.click("#regBtn")

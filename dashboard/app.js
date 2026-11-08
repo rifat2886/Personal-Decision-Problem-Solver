@@ -299,6 +299,101 @@ el("mtBtn").addEventListener("click", async () => {
   } catch (e) { showMsg("mtMsg", e.message, false); }
 });
 
+// -- AI Daily Decision (Phase 3.1) ----------------------------------
+// POST /api/ai/daily-decision. Server contract (verified from
+// cpp_server.cpp): input required, trimmed, non-empty, max 4000
+// BYTES (std::string::size(), not code points — a Bengali
+// character is 3 bytes); options optional, max 10, each trimmed,
+// non-empty, max 500 BYTES; empty options are ignored by the
+// server and are not sent at all here. The server's old JSON
+// helpers do NOT decode escapes, so newlines, tabs and other
+// control characters are replaced with spaces BEFORE sending —
+// otherwise "\n" would arrive at the server as the letter "n".
+// The reply is rendered with esc() only (never raw innerHTML).
+// history_id 0 means the reply arrived but the history row was
+// not saved (this endpoint has no save read-back check).
+const AI_DAILY_MAX_INPUT_BYTES = 4000;
+const AI_DAILY_MAX_OPTION_BYTES = 500;
+const AI_DAILY_MAX_OPTIONS = 10;
+
+function aiDailyByteLen(s) { return new TextEncoder().encode(s).length; }
+function aiDailySanitize(s) { return s.replace(/[\x00-\x1F\x7F]/g, " "); }
+
+function aiDailyOptCount() { return document.querySelectorAll("#aiDailyOptions .ai-opt-row").length; }
+function aiDailySyncAddBtn() {
+  el("aiDailyAddOpt").disabled = aiDailyOptCount() >= AI_DAILY_MAX_OPTIONS;
+}
+function addAiDailyOptRow() {
+  if (aiDailyOptCount() >= AI_DAILY_MAX_OPTIONS) return;
+  const div = document.createElement("div");
+  div.className = "ai-opt-row";
+  div.innerHTML = `<input placeholder="Option (optional)" class="ai-opt-input"><button type="button" class="btn btn-secondary ai-opt-remove">Remove</button>`;
+  div.querySelector(".ai-opt-remove").addEventListener("click", () => { div.remove(); aiDailySyncAddBtn(); });
+  el("aiDailyOptions").appendChild(div);
+  aiDailySyncAddBtn();
+}
+addAiDailyOptRow();
+el("aiDailyAddOpt").addEventListener("click", addAiDailyOptRow);
+
+el("aiDailyBtn").addEventListener("click", async () => {
+  const btn = el("aiDailyBtn");
+  const replyBox = el("aiDailyReply");
+  clearMsg("aiDailyMsg");
+  clearMsg("aiDailyWarn");
+  replyBox.innerHTML = "";
+  // Client-side validation mirrors the server, so the user gets an
+  // immediate error instead of a round trip that would fail anyway.
+  const input = aiDailySanitize(el("aiDailyInput").value.trim());
+  if (!input) { showMsg("aiDailyMsg", "Please describe the decision first.", false); return; }
+  if (aiDailyByteLen(input) > AI_DAILY_MAX_INPUT_BYTES) {
+    showMsg("aiDailyMsg", "Input is too long: maximum 4000 bytes (a Bengali character counts as 3 bytes).", false);
+    return;
+  }
+  const options = [];
+  let optionTooLong = false;
+  document.querySelectorAll("#aiDailyOptions .ai-opt-input").forEach(inp => {
+    const v = aiDailySanitize(inp.value.trim());
+    if (!v) return; // empty rows are ignored, never sent
+    if (aiDailyByteLen(v) > AI_DAILY_MAX_OPTION_BYTES) { optionTooLong = true; return; }
+    options.push(v);
+  });
+  if (optionTooLong) {
+    showMsg("aiDailyMsg", "An option is too long: maximum 500 bytes each (a Bengali character counts as 3 bytes).", false);
+    return;
+  }
+  const body = { input };
+  if (options.length) body.options = options;
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = "Thinking…";
+  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  try {
+    const r = await api("/api/ai/daily-decision", { method: "POST", body: JSON.stringify(body) });
+    replyBox.innerHTML = esc(r.reply || "");
+    let msg = "AI suggestion received.";
+    if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
+    showMsg("aiDailyMsg", msg, true);
+    if (r.history_id === 0) {
+      showMsg("aiDailyWarn", "Note: the reply was received, but it was NOT saved to your AI history.", false);
+    }
+  } catch (e) {
+    // A stale reply must never stay on screen after an error.
+    replyBox.innerHTML = "";
+    // api() already forces a logout on 401; the other messages come
+    // from the server (data.error) and are shown with a short note.
+    const m = e.message || "Request failed.";
+    if (m === "invalid input") showMsg("aiDailyMsg", "Invalid input — please check the fields and try again.", false);
+    else if (m === "AI requires the C++ server") showMsg("aiDailyMsg", "AI requires the C++ server — this Python fallback server cannot run AI features.", false);
+    else if (m === "AI unavailable" || m === "AI configuration error" || m === "AI request limit reached") showMsg("aiDailyMsg", m + " Please try again later.", false);
+    else if (m === "AI request timed out") showMsg("aiDailyMsg", "AI request timed out. Please try again.", false);
+    else if (m === "AI request failed") showMsg("aiDailyMsg", "AI request failed. Please try again later.", false);
+    else showMsg("aiDailyMsg", m, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+});
+
 // -- tasks ----------------------------------------------------------
 async function loadTasks() {
   el("taskList").innerHTML = '<div class="loading">Loading tasks…</div>';

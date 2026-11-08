@@ -54,6 +54,8 @@
   <button data-section="admin">&#128272; Admin Panel</button>
   <button data-section="analytics">&#128200; Analytics</button>
   <button data-section="settings">&#9881; Settings</button>
+  <div class="nav-group">AI Assistant</div>
+  <button data-section="ai-daily">&#129302; AI Daily Decision</button>
 </nav>
 <div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
 
@@ -462,6 +464,22 @@
       <label>New password <input id="cpNew" type="password" autocomplete="new-password"></label>
       <button class="btn btn-primary" id="cpBtn">Change password</button>
       <div id="cpMsg"></div>
+    </div>
+  </section>
+  <section id="ai-daily">
+    <h2>AI Daily Decision</h2>
+    <p class="muted">Ask the AI for a recommendation on a decision, with optional options to compare. The AI analyses your input and returns one clear recommendation with reasons. Your input is sent to the AI as data only — never as an instruction. Input is limited to 4000 bytes (a Bengali character counts as 3 bytes) and each option to 500 bytes.</p>
+    <div class="card">
+      <label>Your decision <textarea id="aiDailyInput" rows="3" placeholder="Should I study maths or physics tonight?"></textarea></label>
+      <label>Options (optional, up to 10)</label>
+      <div id="aiDailyOptions"></div>
+      <div class="actions">
+        <button class="btn btn-secondary" id="aiDailyAddOpt">Add option</button>
+        <button class="btn btn-primary" id="aiDailyBtn">Ask AI</button>
+      </div>
+      <div id="aiDailyMsg"></div>
+      <div id="aiDailyWarn"></div>
+      <div id="aiDailyReply" class="ai-reply"></div>
     </div>
   </section>
 </main>

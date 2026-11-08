@@ -16,17 +16,64 @@ via `python3 -m playwright install chromium` (or a manually placed
 headless-shell build). Exit code 0 = all checks passed.
 """
 import argparse
+import http.server
 import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 PASS = 0
 FAIL = 0
 ERRORS = []
+
+
+def free_port():
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
+# Mock Gemini server (Phase 3.1): the C++ server is started with
+# GEMINI_API_BASE_URL pointing here and GEMINI_API_KEY=test-key, so
+# no real Gemini API is ever called. The canned reply is multi-line
+# on purpose, so the test also proves the UI keeps line breaks.
+# If the prompt sent to the mock contains the trigger string
+# MOCK-RATE-LIMIT, the mock answers 429, which the server maps to
+# 503 "AI request limit reached" — the UI error path.
+MOCK_AI_REPLY = "Mocked AI reply.\nSecond line of the reply."
+
+
+class MockGemini(http.server.BaseHTTPRequestHandler):
+    requests = []
+
+    def log_message(self, *args):
+        pass
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        body = self.rfile.read(length) if length else b""
+        text = body.decode("utf-8", "replace")
+        MockGemini.requests.append(text)
+        if "MOCK-RATE-LIMIT" in text:
+            self._send(429, b'{"error":{"message":"quota exceeded"}}')
+            return
+        canned = json.dumps({"candidates": [{"content": {"parts": [
+            {"text": MOCK_AI_REPLY}]}, "finishReason": "STOP"}]}).encode()
+        self._send(200, canned)
+
+    def _send(self, status, body):
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
 
 def check(name, cond, detail=""):
@@ -51,10 +98,16 @@ def main():
     outdir = os.path.abspath(args.out)
     os.makedirs(outdir, exist_ok=True)
     base = f"http://127.0.0.1:{args.port}"
+    mock = http.server.ThreadingHTTPServer(("127.0.0.1", 0), MockGemini)
+    mock_port = mock.server_address[1]
+    threading.Thread(target=mock.serve_forever, daemon=True).start()
+    env = dict(os.environ)
+    env["GEMINI_API_KEY"] = "test-key"
+    env["GEMINI_API_BASE_URL"] = f"http://127.0.0.1:{mock_port}/v1beta"
     proc = subprocess.Popen([args.server, "--port", str(args.port),
                              "--data-dir", tmp],
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True)
+                            text=True, env=env)
     try:
         for _ in range(30):
             try:
@@ -134,6 +187,68 @@ def main():
             page.wait_for_timeout(1500)
             check("budget result 3800", "3800" in page.content())
 
+            # AI Daily Decision (Phase 3.1): client-side validation,
+            # mock-Gemini success, newline sanitization, 503 and 400.
+            page.click("button[data-section='ai-daily']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'ai-daily'")
+            check("ai-daily section visible after login", page.is_visible("section#ai-daily"))
+            # Empty input -> client-side validation error, no API call.
+            page.click("#aiDailyBtn")
+            page.wait_for_function("document.getElementById('aiDailyMsg').textContent.length > 0")
+            check("ai-daily empty input error", "describe the decision" in page.evaluate("document.getElementById('aiDailyMsg').textContent").lower())
+            # Over 4000 BYTES -> error. 4001 ASCII chars is 4001
+            # bytes; 1334 Bengali chars is 4002 bytes but only 1334
+            # characters, so this also proves the limit counts bytes,
+            # not characters.
+            page.fill("#aiDailyInput", "x" * 4001)
+            page.click("#aiDailyBtn")
+            page.wait_for_function("document.getElementById('aiDailyMsg').textContent.includes('4000 bytes')")
+            check("ai-daily input over 4000 bytes error", "4000 bytes" in page.evaluate("document.getElementById('aiDailyMsg').textContent"))
+            page.fill("#aiDailyInput", "অ" * 1334)
+            page.click("#aiDailyBtn")
+            page.wait_for_function("document.getElementById('aiDailyMsg').textContent.includes('4000 bytes')")
+            check("ai-daily Bengali 1334 chars over 4000 bytes error", "4000 bytes" in page.evaluate("document.getElementById('aiDailyMsg').textContent"))
+            # Option over 500 bytes -> error.
+            page.fill("#aiDailyInput", "Should I study maths or physics tonight?")
+            page.click("#aiDailyAddOpt")
+            page.fill("#aiDailyOptions .ai-opt-input", "y" * 501)
+            page.click("#aiDailyBtn")
+            page.wait_for_function("document.getElementById('aiDailyMsg').textContent.includes('500 bytes')")
+            check("ai-daily option over 500 bytes error", "500 bytes" in page.evaluate("document.getElementById('aiDailyMsg').textContent"))
+            # Success via the mock Gemini server, with options and a
+            # multi-line input: the newlines must reach the mock as
+            # spaces (the old JSON helper turns "\n" into "n").
+            page.fill("#aiDailyOptions .ai-opt-input", "maths")
+            page.click("#aiDailyAddOpt")
+            page.locator("#aiDailyOptions .ai-opt-input").nth(1).fill("physics")
+            page.fill("#aiDailyInput", "Should I study maths\nor physics tonight?")
+            page.click("#aiDailyBtn")
+            page.wait_for_function("document.getElementById('aiDailyReply').textContent.includes('Mocked AI reply.')")
+            check("ai-daily mock reply shown", "Mocked AI reply." in page.content())
+            check("ai-daily mock reply keeps line breaks", "Second line of the reply." in page.content())
+            check("ai-daily history id shown", "history #" in page.evaluate("document.getElementById('aiDailyMsg').textContent"))
+            check("ai-daily no history-save warning", page.evaluate("document.getElementById('aiDailyWarn').textContent") == "")
+            sent = MockGemini.requests[-1] if MockGemini.requests else ""
+            check("ai-daily newline sent as space", "maths or physics" in sent and "mathsnor" not in sent, sent[:200])
+            check("ai-daily options reach mock", "maths" in sent and "physics" in sent, sent[:200])
+            # 503 via the mock rate-limit trigger: the UI shows the
+            # server message and clears the stale reply.
+            page.fill("#aiDailyInput", "MOCK-RATE-LIMIT test")
+            page.click("#aiDailyBtn")
+            page.wait_for_function("document.getElementById('aiDailyMsg').textContent.includes('AI request limit reached')")
+            check("ai-daily 503 error shown", "AI request limit reached" in page.evaluate("document.getElementById('aiDailyMsg').textContent"))
+            check("ai-daily 503 clears stale reply", page.evaluate("document.getElementById('aiDailyReply').textContent") == "")
+            # 400 from the server (direct API call from the page: the
+            # UI's own validation cannot produce one, by design).
+            st = page.evaluate("""async () => {
+                const t = sessionStorage.getItem('pdps_token');
+                const r = await fetch('/api/ai/daily-decision', {method: 'POST',
+                  headers: {Authorization: 'Bearer ' + t, 'Content-Type': 'application/json'},
+                  body: JSON.stringify({input: '   '})});
+                const j = await r.json().catch(() => ({}));
+                return [r.status, j.error || '']; }""")
+            check("ai-daily server 400 invalid input", st == [400, "invalid input"], str(st))
+
             # Reports section screenshot, then dark mode.
             page.click("button[data-section='reports']")
             page.wait_for_timeout(800)
@@ -166,8 +281,24 @@ def main():
             check("unauthenticated overview 401", status == 401, str(status))
             ctx.close()
 
-            check("no JS page errors", len(ERRORS) == 0, str(ERRORS[:3]))
-            check("no failed API requests", len(failed) == 0, str(failed[:3]))
+            # Chromium logs a console error for every failed fetch,
+            # including the two intentional AI error calls (503 UI
+            # test, direct 400 fetch). Remove exactly those two
+            # expected messages; any other console error still fails.
+            remaining_console = list(ERRORS)
+            for expected in ("status of 503", "status of 400"):
+                for i, e in enumerate(remaining_console):
+                    if "Failed to load resource" in e and expected in e:
+                        del remaining_console[i]
+                        break
+            check("no JS page errors", len(remaining_console) == 0, str(remaining_console[:3]))
+            # The two intentionally-triggered AI error calls (the 503
+            # UI test and the direct 400 fetch above) are expected
+            # failures; anything else is not.
+            ai_errors = [u for u in failed if "/api/ai/daily-decision" in u]
+            unexpected = [u for u in failed if "/api/ai/daily-decision" not in u]
+            check("no unexpected failed API requests", len(unexpected) == 0, str(unexpected[:3]))
+            check("ai error states recorded (expected)", len(ai_errors) >= 2, str(ai_errors))
             browser.close()
     finally:
         proc.terminate()
@@ -175,6 +306,11 @@ def main():
             proc.wait(timeout=5)
         except Exception:
             proc.kill()
+        try:
+            mock.shutdown()
+        except Exception:
+            pass
+        mock.server_close()
         shutil.rmtree(tmp, ignore_errors=True)
     print(f"\nbrowser_test: {PASS} passed, {FAIL} failed")
     return 1 if FAIL else 0
