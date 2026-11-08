@@ -94,6 +94,43 @@ body or the key):
 | `timeout` | 504 | `{"error":"AI request timed out"}` |
 | `request_failed`, `invalid_response`, `invalid_request` | 502 | `{"error":"AI request failed"}` |
 
+## API: `POST /api/ai/task-analyzer` (Phase 2.2)
+
+Login required (401 without a valid session). Request:
+
+```json
+{"description": "Finish the maths assignment",
+ "title": "Maths assignment", "urgency": 8, "importance": 9,
+ "deadline": "2026-11-20", "status": "in-progress"}
+```
+
+- `description` — the task description (canonical); `input`
+  is accepted for compatibility. Required, non-empty after
+  trimming, max 4000 chars. When both are present,
+  `description` wins.
+- `title` — optional, non-empty after trimming, max 500 chars.
+- `urgency`, `importance` — optional strict integers 1–10
+  (non-integers such as `10.5` or strings such as `"high"` are
+  rejected; out-of-range values are rejected).
+- `deadline` — optional, non-empty after trimming, max 100 chars.
+- `status` — optional, max 50 chars; if present it must be one
+  of `"pending"`, `"in-progress"`, `"done"`. The aliases
+  `"in_progress"` and `"completed"` are accepted and normalised
+  to `"in-progress"` and `"done"`. Any other value is rejected.
+
+The server prepends a fixed instruction (task analysis
+assistant: answer with five sections — (a) Task Analysis,
+(b) Priority Recommendation, (c) Urgency Assessment,
+(d) Suggested Next Action, (e) Explanation — judging priority
+from urgency/importance, pointing out risks, and suggesting a
+sensible order with concrete next steps, kept concise). The
+user's fields are inserted as quoted DATA, never as
+instructions. Invalid input returns
+`400 {"error":"invalid input"}` without echoing the value, and
+never calls Gemini. Success (200) and failure mapping are the
+same as Daily Decision above; the history entry uses feature
+`"task-analyzer"`.
+
 ## API: AI history (Phase 2.1)
 
 `GET /api/ai/history` — login required. Optional `?limit=`

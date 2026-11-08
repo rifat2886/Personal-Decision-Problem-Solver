@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
-"""Phase 2.1 AI endpoint tests: Daily Decision + AI history.
+"""Phase 2.1 + 2.2 AI endpoint tests: Daily Decision, Task Analyzer, history.
 
 Builds the C++ server (make cpp_server), then checks the
-POST /api/ai/daily-decision endpoint and the /api/ai/history
-API against a LOCAL mock Gemini server — no real Gemini API is
-ever called, and no real API key is used anywhere. The only key
-string in this file is the fake value "test-key".
+POST /api/ai/daily-decision and POST /api/ai/task-analyzer
+endpoints and the /api/ai/history API against a LOCAL mock
+Gemini server — no real Gemini API is ever called, and no real
+API key is used anywhere. The only key string in this file is
+the fake value "test-key".
 
 What is covered (txt mode, C++ server):
   - Daily Decision: 401 without login; 400 on missing / empty /
     over-long input and bad options; 200 with the mock reply and
     a history_id; history afterwards contains the entry.
+  - Task Analyzer: 401 without login; 400 on missing / empty /
+    over-long description and bad urgency/importance/title/
+    deadline/status; 200 with the mock reply and a history_id;
+    history afterwards contains the entry with feature
+    "task-analyzer"; "description" is the canonical key
+    ("input" accepted too), status aliases are normalised.
   - History storage: prompt/response with |, backslash and quotes
     round-trip through ai_history.txt (escaped on disk); a
     multi-line mock reply round-trips through history.
@@ -366,6 +373,139 @@ def main():
               any("Should I study math" in r["body"] for r in sent))
         check("key in header, never in URL",
               all(FAKE_KEY not in r["path"] for r in sent))
+
+        # 1h. Task Analyzer (Phase 2.2) on the same server.
+        # History ids so far: alice 1 (deleted), 2; bob 3.
+        # The next append is id 4.
+        status, _ = req(port, "POST", "/api/ai/task-analyzer",
+                        body={"input": "hello"})[:2]
+        check("task-analyzer without login 401", status == 401, str(status))
+        before = len(MockGemini.requests)
+        for name, body in [
+                ("missing input", {}),
+                ("empty input", {"input": "   "}),
+                ("over-long input", {"input": "x" * 4001}),
+                ("empty description", {"description": "   "}),
+                ("over-long description", {"description": "x" * 4001}),
+                ("urgency 0", {"input": "t", "urgency": 0}),
+                ("urgency 11", {"input": "t", "urgency": 11}),
+                ("urgency string", {"input": "t", "urgency": "high"}),
+                ("urgency non-integer", {"input": "t", "urgency": 10.5}),
+                ("importance 0", {"input": "t", "importance": 0}),
+                ("importance 11", {"input": "t", "importance": 11}),
+                ("importance string", {"input": "t", "importance": "high"}),
+                ("title too long", {"input": "t", "title": "y" * 501}),
+                ("empty title", {"input": "t", "title": "  "}),
+                ("deadline too long", {"input": "t", "deadline": "d" * 101}),
+                ("empty deadline", {"input": "t", "deadline": "  "}),
+                ("status unknown", {"input": "t", "status": "unknown"}),
+                ("status too long", {"input": "t", "status": "s" * 51})]:
+            status, body = req(port, "POST", "/api/ai/task-analyzer",
+                               token=token_a, body=body)[:2]
+            check(f"task-analyzer 400 {name}",
+                  status == 400 and body.get("error") == "invalid input",
+                  f"{status} {body}")
+        check("task-analyzer invalid inputs did not call Gemini",
+              len(MockGemini.requests) == before,
+              f"{len(MockGemini.requests)} vs {before}")
+        # Success with all optional fields.
+        status, body, raw = req(port, "POST", "/api/ai/task-analyzer",
+                                token=token_a,
+                                body={"input": "Finish the maths assignment",
+                                      "title": "Maths assignment",
+                                      "urgency": 8, "importance": 9,
+                                      "deadline": "2026-11-20"})
+        check("task-analyzer 200", status == 200, f"{status} {body}")
+        check("task-analyzer reply equals mock text",
+              body.get("reply") == MOCK_REPLY, str(body))
+        check("task-analyzer history_id is 4",
+              body.get("history_id") == 4, str(body))
+        check("task-analyzer response has no key",
+              FAKE_KEY not in raw, raw[:200])
+        status, body = req(port, "GET", "/api/ai/history", token=token_a)[:2]
+        hist = body.get("history", [])
+        check("alice history newest-first is [4, 2]",
+              [h["id"] for h in hist] == [4, 2], str(hist))
+        by_id = {h["id"]: h for h in hist}
+        check("task-analyzer history feature",
+              by_id.get(4, {}).get("feature") == "task-analyzer",
+              str(by_id.get(4)))
+        check("task-analyzer prompt holds input+fields",
+              "Finish the maths assignment" in by_id.get(4, {}).get("prompt", "") and
+              "Maths assignment" in by_id.get(4, {}).get("prompt", "") and
+              "8" in by_id.get(4, {}).get("prompt", ""),
+              str(by_id.get(4)))
+        # Bob still sees only his own entry (id 3).
+        status, body = req(port, "GET", "/api/ai/history", token=token_b)[:2]
+        check("bob does not see alice task-analyzer entry",
+              [h["id"] for h in body.get("history", [])] == [3], str(body))
+        # The fixed instruction + fields reached the mock.
+        sent = [r for r in MockGemini.requests
+                if "/v1beta/" in r["path"]]
+        check("task analysis instruction in sent prompt",
+              any("task analysis" in r["body"] for r in sent))
+        check("task title+urgency in sent prompt",
+              any("Maths assignment" in r["body"] and "Urgency: 8" in r["body"]
+                  for r in sent))
+        check("five-section instruction in sent prompt",
+              any("Priority Recommendation" in r["body"] and
+                  "Suggested Next Action" in r["body"] for r in sent))
+        # "description" is the canonical key; "input" is compat.
+        # Next ids are 5, 6, 7, 8, 9 (alice 2 + bob 3 + alice 4 used).
+        status, body = req(port, "POST", "/api/ai/task-analyzer",
+                           token=token_a,
+                           body={"description": "Prepare the slides",
+                                 "urgency": 5})[:2]
+        check("task-analyzer description key 200", status == 200, f"{status} {body}")
+        check("description history_id is 5",
+              body.get("history_id") == 5, str(body))
+        status, body = req(port, "POST", "/api/ai/task-analyzer",
+                           token=token_a,
+                           body={"input": "ignore me text",
+                                 "description": "Write the report",
+                                 "importance": 7})[:2]
+        check("task-analyzer both keys 200", status == 200, f"{status} {body}")
+        check("both keys history_id is 6",
+              body.get("history_id") == 6, str(body))
+        status, body = req(port, "GET", "/api/ai/history", token=token_a)[:2]
+        by_id = {h["id"]: h for h in body.get("history", [])}
+        check("description prompt holds description",
+              "Prepare the slides" in by_id.get(5, {}).get("prompt", ""),
+              str(by_id.get(5)))
+        check("both keys: description wins, input ignored",
+              "Write the report" in by_id.get(6, {}).get("prompt", "") and
+              "ignore me text" not in by_id.get(6, {}).get("prompt", ""),
+              str(by_id.get(6)))
+        # Status values, including the two aliases (normalised).
+        status, body = req(port, "POST", "/api/ai/task-analyzer",
+                           token=token_a,
+                           body={"input": "Review notes",
+                                 "status": "in_progress"})[:2]
+        check("status alias in_progress 200", status == 200, f"{status} {body}")
+        check("alias history_id is 7", body.get("history_id") == 7, str(body))
+        status, body = req(port, "POST", "/api/ai/task-analyzer",
+                           token=token_a,
+                           body={"input": "Submit form",
+                                 "status": "completed"})[:2]
+        check("status alias completed 200", status == 200, f"{status} {body}")
+        check("alias history_id is 8", body.get("history_id") == 8, str(body))
+        status, body = req(port, "POST", "/api/ai/task-analyzer",
+                           token=token_a,
+                           body={"input": "Plan trip",
+                                 "status": "pending"})[:2]
+        check("status pending 200", status == 200, f"{status} {body}")
+        check("status history_id is 9", body.get("history_id") == 9, str(body))
+        status, body = req(port, "GET", "/api/ai/history", token=token_a)[:2]
+        by_id = {h["id"]: h for h in body.get("history", [])}
+        check("alias in_progress stored as in-progress",
+              "[status: in-progress]" in by_id.get(7, {}).get("prompt", ""),
+              str(by_id.get(7)))
+        check("alias completed stored as done",
+              "[status: done]" in by_id.get(8, {}).get("prompt", ""),
+              str(by_id.get(8)))
+        check("status pending stored as pending",
+              "[status: pending]" in by_id.get(9, {}).get("prompt", ""),
+              str(by_id.get(9)))
         stop_server(p1)
         procs.remove(p1)
 
@@ -443,6 +583,51 @@ def main():
         stop_server(p)
         procs.remove(p)
 
+        # 3c. Task Analyzer failure mapping (spot-checks, Phase 2.2).
+        ta_cases = [
+            ("authfail", 503, "AI configuration error", "ta mock 401 -> 503"),
+            ("fail500", 502, "AI request failed", "ta mock 500 -> 502"),
+        ]
+        for mode, want_status, want_err, label in ta_cases:
+            data = os.path.join(tmp, f"data-ta-{mode}")
+            os.makedirs(data)
+            p = start_cpp(free_port(), data, {
+                "GEMINI_API_KEY": FAKE_KEY,
+                "GEMINI_API_BASE_URL": f"http://127.0.0.1:{mock_port}/{mode}"})
+            procs.append(p)
+            pt = int(p.args[p.args.index("--port") + 1])
+            check(f"{label} server starts", wait_for_server(pt))
+            tok, err = register_login(pt, "dave", "DavePass12")
+            check(f"{label} login", tok is not None, err)
+            status, body = req(pt, "POST", "/api/ai/task-analyzer",
+                               token=tok, body={"input": "analyse this"})[:2]
+            check(label, status == want_status and body.get("error") == want_err,
+                  f"{status} {body}")
+            check(f"{label} saves no history",
+                  history_ids(pt, tok) == [], str(history_ids(pt, tok)))
+            stop_server(p)
+            procs.remove(p)
+        # Task Analyzer slow mock + 1s timeout -> 504.
+        data = os.path.join(tmp, "data-ta-slow")
+        os.makedirs(data)
+        p = start_cpp(free_port(), data, {
+            "GEMINI_API_KEY": FAKE_KEY,
+            "GEMINI_API_BASE_URL": f"http://127.0.0.1:{mock_port}/slow",
+            "GEMINI_TIMEOUT_SECS": "1"})
+        procs.append(p)
+        pt = int(p.args[p.args.index("--port") + 1])
+        check("ta slow server starts", wait_for_server(pt))
+        tok, err = register_login(pt, "erin", "ErinPass12")
+        check("ta slow login", tok is not None, err)
+        status, body = req(pt, "POST", "/api/ai/task-analyzer",
+                           token=tok, body={"input": "too slow?"})[:2]
+        check("ta mock slow -> 504",
+              status == 504 and body.get("error") == "AI request timed out",
+              f"{status} {body}")
+        check("ta slow call saves no history", history_ids(pt, tok) == [])
+        stop_server(p)
+        procs.remove(p)
+
         # 4. No-key server: 503 with login, 401 without.
         data3 = os.path.join(tmp, "data3")
         os.makedirs(data3)
@@ -461,6 +646,11 @@ def main():
               status == 503 and body.get("error") == "AI unavailable",
               f"{status} {body}")
         check("no-key saves no history", history_ids(port3, tok) == [])
+        status, body = req(port3, "POST", "/api/ai/task-analyzer",
+                           token=tok, body={"input": "x"})[:2]
+        check("no-key task-analyzer 503",
+              status == 503 and body.get("error") == "AI unavailable",
+              f"{status} {body}")
         stop_server(p3)
         procs.remove(p3)
 
@@ -482,6 +672,11 @@ def main():
         status, body = req(port4, "POST", "/api/ai/daily-decision",
                            token=tok, body={"input": "x"})[:2]
         check("python daily-decision 501",
+              status == 501 and body.get("error") == "AI requires the C++ server",
+              f"{status} {body}")
+        status, body = req(port4, "POST", "/api/ai/task-analyzer",
+                           token=tok, body={"input": "x"})[:2]
+        check("python task-analyzer 501",
               status == 501 and body.get("error") == "AI requires the C++ server",
               f"{status} {body}")
         status, _ = req(port4, "GET", "/api/health")[:2]
