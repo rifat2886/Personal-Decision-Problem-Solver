@@ -33,6 +33,19 @@ namespace {
 const char* kDefaultModel = "gemini-2.0-flash";
 const size_t kMaxPromptChars = 8000;
 
+// Count UTF-8 code points (not bytes): a byte starts a new
+// character unless it is a UTF-8 continuation byte (10xxxxxx).
+// The 8000 "character" prompt budget is counted this way, so a
+// prompt holding 4000 Bengali characters (~12000 bytes) is
+// inside the budget. (Phase 2.4: the Problem Solver accepts
+// 4000 Unicode characters of user input, which the old
+// byte-length check would have rejected as over budget.)
+size_t utf8CodePoints(const std::string& s) {
+    size_t n = 0;
+    for (unsigned char c : s) if ((c & 0xC0) != 0x80) n++;
+    return n;
+}
+
 std::string envOr(const char* name, const char* fallback) {
     const char* v = std::getenv(name);
     return (v != nullptr && v[0] != '\0') ? std::string(v) : std::string(fallback);
@@ -238,7 +251,7 @@ bool available() { return true; }
 
 Result generate(const std::string& prompt) {
     Result r;
-    if (prompt.empty() || prompt.size() > kMaxPromptChars) {
+    if (prompt.empty() || utf8CodePoints(prompt) > kMaxPromptChars) {
         r.error = "invalid_request";
         return r;
     }
@@ -324,7 +337,7 @@ bool available() { return false; }
 
 Result generate(const std::string& prompt) {
     Result r;
-    if (prompt.empty() || prompt.size() > kMaxPromptChars) {
+    if (prompt.empty() || utf8CodePoints(prompt) > kMaxPromptChars) {
         r.error = "invalid_request";
         return r;
     }

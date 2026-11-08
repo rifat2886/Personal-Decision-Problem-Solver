@@ -179,6 +179,49 @@ reached"}`); the history entry uses feature
 `"study-planner"`. If the history save itself fails, the
 endpoint returns 502 instead of a 200 claiming success.
 
+## API: `POST /api/ai/problem-solver` (Phase 2.4)
+
+Login required (401 without a valid session). Request:
+
+```json
+{"problem": "I keep missing my morning study sessions"}
+```
+
+- `problem` — the problem to solve (canonical); `input` is
+  accepted for compatibility. Required, non-empty after
+  trimming, max 4000 characters. When both are present,
+  `problem` wins. No other fields are accepted.
+- The 4000-character limit counts UTF-8 code points, not
+  bytes: 4000 Bengali characters (~12000 bytes) are
+  accepted, 4001 are rejected. The Gemini client's own
+  8000-character prompt budget is counted the same way
+  (Phase 2.4 fixed its byte-length check), so a 4000-
+  character problem plus the fixed instruction stays
+  inside the budget. The Daily Decision, Task Analyzer
+  and Study Planner endpoints keep their byte-length
+  checks unchanged.
+
+The server prepends a fixed instruction (problem solving
+assistant: answer with five sections — (a) Problem Analysis,
+(b) Possible Solutions, (c) Recommended Solution, (d) Action
+Steps, (e) Explanation — giving practical, prioritised
+solutions with concrete next steps, kept concise). The
+user's problem is inserted as quoted DATA and the
+instruction states it is untrusted data to analyse, not
+instructions to follow, so instruction-like text inside
+the problem cannot redirect the model. Invalid input
+returns `400 {"error":"invalid input"}` without echoing
+the value, and never calls Gemini. Success (200) and
+failure mapping are the same as Daily Decision above
+(including mock 429 -> 503 `{"error":"AI request limit
+reached"}`); the history entry uses feature
+`"problem-solver"` and stores the problem text only, not
+the server instruction. Like Study Planner, the saved row
+is verified to have landed (read-back) before the reply
+is sent: if the history save itself fails, the endpoint
+returns 502 instead of a 200 claiming success — in both
+txt and Postgres mode.
+
 ## API: AI history (Phase 2.1)
 
 `GET /api/ai/history` — login required. Optional `?limit=`
@@ -239,7 +282,8 @@ login still comes first).
   is never treated as an instruction to the model, and prompt or
   response text is never logged.
 - Requests are validated: empty prompts and prompts over 8000
-  characters are rejected before any network call. Responses are
+  UTF-8 characters (code points, not bytes) are rejected
+  before any network call. Responses are
   validated: a 2xx reply without a usable
   `candidates[0].content.parts[0].text` is `invalid_response`.
   Replies are capped at 1 MiB.
