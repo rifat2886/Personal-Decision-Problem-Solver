@@ -78,6 +78,9 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
+          # Use the runner image's pre-installed MSYS2: downloading the
+          # installer from GitHub releases failed with HTTP 504 (2026-11-08).
+          release: false
           update: true
           install: mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-curl python
       - name: Build console and C++ server with MinGW
