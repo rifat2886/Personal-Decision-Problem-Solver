@@ -43,8 +43,9 @@ namespace gemini {
 //   "unavailable"      libcurl support was not compiled in
 //   "not_configured"   GEMINI_API_KEY is unset or empty
 //   "auth_error"       Gemini answered 401/403 (bad or revoked key)
+//   "rate_limited"     Gemini answered 429 (quota exceeded)
 //   "timeout"          the request exceeded GEMINI_TIMEOUT_SECS
-//   "request_failed"   network/HTTP failure (incl. 429 and 5xx)
+//   "request_failed"   network/HTTP failure (incl. 5xx)
 //   "invalid_response" HTTP 2xx but the body had no usable reply text
 // Error codes never contain the key, the prompt, or response text.
 struct Result {

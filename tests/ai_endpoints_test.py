@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Phase 2.1 + 2.2 AI endpoint tests: Daily Decision, Task Analyzer, history.
+"""Phase 2.1 + 2.2 + 2.3 AI endpoint tests: Daily Decision, Task Analyzer,
+Study Planner, history.
 
 Builds the C++ server (make cpp_server), then checks the
-POST /api/ai/daily-decision and POST /api/ai/task-analyzer
-endpoints and the /api/ai/history API against a LOCAL mock
-Gemini server — no real Gemini API is ever called, and no real
-API key is used anywhere. The only key string in this file is
-the fake value "test-key".
+POST /api/ai/daily-decision, POST /api/ai/task-analyzer and
+POST /api/ai/study-planner endpoints and the /api/ai/history API
+against a LOCAL mock Gemini server — no real Gemini API is ever
+called, and no real API key is used anywhere. The only key string
+in this file is the fake value "test-key".
 
 What is covered (txt mode, C++ server):
   - Daily Decision: 401 without login; 400 on missing / empty /
@@ -18,6 +19,18 @@ What is covered (txt mode, C++ server):
     history afterwards contains the entry with feature
     "task-analyzer"; "description" is the canonical key
     ("input" accepted too), status aliases are normalised.
+  - Study Planner: 401 without login; 400 on missing / empty
+    subjects, bad subjects (not an array, non-string / empty /
+    too-long item, more than 10), missing or bad hours_per_day
+    (0, negative, >24, string, null) and bad exam_date
+    (malformed, impossible, or past); duplicate subjects are
+    deduplicated case-insensitively; today as exam_date is
+    accepted; 200 with the mock reply and a history_id;
+    history afterwards contains the entry with feature
+    "study-planner" and the deduplicated subjects; "description"
+    is the canonical key ("input" accepted too). Failure
+    mapping includes mock 429 -> 503 "AI request limit
+    reached".
   - History storage: prompt/response with |, backslash and quotes
     round-trip through ai_history.txt (escaped on disk); a
     multi-line mock reply round-trips through history.
@@ -35,6 +48,7 @@ Usage:
 
 Exit code 0 = all checks passed, 1 = at least one check failed.
 """
+import datetime
 import http.server
 import json
 import os
@@ -81,6 +95,7 @@ class MockGemini(http.server.BaseHTTPRequestHandler):
     #   /badjson/...  -> 200 with a non-JSON body
     #   /fail500/...  -> HTTP 500
     #   /authfail/... -> HTTP 401
+    #   /ratelimited/ -> HTTP 429
     #   /slow/...     -> sleep 3s, then 200 canned JSON
     requests = []
 
@@ -109,6 +124,8 @@ class MockGemini(http.server.BaseHTTPRequestHandler):
                 self._send(500, b'{"error":{"message":"boom"}}')
             elif self.path.startswith("/authfail/"):
                 self._send(401, b'{"error":{"message":"bad key"}}')
+            elif self.path.startswith("/ratelimited/"):
+                self._send(429, b'{"error":{"message":"quota exceeded"}}')
             elif self.path.startswith("/multiline/"):
                 self._send(200, multi)
             elif self.path.startswith("/v1beta/"):
@@ -506,7 +523,191 @@ def main():
         check("status pending stored as pending",
               "[status: pending]" in by_id.get(9, {}).get("prompt", ""),
               str(by_id.get(9)))
+
+        # 1i. Study Planner (Phase 2.3) on the same server.
+        # History ids so far: alice 2, 4-9; bob 3.
+        # The next append is id 10.
+        # Subjects + hours_per_day are REQUIRED; exam_date must
+        # be a strict YYYY-MM-DD date, today or in the future.
+        today_str = datetime.date.today().isoformat()
+        future_str = (datetime.date.today() +
+                      datetime.timedelta(days=30)).isoformat()
+        good_sp = {"subjects": ["Maths", "Physics"], "hours_per_day": 3}
+        status, _ = req(port, "POST", "/api/ai/study-planner",
+                        body={"description": "hello", **good_sp})[:2]
+        check("study-planner without login 401", status == 401, str(status))
+        before = len(MockGemini.requests)
+        for name, body in [
+                ("missing subjects", {"hours_per_day": 3}),
+                ("empty subjects array", {"subjects": [],
+                                          "hours_per_day": 3}),
+                ("subjects not array", {"subjects": "math",
+                                        "hours_per_day": 3}),
+                ("subjects non-string item", {"subjects": ["math", 5],
+                                              "hours_per_day": 3}),
+                ("subjects empty item", {"subjects": ["math", "  "],
+                                         "hours_per_day": 3}),
+                ("too many subjects",
+                 {"subjects": [f"s{i}" for i in range(11)],
+                  "hours_per_day": 3}),
+                ("subject too long", {"subjects": ["x" * 201],
+                                      "hours_per_day": 3}),
+                ("missing hours", {"subjects": ["Maths"]}),
+                ("hours 0", {"subjects": ["Maths"], "hours_per_day": 0}),
+                ("hours 25", {"subjects": ["Maths"], "hours_per_day": 25}),
+                ("hours negative", {"subjects": ["Maths"],
+                                    "hours_per_day": -2}),
+                ("hours string", {"subjects": ["Maths"],
+                                  "hours_per_day": "many"}),
+                ("hours null", {"subjects": ["Maths"],
+                                "hours_per_day": None}),
+                ("exam_date dd-mm-yyyy",
+                 {"subjects": ["Maths"], "hours_per_day": 3,
+                  "exam_date": "15-12-2026"}),
+                ("exam_date month 13",
+                 {"subjects": ["Maths"], "hours_per_day": 3,
+                  "exam_date": "2026-13-01"}),
+                ("exam_date Feb 30",
+                 {"subjects": ["Maths"], "hours_per_day": 3,
+                  "exam_date": "2026-02-30"}),
+                ("exam_date past",
+                 {"subjects": ["Maths"], "hours_per_day": 3,
+                  "exam_date": "2020-01-01"}),
+                ("over-long description",
+                 {"description": "x" * 4001, **good_sp}),
+                ("empty description",
+                 {"description": "   ", **good_sp}),
+                ("description only", {"description": "Revise chemistry"}),
+                ("exam_date only", {"exam_date": "2026-12-15"})]:
+            status, body = req(port, "POST", "/api/ai/study-planner",
+                               token=token_a, body=body)[:2]
+            check(f"study-planner 400 {name}",
+                  status == 400 and body.get("error") == "invalid input",
+                  f"{status} {body}")
+        check("study-planner invalid inputs did not call Gemini",
+              len(MockGemini.requests) == before,
+              f"{len(MockGemini.requests)} vs {before}")
+        # Duplicate subjects are deduplicated case-insensitively.
+        status, body, raw = req(port, "POST", "/api/ai/study-planner",
+                                token=token_a,
+                                body={"subjects": ["Math", "math", "Physics", "Math"],
+                                      "hours_per_day": 3,
+                                      "exam_date": future_str})
+        check("study-planner dedupe 200", status == 200, f"{status} {body}")
+        check("dedupe history_id is 10",
+              body.get("history_id") == 10, str(body))
+        status, body = req(port, "GET", "/api/ai/history", token=token_a)[:2]
+        by_id = {h["id"]: h for h in body.get("history", [])}
+        check("dedupe history feature",
+              by_id.get(10, {}).get("feature") == "study-planner",
+              str(by_id.get(10)))
+        check("dedupe stored prompt has Math once, Physics once",
+              by_id.get(10, {}).get("prompt", "").count("Math") == 1 and
+              by_id.get(10, {}).get("prompt", "").count("Physics") == 1 and
+              "[subjects:Math; Physics]" in by_id.get(10, {}).get("prompt", ""),
+              str(by_id.get(10)))
+        sent = [r for r in MockGemini.requests
+                if "/v1beta/" in r["path"]]
+        check("dedupe sent prompt has Math once, Physics once",
+              any(r["body"].count("Math") == 1 and
+                  r["body"].count("Physics") == 1 for r in sent),
+              str([r["body"][:400] for r in sent[-1:]]))
+        # Success with all fields.
+        status, body, raw = req(port, "POST", "/api/ai/study-planner",
+                                token=token_a,
+                                body={"description": "Prepare for the final exams in maths and physics",
+                                      "subjects": ["Maths", "Physics"],
+                                      "hours_per_day": 3,
+                                      "exam_date": future_str})
+        check("study-planner 200", status == 200, f"{status} {body}")
+        check("study-planner reply equals mock text",
+              body.get("reply") == MOCK_REPLY, str(body))
+        check("study-planner history_id is 11",
+              body.get("history_id") == 11, str(body))
+        check("study-planner response has no key",
+              FAKE_KEY not in raw, raw[:200])
+        status, body = req(port, "GET", "/api/ai/history", token=token_a)[:2]
+        hist = body.get("history", [])
+        check("alice history newest-first is [11, 10, 9, 8, 7, 6, 5, 4, 2]",
+              [h["id"] for h in hist] == [11, 10, 9, 8, 7, 6, 5, 4, 2], str(hist))
+        by_id = {h["id"]: h for h in hist}
+        check("study-planner history feature",
+              by_id.get(11, {}).get("feature") == "study-planner",
+              str(by_id.get(11)))
+        check("study-planner prompt holds fields",
+              "Prepare for the final exams" in by_id.get(11, {}).get("prompt", "") and
+              "Maths" in by_id.get(11, {}).get("prompt", "") and
+              "Physics" in by_id.get(11, {}).get("prompt", "") and
+              "[hours_per_day: 3]" in by_id.get(11, {}).get("prompt", "") and
+              f"[exam_date: {future_str}]" in by_id.get(11, {}).get("prompt", ""),
+              str(by_id.get(11)))
+        # Bob still sees only his own entry (id 3).
+        status, body = req(port, "GET", "/api/ai/history", token=token_b)[:2]
+        check("bob does not see alice study-planner entry",
+              [h["id"] for h in body.get("history", [])] == [3], str(body))
+        # The fixed instruction + fields reached the mock.
+        sent = [r for r in MockGemini.requests
+                if "/v1beta/" in r["path"]]
+        check("study plan instruction in sent prompt",
+              any("study planning" in r["body"] for r in sent))
+        check("five-section instruction in sent prompt",
+              any("Study Plan" in r["body"] and
+                  "Daily Schedule" in r["body"] and
+                  "Subject Priorities" in r["body"] and
+                  "Revision Strategy" in r["body"] and
+                  "Explanation" in r["body"] for r in sent))
+        check("per-day cap in sent prompt",
+              any("does not exceed" in r["body"] and
+                  "hours per day" in r["body"] for r in sent))
+        check("subjects+hours+exam in sent prompt",
+              any("Maths" in r["body"] and "Physics" in r["body"] and
+                  "Hours per day: 3" in r["body"] and
+                  future_str in r["body"] and
+                  "30 days from today" in r["body"] for r in sent))
+        # "description" is the canonical key; "input" is compat.
+        # Next ids are 12, 13, 14.
+        status, body = req(port, "POST", "/api/ai/study-planner",
+                           token=token_a,
+                           body={"description": "Revise chemistry",
+                                 "subjects": ["Chemistry"],
+                                 "hours_per_day": 2})[:2]
+        check("study-planner description key 200", status == 200, f"{status} {body}")
+        check("description history_id is 12",
+              body.get("history_id") == 12, str(body))
+        status, body = req(port, "POST", "/api/ai/study-planner",
+                           token=token_a,
+                           body={"input": "ignore me text",
+                                 "description": "Learn biology",
+                                 "subjects": ["Biology"],
+                                 "hours_per_day": 2})[:2]
+        check("study-planner both keys 200", status == 200, f"{status} {body}")
+        check("both keys history_id is 13",
+              body.get("history_id") == 13, str(body))
+        status, body = req(port, "GET", "/api/ai/history", token=token_a)[:2]
+        by_id = {h["id"]: h for h in body.get("history", [])}
+        check("description prompt holds description",
+              "Revise chemistry" in by_id.get(12, {}).get("prompt", ""),
+              str(by_id.get(12)))
+        check("both keys: description wins, input ignored",
+              "Learn biology" in by_id.get(13, {}).get("prompt", "") and
+              "ignore me text" not in by_id.get(13, {}).get("prompt", ""),
+              str(by_id.get(13)))
+        # Today as the exam date is accepted.
+        status, body = req(port, "POST", "/api/ai/study-planner",
+                           token=token_a,
+                           body={"subjects": ["Maths"],
+                                 "hours_per_day": 2,
+                                 "exam_date": today_str})[:2]
+        check("study-planner today exam_date 200", status == 200, f"{status} {body}")
+        check("today exam_date history_id is 14",
+              body.get("history_id") == 14, str(body))
+        status, body = req(port, "GET", "/api/ai/history", token=token_a)[:2]
+        by_id = {h["id"]: h for h in body.get("history", [])}
+        check("today exam_date stored",
+              f"[exam_date: {today_str}]" in by_id.get(14, {}).get("prompt", ""),
+              str(by_id.get(14)))
         stop_server(p1)
+
         procs.remove(p1)
 
         # 2. Multi-line mock reply round-trips through history.
@@ -628,6 +829,54 @@ def main():
         stop_server(p)
         procs.remove(p)
 
+        # 3d. Study Planner failure mapping (spot-checks, Phase 2.3).
+        sp_cases = [
+            ("authfail", 503, "AI configuration error", "sp mock 401 -> 503"),
+            ("fail500", 502, "AI request failed", "sp mock 500 -> 502"),
+            ("ratelimited", 503, "AI request limit reached", "sp mock 429 -> 503"),
+        ]
+        for mode, want_status, want_err, label in sp_cases:
+            data = os.path.join(tmp, f"data-sp-{mode}")
+            os.makedirs(data)
+            p = start_cpp(free_port(), data, {
+                "GEMINI_API_KEY": FAKE_KEY,
+                "GEMINI_API_BASE_URL": f"http://127.0.0.1:{mock_port}/{mode}"})
+            procs.append(p)
+            pt = int(p.args[p.args.index("--port") + 1])
+            check(f"{label} server starts", wait_for_server(pt))
+            tok, err = register_login(pt, "dave", "DavePass12")
+            check(f"{label} login", tok is not None, err)
+            status, body = req(pt, "POST", "/api/ai/study-planner",
+                               token=tok, body={"subjects": ["Maths"],
+                                                "hours_per_day": 3})[:2]
+            check(label, status == want_status and body.get("error") == want_err,
+                  f"{status} {body}")
+            check(f"{label} saves no history",
+                  history_ids(pt, tok) == [], str(history_ids(pt, tok)))
+            stop_server(p)
+            procs.remove(p)
+        # Study Planner slow mock + 1s timeout -> 504.
+        data = os.path.join(tmp, "data-sp-slow")
+        os.makedirs(data)
+        p = start_cpp(free_port(), data, {
+            "GEMINI_API_KEY": FAKE_KEY,
+            "GEMINI_API_BASE_URL": f"http://127.0.0.1:{mock_port}/slow",
+            "GEMINI_TIMEOUT_SECS": "1"})
+        procs.append(p)
+        pt = int(p.args[p.args.index("--port") + 1])
+        check("sp slow server starts", wait_for_server(pt))
+        tok, err = register_login(pt, "erin", "ErinPass12")
+        check("sp slow login", tok is not None, err)
+        status, body = req(pt, "POST", "/api/ai/study-planner",
+                           token=tok, body={"subjects": ["Maths"],
+                                            "hours_per_day": 3})[:2]
+        check("sp mock slow -> 504",
+              status == 504 and body.get("error") == "AI request timed out",
+              f"{status} {body}")
+        check("sp slow call saves no history", history_ids(pt, tok) == [])
+        stop_server(p)
+        procs.remove(p)
+
         # 4. No-key server: 503 with login, 401 without.
         data3 = os.path.join(tmp, "data3")
         os.makedirs(data3)
@@ -649,6 +898,12 @@ def main():
         status, body = req(port3, "POST", "/api/ai/task-analyzer",
                            token=tok, body={"input": "x"})[:2]
         check("no-key task-analyzer 503",
+              status == 503 and body.get("error") == "AI unavailable",
+              f"{status} {body}")
+        status, body = req(port3, "POST", "/api/ai/study-planner",
+                           token=tok, body={"subjects": ["Maths"],
+                                            "hours_per_day": 3})[:2]
+        check("no-key study-planner 503",
               status == 503 and body.get("error") == "AI unavailable",
               f"{status} {body}")
         stop_server(p3)
@@ -677,6 +932,12 @@ def main():
         status, body = req(port4, "POST", "/api/ai/task-analyzer",
                            token=tok, body={"input": "x"})[:2]
         check("python task-analyzer 501",
+              status == 501 and body.get("error") == "AI requires the C++ server",
+              f"{status} {body}")
+        status, body = req(port4, "POST", "/api/ai/study-planner",
+                           token=tok, body={"subjects": ["Maths"],
+                                            "hours_per_day": 3})[:2]
+        check("python study-planner 501",
               status == 501 and body.get("error") == "AI requires the C++ server",
               f"{status} {body}")
         status, _ = req(port4, "GET", "/api/health")[:2]

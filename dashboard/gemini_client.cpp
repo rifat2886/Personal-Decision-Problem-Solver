@@ -300,6 +300,10 @@ Result generate(const std::string& prompt) {
         r.error = "auth_error";
         return r;
     }
+    if (httpCode == 429) {
+        r.error = "rate_limited";
+        return r;
+    }
     if (httpCode < 200 || httpCode >= 300) {
         r.error = "request_failed";
         return r;

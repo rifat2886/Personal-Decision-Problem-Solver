@@ -91,6 +91,7 @@ body or the key):
 |---|---|---|
 | `not_configured`, `unavailable` | 503 | `{"error":"AI unavailable"}` |
 | `auth_error` | 503 | `{"error":"AI configuration error"}` |
+| `rate_limited` | 503 | `{"error":"AI request limit reached"}` |
 | `timeout` | 504 | `{"error":"AI request timed out"}` |
 | `request_failed`, `invalid_response`, `invalid_request` | 502 | `{"error":"AI request failed"}` |
 
@@ -130,6 +131,53 @@ instructions. Invalid input returns
 never calls Gemini. Success (200) and failure mapping are the
 same as Daily Decision above; the history entry uses feature
 `"task-analyzer"`.
+
+## API: `POST /api/ai/study-planner` (Phase 2.3)
+
+Login required (401 without a valid session). Request:
+
+```json
+{"description": "Prepare for the final exams in maths and physics",
+ "subjects": ["Maths", "Physics"], "hours_per_day": 3,
+ "exam_date": "2026-12-15"}
+```
+
+- `description` — what to study (canonical); `input` is
+  accepted for compatibility. Optional extra context:
+  non-empty after trimming, max 4000 chars. When both are
+  present, `description` wins.
+- `subjects` — REQUIRED array of strings, 1–10 items, each
+  non-empty after trimming, max 200 chars. Must be a real
+  JSON array of strings. Duplicate subjects are deduplicated
+  case-insensitively ("Math" and "math" count as one),
+  keeping the first occurrence; the deduplicated list is
+  what goes into the prompt and the stored history prompt.
+- `hours_per_day` — REQUIRED number, 0.5–24. Missing,
+  non-numbers, 0, negatives and values above 24 are rejected.
+- `exam_date` — optional strict `YYYY-MM-DD` date: 10 chars,
+  digits and dashes only, a real calendar date (month 01–12,
+  day valid for that month including leap years), and today
+  or in the future by the server's local date. A malformed
+  or past date is rejected.
+- Missing subjects or hours_per_day, or an empty subjects
+  array, is rejected, as is an empty body.
+
+The server prepends a fixed instruction (study planning
+assistant: answer with five sections — (a) Study Plan,
+(b) Daily Schedule, (c) Subject Priorities, (d) Revision
+Strategy, (e) Explanation — making the plan realistic for
+the days remaining until the exam date when one is given,
+and making sure the total study time in any single day does
+not exceed the given hours per day, with a sensible order
+and concrete time blocks, kept concise). The user's fields
+are inserted as quoted DATA, never as instructions. Invalid
+input returns `400 {"error":"invalid input"}` without
+echoing the value, and never calls Gemini. Success (200)
+and failure mapping are the same as Daily Decision above
+(including mock 429 -> 503 `{"error":"AI request limit
+reached"}`); the history entry uses feature
+`"study-planner"`. If the history save itself fails, the
+endpoint returns 502 instead of a 200 claiming success.
 
 ## API: AI history (Phase 2.1)
 
