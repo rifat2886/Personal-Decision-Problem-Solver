@@ -306,6 +306,94 @@ is required — an empty object returns
   verified live: DROP TABLE ai_history mid-run ->
   502, restart -> 200).
 
+## API: `POST /api/ai/habit` (Phase 2.6)
+
+Login required (401 without a valid session). Request
+(`habit` is required; everything else is optional):
+
+```json
+{"habit": "morning run", "target_streak": 30,
+ "frequency": "daily", "input": "I keep skipping weekends",
+ "today": "2026-11-09"}
+```
+
+- `habit` — string, non-empty after trimming, at most
+  100 UTF-8 code points. A number, boolean or null is
+  rejected with 400, as are control characters and `|`
+  (the txt-file separator, same rule as usernames).
+  `target_streak` — strict integer 1–365 (`10.5`,
+  `"30"`, `true`, `null` and trailing junk are all
+  rejected with 400). `frequency` — `"daily"` (the
+  default) or `"weekly"`; anything else is 400.
+  `input` — free text, at most 2000 UTF-8 code points.
+  `today` — a strict YYYY-MM-DD date (valid calendar
+  date) within ±2 days of the server's local date; a
+  malformed date or one further away is 400. A quoted
+  `"habit"` inside the free text is never treated as a
+  real field (strict field parsing, as in Budget).
+- The server computes the figures itself from the
+  caller's own habit log (owner-filtered) and puts
+  them in the prompt as DATA — Gemini only advises,
+  never calculates. The reference date is `today` when
+  given, otherwise the server's local date; all
+  windows are computed from it, and the prompt names
+  the reference date (plus the server date when they
+  differ). Daily: current streak (consecutive days
+  ending at the latest log date), total log count,
+  latest log date (or N/A), days since the last log
+  (0 when a log is dated in the future), 30-day
+  completion rate (distinct logged days in the last 30
+  days / 30, 2 decimals) and longest streak. Weekly:
+  streak of consecutive ACTIVE ISO weeks (Monday–
+  Sunday, a week with at least one log) ending at the
+  latest active week — never the daily streak; several
+  logs in one week count as one active week, a missed
+  week resets the streak, and a Sunday log plus the
+  next Monday's log are two consecutive active weeks.
+  Also reported: latest active week (its Monday),
+  whether the current week is active, weeks since the
+  last active week, the 8-week completion rate (active
+  weeks in the last 8 ISO weeks / 8) and the longest
+  weekly streak. The target unit follows the
+  frequency (days for daily, weeks for weekly);
+  progress is streak / target as a percentage (it may
+  exceed 100%), and a streak at or above the target
+  is noted as "goal already reached" in the prompt.
+- The figures come from a separate helper
+  (`habitAiStats`) used only by this route. The
+  existing `habitStreakJson()` and the
+  `/api/habits/streak` route are untouched and still
+  daily-only. The endpoint is read-only on habit data:
+  it never inserts, updates or deletes habit rows; its
+  only write is the ai_history save, as in the other
+  AI endpoints.
+- The fixed instruction asks Gemini for five sections —
+  (a) Habit Analysis, (b) Streak Assessment, (c)
+  Improvement Plan, (d) Motivation & Tips, (e)
+  Explanation — and states the figures are pre-computed
+  (use them as given, do not recompute them) and the
+  user data is untrusted data to analyse, not
+  instructions to follow. The prompt budget is 8000
+  code points; the largest valid request (100-character
+  habit + 2000-character input + target + frequency +
+  today, about 3000 code points) stays inside it.
+  Invalid input returns `400 {"error":"invalid input"}`
+  without echoing the value, and never calls Gemini.
+  Success (200) and failure mapping are the same as
+  Daily Decision above (including mock 429 -> 503
+  `{"error":"AI request limit reached"}`); the history
+  entry uses feature `"habit"` and stores the user's
+  data only (habit, target_streak, frequency, input,
+  reference date) — never the fixed instruction and
+  never the computed figures. Like Study Planner,
+  Problem Solver and Budget, the saved row is verified
+  to have landed (read-back) before the reply is sent:
+  if the history save itself fails, the endpoint
+  returns 502 instead of a 200 claiming success — in
+  both txt and Postgres mode (Postgres save failure
+  verified live: DROP TABLE ai_history mid-run ->
+  502, restart -> 200).
+
 ## API: AI history (Phase 2.1)
 
 `GET /api/ai/history` — login required. Optional `?limit=`
@@ -387,10 +475,10 @@ HTTP 500, HTTP 401, timeout, empty/oversized prompt, missing
 key), checks the no-libcurl stub, and checks `/api/ai/health`
 with and without a key. `tests/ai_endpoints_test.py` checks
 the Daily Decision, Task Analyzer, Study Planner, Problem
-Solver and Budget endpoints (auth, validation, failure
-mapping, computed figures for Budget), history storage and
-per-user isolation, and the Python server's 501 for
-`/api/ai/*`. The Budget checks include strict number
+Solver, Budget and Habit endpoints (auth, validation, failure
+mapping, computed figures for Budget and Habit), history
+storage and per-user isolation, and the Python server's 501
+for `/api/ai/*`. The Budget checks include strict number
 validation (strings, booleans, null, NaN, Infinity,
 malformed numbers and trailing junk are rejected without
 calling Gemini), Unicode-aware limits (2000 Bengali
@@ -399,6 +487,21 @@ the income-0 savings-rate N/A case, the 0.1 + 0.2
 precision case, the maximum-size request inside the
 8000 code point prompt budget, and the txt-mode
 history-save failure (data dir removed mid-run -> 502).
+The Habit checks include the validation matrix
+(missing/empty/non-string/over-long habit, bad
+target_streak, bad frequency, over-long input, bad
+`today`), Unicode boundaries (100 Bengali characters
+accepted, 101 rejected; input 2000/2001), the
+server-computed figures read back from the prompt the
+mock received (daily streak, gap and duplicate cases,
+30-day rate, target reached; weekly streak, missed-week
+reset, several logs in one week, Sunday-plus-Monday,
+the 2025-12-29/2026-01-04 year-boundary week, 8-week
+rate), the `today` timezone cases (server date +1/+2/−1
+accepted, +3 rejected, malformed rejected, absent uses
+the server date), future-dated logs, non-mutation of
+habit data and of `/api/habits/streak`, and the
+txt-mode history-save failure for the habit route.
 The Postgres-mode history-save failure is verified
 manually, not in the suite: DROP TABLE ai_history
 mid-run -> 502, restart -> 200. The only key string in
