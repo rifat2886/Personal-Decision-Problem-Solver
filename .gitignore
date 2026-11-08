@@ -1,3 +1,8 @@
 users.txt
 project.exe
 project_new.exe
+cpp_server
+cpp_server.exe
+project
+*.lock
+__pycache__/

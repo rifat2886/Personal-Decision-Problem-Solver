@@ -1,4 +1,5 @@
 #include "filter_sort.h"
+#include "data_owner.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -24,6 +25,7 @@ vector<DecisionRecord> loadDecisions()
 
     while (getline(file, line))
     {
+        if (!lineVisibleFor(line, 5)) continue;
         stringstream ss(line);
         DecisionRecord d;
         string priorityText;
@@ -40,6 +42,9 @@ vector<DecisionRecord> loadDecisions()
         try
         {
             d.priority = stoi(priorityText);
+            // Strip owner field from title if present.
+            size_t sep = d.title.find('|');
+            if (sep != string::npos) d.title = d.title.substr(0, sep);
             records.push_back(d);
         }
         catch (...)

@@ -1,5 +1,6 @@
 #include "deadline_alert.h"
 #include "task_data.h"
+#include "task_store.h"
 
 #include <iostream>
 #include <string>
@@ -7,6 +8,9 @@ using namespace std;
 
 void deadlineAlert() {
     cout << "\n===== DEADLINE ALERT =====\n";
+
+    // Load persisted tasks (console + dashboard share tasks.txt).
+    pdps_tasks::loadTasks();
 
     if (taskList.empty()) {
         cout << "No tasks found. Use Task Prioritization first.\n";

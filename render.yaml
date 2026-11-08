@@ -1,0 +1,45 @@
+# Render blueprint (Route 2, Phase 1) — PREPARED ONLY, NOT DEPLOYED.
+#
+# This file is a template for the account-setup step that needs
+# the user's separate permission. Applying it (render.yaml via
+# the Render dashboard, or `render blueprint`) would create a
+# service and is therefore NOT done in Phase 1.
+#
+# How to use it later (with permission):
+# 1. Create a Neon free database first, copy its connection string.
+# 2. In Render, create a Web Service from this repo, Dockerfile
+#    path: Dockerfile, plan: Free.
+# 3. Set these environment variables in Render (never in this file):
+#      DATABASE_URL   = <Neon connection string, from Neon>
+#      CORS_ORIGINS   = https://<your-vercel-app>.vercel.app
+#      (PORT is set automatically by Render.)
+# 4. Point the Vercel frontend at this service (see
+#    docs/route2-phase1.md: Vercel /api proxy rewrite is the
+#    recommended path; direct API_BASE + CORS is the fallback).
+#
+# Free-tier facts that shape this file (see docs/route2-phase1.md
+# for the full list, with sources to re-check at signup):
+# - Render Free web services sleep after 15 minutes idle and
+#   take ~1 minute to wake. Sessions are in-memory, so a wake
+#   or restart means users log in again; Postgres data survives.
+# - Render Free has no persistent disk. That is why Postgres
+#   mode is mandatory here: do NOT run this service in txt mode
+#   on Render, or data will be lost on restart/redeploy.
+# - One instance only on Free. The C++ server serialises API
+#   requests, so one instance is consistent.
+
+services:
+  - type: web
+    name: pdps-cpp-backend
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    # No envVars with values are listed here on purpose:
+    # DATABASE_URL and CORS_ORIGINS must be set in the Render
+    # dashboard as secrets, never committed to the repo.
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+    healthCheckPath: /api/health

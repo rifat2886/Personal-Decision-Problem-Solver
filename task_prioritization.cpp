@@ -1,5 +1,6 @@
 #include "task_prioritization.h"
 #include "task_data.h"
+#include "task_store.h"
 #include "decision_store.h"
 
 #include <iostream>
@@ -35,24 +36,37 @@ void taskPrioritization() {
             continue;
         }
 
-        cout << "Urgency (1-10): ";
-        if (!(cin >> task.urgency) ||
-            task.urgency < 1 || task.urgency > 10) {
-            cout << "Invalid urgency. Please restart this feature.\n";
+        // FIX (backend final testing): retry a single invalid field
+        // instead of discarding every task entered so far and
+        // forcing the user to restart this feature.
+        while (true) {
+            cout << "Urgency (1-10): ";
+            if (cin >> task.urgency &&
+                task.urgency >= 1 && task.urgency <= 10)
+                break;
+            if (cin.eof()) {
+                cout << "Input closed. Aborting task prioritization.\n";
+                taskList.clear();
+                return;
+            }
+            cout << "Invalid urgency. Please enter a number from 1 to 10.\n";
             cin.clear();
             cin.ignore(10000, '\n');
-            taskList.clear();
-            return;
         }
 
-        cout << "Importance (1-10): ";
-        if (!(cin >> task.importance) ||
-            task.importance < 1 || task.importance > 10) {
-            cout << "Invalid importance. Please restart this feature.\n";
+        while (true) {
+            cout << "Importance (1-10): ";
+            if (cin >> task.importance &&
+                task.importance >= 1 && task.importance <= 10)
+                break;
+            if (cin.eof()) {
+                cout << "Input closed. Aborting task prioritization.\n";
+                taskList.clear();
+                return;
+            }
+            cout << "Invalid importance. Please enter a number from 1 to 10.\n";
             cin.clear();
             cin.ignore(10000, '\n');
-            taskList.clear();
-            return;
         }
 
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
@@ -94,4 +108,10 @@ void taskPrioritization() {
                                       : " (deadline " +
                                             taskList[i].deadline + ")"));
     }
+
+    // Persist the tasks so Task Status, Deadline Alert and the
+    // dashboard all see them (previously they were in-memory only
+    // and lost when the console app exited).
+    pdps_tasks::appendTasks(taskList);
+    cout << "Tasks saved to tasks.txt.\n";
 }

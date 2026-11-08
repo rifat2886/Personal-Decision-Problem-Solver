@@ -5,11 +5,16 @@
 #include <vector>
 
 struct Task {
+    // id is the tasks.txt id ("" for a task not yet saved). It is
+    // kept so console Task Status / Deadline work on the same tasks
+    // the dashboard created, and vice versa.
+    std::string id;
     std::string title;
     int urgency;
     int importance;
     std::string deadline;
     std::string status;
+    std::string owner;
 };
 
 inline std::vector<Task> taskList;

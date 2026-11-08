@@ -1,5 +1,7 @@
 #include "password_change.h"
 #include "password_validation.h"
+#include "file_lock.h"
+#include "password_hash.h"
 
 #include <iostream>
 #include <fstream>
@@ -8,6 +10,9 @@
 
 bool changePassword(const std::string& currentUser)
 {
+    // Hold the users lock for the whole change flow, so a
+    // dashboard register/change-password cannot interleave.
+    FileLock lock("users.txt");
     std::ifstream input("users.txt");
 
     if (!input)
@@ -30,7 +35,7 @@ bool changePassword(const std::string& currentUser)
         {
             found = true;
 
-            if (password != oldPassword)
+            if (!pdps_hash::verifyPassword(oldPassword, password))
             {
                 std::cout << "Wrong current password!\n";
                 return false;
@@ -46,7 +51,7 @@ bool changePassword(const std::string& currentUser)
                 return false;
             }
 
-            password = newPassword;
+            password = pdps_hash::hashPassword(newPassword);
         }
 
         records.push_back(username + " " + password + " " + role);

@@ -1,4 +1,5 @@
 #include "period_report.h"
+#include "data_owner.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -82,6 +83,7 @@ void showReportByPeriod(bool monthly)
 
     while (getline(file, line))
     {
+        if (!lineVisibleFor(line, 5)) continue;
         stringstream ss(line);
 
         if (!getline(ss, date, '|') ||

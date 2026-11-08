@@ -1,4 +1,6 @@
 #include "report.h"
+#include "data_owner.h"
+#include "file_lock.h"
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -64,6 +66,7 @@ void generateReport() {
     cout << "Balance: " << balance << " Tk\n";
     cout << "Habit completion: " << habitRate << "%\n";
 
+    FileLock lock("daily_report.txt");
     ofstream file("daily_report.txt", ios::app);
 
     if (!file) {
@@ -72,7 +75,8 @@ void generateReport() {
     }
 
     file << fixed << setprecision(2);
-    file << "Income: " << income
+    file << "User: " << g_currentUser
+         << ", Income: " << income
          << ", Expenses: " << expenses
          << ", Balance: " << balance
          << ", Habit completion: " << habitRate << "%\n";

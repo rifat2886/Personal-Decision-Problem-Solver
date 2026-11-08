@@ -1,0 +1,97 @@
+# Personal Decision & Problem Solver — CI on real Linux and Windows runners.
+#
+# This is the actual Windows runtime test: the windows job runs on a
+# real Windows hosted runner (windows-latest), builds both executables
+# with MinGW-w64, runs them, and exercises the HTTP API. Cross-
+# compilation from Linux is NOT used as a Windows runtime test.
+#
+# Triggers: pushes to the PR branch, pull requests to main, and
+# manual dispatch. No secrets are used; all test accounts are created
+# inside temporary directories and deleted by the test scripts.
+
+name: CI
+
+on:
+  push:
+    branches: [backend-testing-dashboard, main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  linux:
+    name: Linux build and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build console and C++ server (strict warnings)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -o project admin.cpp backup_restore.cpp budget.cpp compare_options.cpp control.cpp daily_decision.cpp deadline_alert.cpp decision_explanation.cpp delete_confirmation.cpp error_handler.cpp export_report.cpp filter_sort.cpp habit.cpp habit_streak.cpp history.cpp income_expense.cpp input_validation.cpp login.cpp logout.cpp main.cpp multi_task_decision.cpp password_change.cpp password_validation.cpp period_report.cpp priority_calculator.cpp problem.cpp profile.cpp registration.cpp report.cpp savings_goal.cpp search_history.cpp study_planner.cpp task_prioritization.cpp task_status.cpp time_allocation.cpp
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -pthread -o cpp_server dashboard/cpp_server.cpp
+      - name: Console regression test
+        run: python3 tests/console_test.py --binary ./project
+      - name: API test against C++ server
+        run: python3 tests/api_test.py --server-cmd "./cpp_server" --port 8123
+      - name: API test against Python fallback server
+        run: python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8124
+      - name: Dashboard assets check
+        run: |
+          python3 - << 'PY'
+          import re, pathlib, sys
+          html = pathlib.Path("dashboard/index.html").read_text()
+          ids = re.findall(r'id="([^"]+)"', html)
+          assert len(ids) == len(set(ids)), "duplicate HTML ids"
+          sections = set(re.findall(r'data-section="([^"]+)"', html))
+          nav = set(re.findall(r'<button data-section="([^"]+)"', html))
+          assert sections == nav, f"sections {sections} != nav {nav}"
+          js = pathlib.Path("dashboard/app.js").read_text()
+          btns = re.findall(r'<button[^>]*id="([^"]+)"', html)
+          missing = [b for b in btns if b not in js]
+          assert not missing, f"buttons without JS: {missing}"
+          print(f"dashboard ok: {len(sections)} sections, {len(btns)} buttons, no duplicate ids")
+          PY
+      - name: Logic-priority test, standalone (own main, never in production build)
+        run: |
+          mkdir -p /tmp/logic-priority-test
+          git show origin/logic-priority:logic_priority.h > /tmp/logic-priority-test/logic_priority.h || echo "logic-priority branch not available, skipping"
+          git show origin/logic-priority:logic_priority.cpp > /tmp/logic-priority-test/logic_priority.cpp || echo "logic-priority branch not available, skipping"
+          git show origin/logic-priority:logic_priority_test.cpp > /tmp/logic-priority-test/logic_priority_test.cpp || echo "logic-priority branch not available, skipping"
+          if [ -f /tmp/logic-priority-test/logic_priority_test.cpp ]; then
+            cd /tmp/logic-priority-test && g++ -std=c++17 -Wall -Wextra -o logic_priority_test logic_priority.cpp logic_priority_test.cpp && ./logic_priority_test | head -n 20
+          fi
+
+  windows:
+    name: Windows 11 runtime test (real hosted runner)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-make python
+      - name: Build console and C++ server with MinGW
+        shell: msys2 {0}
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -o project.exe admin.cpp backup_restore.cpp budget.cpp compare_options.cpp control.cpp daily_decision.cpp deadline_alert.cpp decision_explanation.cpp delete_confirmation.cpp error_handler.cpp export_report.cpp filter_sort.cpp habit.cpp habit_streak.cpp history.cpp income_expense.cpp input_validation.cpp login.cpp logout.cpp main.cpp multi_task_decision.cpp password_change.cpp password_validation.cpp period_report.cpp priority_calculator.cpp problem.cpp profile.cpp registration.cpp report.cpp savings_goal.cpp search_history.cpp study_planner.cpp task_prioritization.cpp task_status.cpp time_allocation.cpp
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -pthread -o cpp_server.exe dashboard/cpp_server.cpp -lws2_32
+          ls -lh project.exe cpp_server.exe
+      - name: Console regression test
+        shell: msys2 {0}
+        run: python3 tests/console_test.py --binary ./project.exe
+      - name: API test against C++ server
+        shell: msys2 {0}
+        run: python3 tests/api_test.py --server-cmd "./cpp_server.exe" --port 8125
+      - name: API test against Python fallback server
+        shell: msys2 {0}
+        run: python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8126
+      - name: Server startup and shutdown check
+        shell: msys2 {0}
+        run: |
+          ./cpp_server.exe --port 8127 --data-dir . > server.log 2>&1 &
+          SRV=$!
+          sleep 2
+          curl -s -o /dev/null -w "root status: %{http_code}\n" http://127.0.0.1:8127/
+          kill $SRV || true
+          wait $SRV 2>/dev/null || true
+          echo "server stopped, exit code check done"

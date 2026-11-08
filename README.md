@@ -16,6 +16,16 @@ The main goal is to make everyday activities easier by combining decision-making
 | Umma Habiba Nuriya | Logic & Decision Engine |
 | Sweety Akter | Planner & Habit Tracker |
 
+## Quick start (beginner-friendly)
+
+- **Dashboard (website):** Windows: double-click `start-dashboard.bat`.
+  Linux/macOS: `./start-dashboard.sh`. Then open http://127.0.0.1:8000/
+- **Console app:** Windows: double-click `start-console.bat`.
+  Linux/macOS: `./start-console.sh`.
+- First time? Register — the first account becomes ADMIN.
+- Full instructions: `RUN.md`. Tests: `TESTING.md`. Security: `SECURITY.md`.
+- File-to-contributor-to-feature audit: `AUDIT.md`.
+
 ## Main Features
 
 ### 1. Authentication & Core System
@@ -36,6 +46,9 @@ The main goal is to make everyday activities easier by combining decision-making
 - Task Status Manager
 - Deadline Alert
 - Decision Explanation
+- Multi-Task Decision
+- Web Dashboard (23 sections, C++ backend, see dashboard/README.md)
+
 
 ### 3. Budget, Savings & Habits
 - Add Income and Expenses
@@ -138,7 +151,21 @@ Personal-Decision-Problem-Solver/
 
 *Note: The structure above shows the logical module grouping. All
 `.cpp` and `.h` files actually live in the repository root directory,
-not in subfolders.*
+not in subfolders. The one real subfolder is `dashboard/` (see below),
+which holds the website dashboard; it does not change the C++ build,
+because `g++ *.cpp` in the root does not pick up `dashboard/` files.*
+
+### Website dashboard
+
+See `dashboard/README.md`. The dashboard is served by a C++ API server
+(`dashboard/cpp_server.cpp`, built separately from the console app),
+with a Python server (`dashboard/server.py`) kept as a fallback. Both
+use the same API and the same data files as the C++ console app, and
+both bind to localhost only. The C++ server and the console app are
+cross-platform C++17: on Windows 11 they build natively with MinGW-w64
+or MSVC (Winsock and LockFileEx instead of POSIX sockets and flock);
+WSL is not required. See `dashboard/README.md` for the Windows build
+commands and the honest build-vs-runtime status.
 
 ## How to Run the Project
 
@@ -233,14 +260,18 @@ https://github.com/rifat2886/Personal-Decision-Problem-Solver
 | `search_history.txt`, `error_log.txt`, `system_log.txt` | Search history, error log, and history-action log. |
 | `financial_report.txt`, `financial_report.csv`, `daily_report.txt` | Exported reports. |
 
-Task prioritization data (`taskList` in `task_data.h`) is kept
-in memory only for the current run: run Task Prioritization (11)
-before Task Status (13) or Deadline Alert (14) in the same session.
+Task prioritization data is persisted to `tasks.txt` (see
+`task_store.h`): Task Status (13) and Deadline Alert (14) load
+`tasks.txt` first, so they work in a new session and the console
+app and the dashboard share the same tasks.
 
-> Security note: this is a coursework console app. Passwords are
-> stored in plain text in `users.txt` and usernames/passwords
-> cannot contain spaces (they are space-separated in that file).
-> Do not reuse a real password here.
+> Security note: this is a coursework console app. New passwords
+> are stored as PBKDF2 hashes in `users.txt` (old plaintext
+> accounts are upgraded to a hash on their next login), and
+> usernames/passwords cannot contain spaces (they are
+> space-separated in that file). The servers bind to localhost
+> only and have no HTTPS, so do not expose them to the internet
+> and do not reuse a real password here. See SECURITY.md.
 
 ## Future Improvements
 
