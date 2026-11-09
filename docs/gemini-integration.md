@@ -581,6 +581,76 @@ was needed for Phase 3.2.
   the existing `input`/`select` styling (including the
   44px mobile tap targets) already cover this form.
 
+## Phase 3.3 — AI Study Planner in the dashboard
+
+The third AI section in the dashboard. It calls only
+`POST /api/ai/study-planner` (Phase 2.3) — no backend change
+was needed for Phase 3.3.
+
+- UI: a nav button `data-section="ai-study"` in the existing
+  "AI Assistant" group, and a section
+  `<section id="ai-study">` following the existing section
+  pattern (`<h2>`, `.muted` description, `.card` with the
+  form, action buttons, `<div id="aiStudyMsg">`, a warning
+  div and the reply div). The section is protected by the
+  existing auth gate: it is NOT in `PUBLIC_SECTIONS`
+  (landing, auth only), the nav button is hidden by the
+  logged-out body class, and the server still returns 401
+  without a session.
+- Form: dynamic subject rows (one row at first, "Add subject"
+  adds up to 10, each row removable), a number input for
+  hours per day, an optional exam date (`<input type="date">`,
+  which produces `YYYY-MM-DD`), and an optional description
+  textarea. The "Make study plan" button sits in the same
+  actions row as "Add subject".
+- Validation (client-side, mirrors the server): at least one
+  subject, each trimmed, non-empty, max **200 UTF-8 BYTES**
+  (counted with `TextEncoder`, not characters); at most 10
+  subjects. Subjects are deduped case-insensitively before
+  sending (first occurrence wins, like the server); the
+  success message says how many unique subjects were sent,
+  and a note is shown when duplicates were removed. Hours
+  per day must be a plain decimal number from **0.5 to 24**,
+  sent as a JSON number — exponent notation (`1e3`) and
+  dotted junk are rejected client-side because the server's
+  `jsonNumberField` truncates them. The exam date must be a
+  strict `YYYY-MM-DD` real calendar date, today or in the
+  future (checked against the user's local date; the server,
+  which checks against its own local date, is the authority).
+  The description is trimmed, non-empty, max **4000 bytes**.
+  Empty subject rows are ignored, never sent. Validation
+  errors are shown immediately, before any network call.
+- Newline sanitization: `\r`, `\n`, `\t` and other control
+  characters (U+0000–U+001F, U+007F) are replaced with spaces
+  BEFORE sending, because the backend's old JSON helpers
+  (`jsonStringField`, Phase 2.1–2.4) do NOT decode escapes —
+  a `\n` in the request body would otherwise arrive as the
+  letter `n`. The byte-length and sanitization helpers are
+  shared with Phase 3.1.
+- Reply: rendered with `esc()` into the reply div (never raw
+  `innerHTML`); line breaks are preserved by the `.ai-reply`
+  CSS class (`white-space: pre-wrap`). The `history_id` is
+  shown next to the success message. This endpoint verifies
+  the history save (read-back) — a failed save is a 502,
+  never a 200 — but if `history_id` is ever 0, the reply is
+  shown AND the same "not saved" warning as in 3.1/3.2.
+- Loading/error states: the button is disabled and shows
+  "Thinking…" while the call runs (double-submit blocked);
+  an error clears any stale reply. `400
+  {"error":"invalid input"}` shows a friendly "Invalid
+  input" message; `401` is handled by the shared `api()`
+  (forced logout to Login); `501` explains that AI needs
+  the C++ server; `502`/`503`/`504` show the server's
+  message with a short note. No API key is ever sent,
+  logged or shown by the frontend.
+- Files: `dashboard/index.html`, `dashboard/app.js`,
+  `tests/browser_test.py`, `tests/auth_gate_test.py`,
+  `tests/mobile_test.py`. No `dashboard/style.css` change
+  was needed: the 3.1 `textarea` and `.ai-reply` rules, the
+  `.ai-opt-row` rules (reused for the subject rows) and the
+  existing `input`/`select` styling (including the 44px
+  mobile tap targets) already cover this form.
+
 ## Tests
 
 ```sh
