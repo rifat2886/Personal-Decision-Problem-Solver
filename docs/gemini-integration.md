@@ -711,6 +711,74 @@ was needed for Phase 3.4.
   the existing `input` styling (including the 44px mobile
   tap targets) already cover this form.
 
+## Phase 3.5 — AI Budget Assistant in the dashboard
+
+The fifth AI section in the dashboard. It calls only
+`POST /api/ai/budget` (Phase 2.5) — no backend change
+was needed for Phase 3.5.
+
+- UI: a nav button `data-section="ai-budget"` in the existing
+  "AI Assistant" group, and a section
+  `<section id="ai-budget">` following the existing section
+  pattern (`<h2>`, `.muted` description, `.card` with the
+  form, action buttons, `<div id="aiBudgetMsg">`, a warning
+  div and the reply div). The section is protected by the
+  existing auth gate: it is NOT in `PUBLIC_SECTIONS`
+  (landing, auth only), the nav button is hidden by the
+  logged-out body class, and the server still returns 401
+  without a session.
+- Form: an income number input, dynamic expense rows (one row
+  at first, "Add expense" adds up to 20, each row removable,
+  category + amount), three savings-goal inputs (name, target,
+  already saved) and an optional notes textarea. The "Review
+  my budget" button sits in the same actions row as
+  "Add expense".
+- Validation (client-side, mirrors the server): at least one
+  meaningful field is required — `{}` and `{"expenses": []}`
+  alone are 400. **Income 0 counts as provided** (only an
+  empty income field means "not provided"). Numbers are
+  validated with a strict JSON-number shape (the same shapes
+  the server's `parseStrictNumber` accepts: no leading zeros,
+  no `+`, no `NaN`/`Infinity`, no `1e999`) and sent as JSON
+  numbers, never strings. Each expense needs BOTH a category
+  (non-empty, max 100 UTF-8 code points) and an amount
+  (0–1,000,000,000); empty rows are ignored. A savings goal
+  needs ALL THREE sub-fields (name max 200 code points,
+  target over 0, saved 0 or more) or none at all. Notes are
+  max 2000 UTF-8 code points. Validation errors are shown
+  immediately, before any network call.
+- Newlines are safe here: the budget route decodes JSON
+  escapes properly (unlike 2.1–2.4), so notes keep their line
+  breaks; control characters are still replaced with spaces
+  for consistency, using the shared 3.1 helper.
+- Reply: rendered with `esc()` into the reply div (never raw
+  `innerHTML`); line breaks are preserved by the `.ai-reply`
+  CSS class (`white-space: pre-wrap`). The `history_id` is
+  shown next to the success message. This endpoint verifies
+  the history save (read-back) — a failed save is a 502,
+  never a 200 — but if `history_id` is ever 0, the reply is
+  shown AND the same "not saved" warning as in 3.1–3.4. The
+  server computes all figures deterministically (totals,
+  remaining, deficit, savings rate, goal progress, months to
+  goal) — Gemini never calculates, so the UI does not display
+  figures separately.
+- Loading/error states: the button is disabled and shows
+  "Thinking…" while the call runs (double-submit blocked);
+  an error clears any stale reply. `400
+  {"error":"invalid input"}` shows a friendly "Invalid
+  input" message; `401` is handled by the shared `api()`
+  (forced logout to Login); `501` explains that AI needs
+  the C++ server; `502`/`503`/`504` show the server's
+  message with a short note. No API key is ever sent,
+  logged or shown by the frontend.
+- Files: `dashboard/index.html`, `dashboard/app.js`,
+  `tests/browser_test.py`, `tests/auth_gate_test.py`,
+  `tests/mobile_test.py`. No `dashboard/style.css` change
+  was needed: the 3.1 `textarea`, `.ai-reply` and
+  `.ai-opt-row` rules and the existing `input` styling
+  (including the 44px mobile tap targets) already cover
+  this form.
+
 ## Tests
 
 ```sh
