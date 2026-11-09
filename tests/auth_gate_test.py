@@ -33,7 +33,7 @@ PROTECTED = ["overview", "history", "daily", "tasks", "taskstatus", "priority",
              "compare", "explanation", "deadlines", "budget", "finance",
              "savings", "study", "timealloc", "habits", "reports", "problem",
              "profile", "admin", "analytics", "settings", "ai-daily",
-             "ai-task", "ai-study", "ai-problem", "ai-budget"]
+             "ai-task", "ai-study", "ai-problem", "ai-budget", "ai-habit"]
 PUBLIC = ["landing", "auth"]
 
 def nav_visible(page, sec):
@@ -88,6 +88,9 @@ def main():
             page.evaluate("showSection('ai-budget')")
             page.wait_for_timeout(300)
             check("no-login showSection(ai-budget) -> auth", active_section(page) == "auth", str(active_section(page)))
+            page.evaluate("showSection('ai-habit')")
+            page.wait_for_timeout(300)
+            check("no-login showSection(ai-habit) -> auth", active_section(page) == "auth", str(active_section(page)))
             page.evaluate("showSection('landing')")
             status = page.evaluate("fetch('/api/overview').then(r => r.status)")
             check("no-login /api/overview 401", status == 401, str(status))
@@ -103,6 +106,8 @@ def main():
             check("no-login /api/ai/problem-solver 401", status == 401, str(status))
             status = page.evaluate("fetch('/api/ai/budget', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({income:100})}).then(r => r.status)")
             check("no-login /api/ai/budget 401", status == 401, str(status))
+            status = page.evaluate("fetch('/api/ai/habit', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({habit:'test'})}).then(r => r.status)")
+            check("no-login /api/ai/habit 401", status == 401, str(status))
             # 2. Register + login (first user = ADMIN, Alice)
             page.click("button[data-section='auth']")
             page.fill("#regUser", "alice"); page.fill("#regPass", "Alice1234"); page.click("#regBtn")
@@ -127,6 +132,9 @@ def main():
             page.evaluate("showSection('ai-budget')")
             page.wait_for_timeout(300)
             check("after-login ai-budget opens", active_section(page) == "ai-budget", str(active_section(page)))
+            page.evaluate("showSection('ai-habit')")
+            page.wait_for_timeout(300)
+            check("after-login ai-habit opens", active_section(page) == "ai-habit", str(active_section(page)))
             page.evaluate("showSection('overview')")
             # Alice creates a task, capture its id via API
             page.click("button[data-section='tasks']")
@@ -172,6 +180,8 @@ def main():
             check("after-logout /api/ai/problem-solver 401", status == 401, str(status))
             status = page.evaluate("fetch('/api/ai/budget', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({income:100})}).then(r => r.status)")
             check("after-logout /api/ai/budget 401", status == 401, str(status))
+            status = page.evaluate("fetch('/api/ai/habit', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({habit:'test'})}).then(r => r.status)")
+            check("after-logout /api/ai/habit 401", status == 401, str(status))
             # 6. Cross-user: Bob must not see Alice's task
             page.click("button[data-section='auth']")
             page.fill("#regUser", "bob"); page.fill("#regPass", "Bob12345"); page.click("#regBtn")

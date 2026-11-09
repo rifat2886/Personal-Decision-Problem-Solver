@@ -543,6 +543,93 @@ def main():
                 return [r.status, j.error || '']; }""")
             check("ai-budget server 400 invalid input", st == [400, "invalid input"], str(st))
 
+            # AI Habit Assistant (Phase 3.6): client-side validation,
+            # mock-Gemini success, daily/weekly streaks, reference
+            # date, 503 and 400. The server computes the streak from
+            # the caller's own (empty, in this fresh test) habit log.
+            page.click("button[data-section='ai-habit']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'ai-habit'")
+            check("ai-habit section visible after login", page.is_visible("section#ai-habit"))
+            # Empty habit -> client-side validation error, no API call.
+            page.click("#aiHabitBtn")
+            page.wait_for_function("document.getElementById('aiHabitMsg').textContent.length > 0")
+            check("ai-habit empty habit error", "enter a habit" in page.evaluate("document.getElementById('aiHabitMsg').textContent").lower())
+            # Habit with | -> client-side error (the server rejects it).
+            page.fill("#aiHabitName", "Run|Swim")
+            page.click("#aiHabitBtn")
+            page.wait_for_function("document.getElementById('aiHabitMsg').textContent.includes('|')")
+            check("ai-habit pipe error", "|" in page.evaluate("document.getElementById('aiHabitMsg').textContent"))
+            # Target streak 0 -> error; 366 -> error; 2.5 -> error.
+            page.fill("#aiHabitName", "Morning run")
+            page.fill("#aiHabitTarget", "0")
+            page.click("#aiHabitBtn")
+            page.wait_for_function("document.getElementById('aiHabitMsg').textContent.includes('1 to 365')")
+            check("ai-habit target 0 error", "1 to 365" in page.evaluate("document.getElementById('aiHabitMsg').textContent"))
+            page.fill("#aiHabitTarget", "366")
+            page.click("#aiHabitBtn")
+            page.wait_for_function("document.getElementById('aiHabitMsg').textContent.includes('1 to 365')")
+            check("ai-habit target 366 error", "1 to 365" in page.evaluate("document.getElementById('aiHabitMsg').textContent"))
+            page.fill("#aiHabitTarget", "2.5")
+            page.click("#aiHabitBtn")
+            page.wait_for_function("document.getElementById('aiHabitMsg').textContent.includes('1 to 365')")
+            check("ai-habit target 2.5 error", "1 to 365" in page.evaluate("document.getElementById('aiHabitMsg').textContent"))
+            # Habit over 100 characters -> error.
+            page.fill("#aiHabitTarget", "")
+            page.fill("#aiHabitName", "x" * 101)
+            page.click("#aiHabitBtn")
+            page.wait_for_function("document.getElementById('aiHabitMsg').textContent.includes('100 characters')")
+            check("ai-habit name too long error", "100 characters" in page.evaluate("document.getElementById('aiHabitMsg').textContent"))
+            # Daily habit, target 30: mock reply; the server-computed
+            # figures reach the mock (fresh log: streak 0 days).
+            page.fill("#aiHabitName", "Morning run")
+            page.fill("#aiHabitTarget", "30")
+            page.click("#aiHabitBtn")
+            page.wait_for_function("document.getElementById('aiHabitReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            check("ai-habit mock reply shown", "Mocked AI reply." in page.content())
+            check("ai-habit history id shown", "history #" in page.evaluate("document.getElementById('aiHabitMsg').textContent"))
+            check("ai-habit no history-save warning", page.evaluate("document.getElementById('aiHabitWarn').textContent") == "")
+            sent = MockGemini.requests[-1] if MockGemini.requests else ""
+            check("ai-habit reaches mock", all(x in sent for x in ("Habit: Morning run", "Frequency: daily", "Current streak: 0 days", "Target streak: 30 days")), sent[:300])
+            # Weekly frequency: the mock sees weekly figures.
+            page.select_option("#aiHabitFrequency", "weekly")
+            page.click("#aiHabitBtn")
+            page.wait_for_function("document.getElementById('aiHabitReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            check("ai-habit weekly mock reply shown", "Mocked AI reply." in page.content())
+            sent = MockGemini.requests[-1] if MockGemini.requests else ""
+            check("ai-habit weekly reaches mock", all(x in sent for x in ("Frequency: weekly", "Current streak: 0 weeks", "8-week completion rate")), sent[:300])
+            # Reference date = today: the mock sees it as the
+            # reference date (server date is the same machine's).
+            page.select_option("#aiHabitFrequency", "daily")
+            page.fill("#aiHabitToday", date.today().isoformat())
+            page.click("#aiHabitBtn")
+            page.wait_for_function("document.getElementById('aiHabitReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            check("ai-habit today mock reply shown", "Mocked AI reply." in page.content())
+            sent = MockGemini.requests[-1] if MockGemini.requests else ""
+            check("ai-habit today reaches mock", ("Reference date: " + date.today().isoformat()) in sent, sent[:300])
+            # Reference date 3 days away -> client-side error.
+            page.fill("#aiHabitToday", (date.today() + timedelta(days=3)).isoformat())
+            page.click("#aiHabitBtn")
+            page.wait_for_function("document.getElementById('aiHabitMsg').textContent.includes('within 2 days')")
+            check("ai-habit today too far error", "within 2 days" in page.evaluate("document.getElementById('aiHabitMsg').textContent"))
+            page.fill("#aiHabitToday", "")
+            # 503 via the mock rate-limit trigger: the UI shows the
+            # server message and clears the stale reply.
+            page.fill("#aiHabitInput", "MOCK-RATE-LIMIT test")
+            page.click("#aiHabitBtn")
+            page.wait_for_function("document.getElementById('aiHabitMsg').textContent.includes('AI request limit reached')")
+            check("ai-habit 503 error shown", "AI request limit reached" in page.evaluate("document.getElementById('aiHabitMsg').textContent"))
+            check("ai-habit 503 clears stale reply", page.evaluate("document.getElementById('aiHabitReply').textContent") == "")
+            # 400 from the server (direct API call from the page: the
+            # UI's own validation cannot produce one, by design).
+            st = page.evaluate("""async () => {
+                const t = sessionStorage.getItem('pdps_token');
+                const r = await fetch('/api/ai/habit', {method: 'POST',
+                  headers: {Authorization: 'Bearer ' + t, 'Content-Type': 'application/json'},
+                  body: JSON.stringify({habit: '   '})});
+                const j = await r.json().catch(() => ({}));
+                return [r.status, j.error || '']; }""")
+            check("ai-habit server 400 invalid input", st == [400, "invalid input"], str(st))
+
             # Reports section screenshot, then dark mode.
             page.click("button[data-section='reports']")
             page.wait_for_timeout(800)
@@ -576,13 +663,13 @@ def main():
             ctx.close()
 
             # Chromium logs a console error for every failed fetch,
-            # including the ten intentional AI error calls (a 503 UI
+            # including the twelve intentional AI error calls (a 503 UI
             # test and a direct 400 fetch for each of ai-daily,
-            # ai-task, ai-study, ai-problem and ai-budget). Remove
-            # exactly those ten expected messages (five 503s, five
-            # 400s); any other console error still fails.
+            # ai-task, ai-study, ai-problem, ai-budget and ai-habit).
+            # Remove exactly those twelve expected messages (six
+            # 503s, six 400s); any other console error still fails.
             remaining_console = list(ERRORS)
-            for expected in ("status of 503", "status of 503", "status of 503", "status of 503", "status of 503", "status of 400", "status of 400", "status of 400", "status of 400", "status of 400"):
+            for expected in ("status of 503", "status of 503", "status of 503", "status of 503", "status of 503", "status of 503", "status of 400", "status of 400", "status of 400", "status of 400", "status of 400", "status of 400"):
                 for i, e in enumerate(remaining_console):
                     if "Failed to load resource" in e and expected in e:
                         del remaining_console[i]
@@ -594,7 +681,7 @@ def main():
             ai_errors = [u for u in failed if "/api/ai/" in u]
             unexpected = [u for u in failed if "/api/ai/" not in u]
             check("no unexpected failed API requests", len(unexpected) == 0, str(unexpected[:3]))
-            check("ai error states recorded (expected)", len(ai_errors) >= 10, str(ai_errors))
+            check("ai error states recorded (expected)", len(ai_errors) >= 12, str(ai_errors))
             browser.close()
     finally:
         proc.terminate()

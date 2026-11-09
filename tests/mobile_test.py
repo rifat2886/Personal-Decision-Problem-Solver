@@ -192,6 +192,21 @@ def main():
             check("mobile ai-budget reply shown", "Mocked AI reply." in page.content())
             overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
             check("mobile ai-budget no horizontal overflow", overflow <= 1, str(overflow))
+            # AI Habit Assistant (Phase 3.6) at 390px: drawer nav
+            # reaches it, validation works, mock reply is shown, and
+            # the section has no horizontal overflow.
+            page.click("#menuBtn"); page.click("button[data-section='ai-habit']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'ai-habit'", timeout=10000)
+            check("mobile ai-habit opens via drawer", page.is_visible("section#ai-habit"))
+            page.click("#aiHabitBtn")
+            page.wait_for_function("document.getElementById('aiHabitMsg').textContent.length > 0", timeout=5000)
+            check("mobile ai-habit empty habit error", "enter a habit" in page.evaluate("document.getElementById('aiHabitMsg').textContent").lower())
+            page.fill("#aiHabitName", "Morning run")
+            page.click("#aiHabitBtn")
+            page.wait_for_function("document.getElementById('aiHabitReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            check("mobile ai-habit reply shown", "Mocked AI reply." in page.content())
+            overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
+            check("mobile ai-habit no horizontal overflow", overflow <= 1, str(overflow))
             overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
             check("mobile flow no horizontal overflow", overflow <= 1, str(overflow))
             page.screenshot(path="/tmp/pdps-mobile-390.png")
