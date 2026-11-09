@@ -630,6 +630,71 @@ def main():
                 return [r.status, j.error || '']; }""")
             check("ai-habit server 400 invalid input", st == [400, "invalid input"], str(st))
 
+            # AI History (Phase 3.7): list renders newest-first,
+            # filter narrows it, delete removes an entry (with a
+            # confirm dialog), logout clears the list, re-login
+            # reloads it, and the empty state shows once all
+            # entries are gone. The six AI sections above saved
+            # 11 entries in total (daily 1, task 1, study 1,
+            # problem 2, budget 3, habit 3); only successful
+            # Gemini calls save history, so the 503/400 calls
+            # above added none. Only successful GET/DELETE calls
+            # are used here, so the console-error filter below
+            # (six 503s + six 400s) is unchanged.
+            page.click("button[data-section='ai-history']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'ai-history'")
+            check("ai-history section visible after login", page.is_visible("section#ai-history"))
+            check("ai-history filter options", page.evaluate("document.querySelectorAll('#aiHistoryFilter option').length") == 7)
+            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 11", timeout=15000)
+            check("ai-history renders 11 entries", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 11)
+            first = page.evaluate("document.querySelector('.ai-history-entry').textContent")
+            check("ai-history newest first is habit", "Habit" in first and "Morning run" in first, first[:200])
+            check("ai-history newest shows mock reply", "Mocked AI reply." in first, first[:200])
+            # Filter: daily-decision has 1 entry, habit has 3,
+            # all has 11. The filter re-renders without a call.
+            page.select_option("#aiHistoryFilter", "daily-decision")
+            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 1")
+            check("ai-history filter daily-decision shows 1", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 1)
+            check("ai-history filter daily-decision label", "Daily Decision" in page.evaluate("document.querySelector('.ai-history-entry').textContent"))
+            page.select_option("#aiHistoryFilter", "habit")
+            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 3")
+            check("ai-history filter habit shows 3", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 3)
+            page.select_option("#aiHistoryFilter", "all")
+            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 11")
+            check("ai-history filter all shows 11", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 11)
+            # Delete one entry via the UI (confirm dialog auto-accepted).
+            page.on("dialog", lambda d: d.accept())
+            page.locator(".ai-history-entry .btn-danger").first.click()
+            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 10")
+            check("ai-history delete removes entry", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 10)
+            check("ai-history delete message", "Entry deleted" in page.evaluate("document.getElementById('aiHistoryMsg').textContent"))
+            # Logout clears the rendered list at once.
+            page.click("#logoutBtn")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'landing'")
+            check("ai-history logout clears list", page.evaluate("document.getElementById('aiHistoryList').innerHTML") == "")
+            # Log back in: the list reloads (10 entries left).
+            page.click("button[data-section='auth']")
+            page.fill("#loginUser", "browseruser")
+            page.fill("#loginPass", "Browser123")
+            page.click("#loginBtn")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'overview'", timeout=10000)
+            page.click("button[data-section='ai-history']")
+            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 10", timeout=15000)
+            check("ai-history reloads after re-login", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 10)
+            # Delete the remaining entries via the API (all 200s,
+            # so no console error is added), then reload the
+            # section: the empty state must show.
+            remaining = page.evaluate("""async () => {
+                const t = sessionStorage.getItem('pdps_token');
+                const r = await fetch('/api/ai/history?limit=50', {headers:{Authorization:'Bearer '+t}});
+                const j = await r.json();
+                for (const e of j.history) { await fetch('/api/ai/history/' + e.id, {method:'DELETE', headers:{Authorization:'Bearer '+t}}); }
+                return j.history.length; }""")
+            check("ai-history api deletes remaining", remaining == 10, str(remaining))
+            page.click("button[data-section='ai-history']")
+            page.wait_for_function("document.getElementById('aiHistoryList').textContent.includes('No AI history yet')", timeout=15000)
+            check("ai-history empty state", "No AI history yet" in page.evaluate("document.getElementById('aiHistoryList').textContent"))
+
             # Reports section screenshot, then dark mode.
             page.click("button[data-section='reports']")
             page.wait_for_timeout(800)
