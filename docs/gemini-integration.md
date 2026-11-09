@@ -779,6 +779,76 @@ was needed for Phase 3.5.
   (including the 44px mobile tap targets) already cover
   this form.
 
+## Phase 3.6 — AI Habit Assistant in the dashboard
+
+The sixth AI section in the dashboard. It calls only
+`POST /api/ai/habit` (Phase 2.6) — no backend change
+was needed for Phase 3.6.
+
+- UI: a nav button `data-section="ai-habit"` in the existing
+  "AI Assistant" group, and a section
+  `<section id="ai-habit">` following the existing section
+  pattern (`<h2>`, `.muted` description, `.card` with the
+  form, action button, `<div id="aiHabitMsg">`, a warning
+  div and the reply div). The section is protected by the
+  existing auth gate: it is NOT in `PUBLIC_SECTIONS`
+  (landing, auth only), the nav button is hidden by the
+  logged-out body class, and the server still returns 401
+  without a session.
+- Form: a habit text input, an optional target-streak number
+  input, a frequency dropdown (daily/weekly, daily selected),
+  an optional reference-date input (`<input type="date">`,
+  which produces `YYYY-MM-DD`) and an optional notes
+  textarea. The "Get habit advice" button sits in its own
+  actions row.
+- Validation (client-side, mirrors the server): the habit is
+  required, non-empty, max 100 UTF-8 code points, and may
+  not contain `|` (control characters are replaced with
+  spaces by the shared 3.1 helper before the check). The
+  target streak is optional but, when filled, must be a
+  strict whole number 1–365 (0, 366, 2.5 and exponent forms
+  are rejected) and is sent as a JSON number. The frequency
+  is always sent (daily is the server default). The
+  reference date is optional — empty means "use the server
+  date" and the field is omitted; when filled it must be a
+  real calendar date within ±2 days of the user's local
+  date (the server re-validates against its own date and is
+  the authority, so a server 400 surfaces as the friendly
+  "Invalid input" message). Notes are max 2000 UTF-8 code
+  points. Validation errors are shown immediately, before
+  any network call.
+- Newlines are safe here: the habit route decodes JSON
+  escapes properly (unlike 2.1–2.4), so notes keep their
+  line breaks; control characters are still replaced with
+  spaces for consistency, using the shared 3.1 helper.
+- Reply: rendered with `esc()` into the reply div (never raw
+  `innerHTML`); line breaks are preserved by the `.ai-reply`
+  CSS class (`white-space: pre-wrap`). The `history_id` is
+  shown next to the success message. This endpoint verifies
+  the history save (read-back) — a failed save is a 502,
+  never a 200 — but if `history_id` is ever 0, the reply is
+  shown AND the same "not saved" warning as in 3.1–3.5. The
+  server computes the real streaks from the caller's OWN
+  habit log (read-only — no habit data is ever changed) —
+  Gemini never calculates, so the UI does not display
+  streak figures separately.
+- Loading/error states: the button is disabled and shows
+  "Thinking…" while the call runs (double-submit blocked);
+  an error clears any stale reply. `400
+  {"error":"invalid input"}` shows a friendly "Invalid
+  input" message; `401` is handled by the shared `api()`
+  (forced logout to Login); `501` explains that AI needs
+  the C++ server; `502`/`503`/`504` show the server's
+  message with a short note. No API key is ever sent,
+  logged or shown by the frontend.
+- Files: `dashboard/index.html`, `dashboard/app.js`,
+  `tests/browser_test.py`, `tests/auth_gate_test.py`,
+  `tests/mobile_test.py`. No `dashboard/style.css` change
+  was needed: the 3.1 `textarea`, `.ai-reply` and
+  `.ai-opt-row` rules and the existing `input`/`select`
+  styling (including the 44px mobile tap targets) already
+  cover this form.
+
 ## Tests
 
 ```sh
