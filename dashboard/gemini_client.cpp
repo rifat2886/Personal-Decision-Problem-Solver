@@ -30,7 +30,13 @@ namespace {
 
 // Default model and API base. Both are overridable by environment
 // for tests (GEMINI_MODEL, GEMINI_API_BASE_URL); the key never is.
-const char* kDefaultModel = "gemini-2.0-flash";
+// Model history (verified live 2026-11-09): gemini-2.0-flash and
+// gemini-2.5-flash are retired (API 404); gemini-3.8-flash exists
+// but returned 503 high demand on every attempt (0/4 replies), so
+// it is NOT the default yet — select it with GEMINI_MODEL when it
+// serves again. gemini-3-flash-preview is the verified working
+// model and the default until then.
+const char* kDefaultModel = "gemini-3-flash-preview";
 const size_t kMaxPromptChars = 8000;
 
 // Count UTF-8 code points (not bytes): a byte starts a new

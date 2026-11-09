@@ -23,6 +23,7 @@
 
 #include "file_lock.h"
 #include "data_owner.h"
+#include "console_pg.h"
 #include "task_data.h"
 
 #include <fstream>
@@ -57,7 +58,34 @@ inline std::vector<std::string> splitPipe(const std::string& line) {
 // file does not exist). Also fills the shared in-memory taskList.
 // Other users' and legacy records are NOT returned here, so callers
 // cannot see them; saveTasks() preserves them on disk (see below).
+// In Postgres mode the same rows come from the shared tasks table.
 inline std::vector<Task> loadTasks() {
+    if (console_pg::pgMode()) {
+        std::vector<Task> tasks;
+        for (const auto& line : console_pg::readLines("tasks")) {
+            auto parts = splitPipe(line);
+            if (parts.size() < 6) continue;
+            Task t;
+            t.id = parts[0];
+            t.title = parts[1];
+            try {
+                t.urgency = std::stoi(parts[2]);
+                t.importance = std::stoi(parts[3]);
+            } catch (...) {
+                continue;
+            }
+            if (t.urgency < 1 || t.urgency > 10 || t.importance < 1 ||
+                t.importance > 10)
+                continue;
+            t.deadline = parts[4];
+            t.status = parts[5];
+            t.owner = parts.size() >= 7 ? parts[6] : "";
+            if (!console_pg::lineVisible(line, 6)) continue;
+            tasks.push_back(t);
+        }
+        taskList = tasks;
+        return tasks;
+    }
     FileLock lock("tasks.txt");
     std::vector<Task> tasks;
     std::ifstream input("tasks.txt");
@@ -92,7 +120,22 @@ inline std::vector<Task> loadTasks() {
 // ids where set and assigning new sequential ids where empty, AND
 // preserving every other user's and legacy line verbatim on disk.
 // Held under the lock.
+// In Postgres mode the same visible rows are replaced in the shared
+// tasks table (other users' and hidden legacy rows untouched).
 inline void saveTasks(const std::vector<Task>& tasks) {
+    if (console_pg::pgMode()) {
+        std::vector<std::string> lines;
+        for (const auto& t : tasks) {
+            std::string owner = t.owner.empty() ? g_currentUser : t.owner;
+            lines.push_back(t.id + "|" + sanitizeField(t.title) + "|" +
+                            std::to_string(t.urgency) + "|" +
+                            std::to_string(t.importance) + "|" +
+                            sanitizeField(t.deadline) + "|" +
+                            sanitizeField(t.status) + "|" + owner);
+        }
+        console_pg::rewriteVisible("tasks", lines);
+        return;
+    }
     FileLock lock("tasks.txt");
     std::vector<std::string> kept;
     {
@@ -141,7 +184,14 @@ inline void saveTasks(const std::vector<Task>& tasks) {
 
 // Append new tasks to tasks.txt, allocating fresh ids after the
 // highest existing id. Used by Task Prioritization.
+// In Postgres mode the SERIAL id is assigned by the database.
 inline void appendTasks(const std::vector<Task>& newTasks) {
+    if (console_pg::pgMode()) {
+        for (const auto& t : newTasks)
+            console_pg::appendTask(t.title, t.urgency, t.importance,
+                                   t.deadline, t.status);
+        return;
+    }
     FileLock lock("tasks.txt");
     std::vector<Task> existing;
     {

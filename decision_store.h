@@ -3,6 +3,7 @@
 
 #include "file_lock.h"
 #include "data_owner.h"
+#include "console_pg.h"
 #include <fstream>
 #include <string>
 
@@ -19,10 +20,6 @@ inline void appendDecisionRecord(const std::string& type,
                                  int priority,
                                  const std::string& title)
 {
-    // Hold the decisions lock for the whole count-then-append, so
-    // a dashboard write cannot interleave and duplicate an id.
-    // The dashboard C++ server uses the same lock file.
-    FileLock lock("decisions.txt");
     std::string safeType = type;
     std::string safeTitle = title;
     for (char& ch : safeType)
@@ -31,6 +28,18 @@ inline void appendDecisionRecord(const std::string& type,
     for (char& ch : safeTitle)
         if (ch == '|' || ch == '\n')
             ch = '/';
+
+    // Phase 4, Batch B: Postgres mode inserts into the shared
+    // decisions table (SERIAL id, record_date "-" as in txt mode).
+    if (console_pg::pgMode()) {
+        console_pg::appendDecision(safeType, priority, safeTitle);
+        return;
+    }
+
+    // Hold the decisions lock for the whole count-then-append, so
+    // a dashboard write cannot interleave and duplicate an id.
+    // The dashboard C++ server uses the same lock file.
+    FileLock lock("decisions.txt");
 
     std::ifstream input("decisions.txt");
     int count = 0;

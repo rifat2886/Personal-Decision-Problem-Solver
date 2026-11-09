@@ -22,16 +22,30 @@ jobs:
   linux:
     name: Linux build and tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: pdps_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Install libcurl development headers
-        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev
+      - name: Install libcurl/libpq development headers and psycopg2
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libpq-dev python3-psycopg2
       - name: Build console and C++ server (strict warnings)
         run: |
           g++ -std=c++17 -Wall -Wextra -Wpedantic -o project admin.cpp backup_restore.cpp budget.cpp compare_options.cpp control.cpp daily_decision.cpp deadline_alert.cpp decision_explanation.cpp delete_confirmation.cpp error_handler.cpp export_report.cpp filter_sort.cpp habit.cpp habit_streak.cpp history.cpp income_expense.cpp input_validation.cpp login.cpp logout.cpp main.cpp multi_task_decision.cpp password_change.cpp password_validation.cpp period_report.cpp priority_calculator.cpp problem.cpp profile.cpp registration.cpp report.cpp savings_goal.cpp search_history.cpp study_planner.cpp task_prioritization.cpp task_status.cpp time_allocation.cpp
-          g++ -std=c++17 -Wall -Wextra -Wpedantic -pthread -o cpp_server dashboard/cpp_server.cpp dashboard/gemini_client.cpp $(curl-config --cflags) $(curl-config --libs)
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -pthread -I/usr/include/postgresql -o cpp_server dashboard/cpp_server.cpp dashboard/gemini_client.cpp $(curl-config --cflags) $(curl-config --libs) -lpq
       - name: Console regression test
         run: python3 tests/console_test.py --binary ./project
       - name: API test against C++ server
@@ -52,6 +66,11 @@ jobs:
         run: python3 tests/gemini_test.py
       - name: AI endpoints test (mock Gemini, no real API)
         run: python3 tests/ai_endpoints_test.py
+      # Postgres mode (Phase 4, Batch D): the service database above is
+      # test-only; pg_test.py drops and recreates the pdps tables first,
+      # so it must never be pointed at a real database.
+      - name: Postgres test (C++ server, service database)
+        run: python3 tests/pg_test.py --server-cmd ./cpp_server --port 8190 --database-url "postgresql://postgres:testpass@localhost:5432/pdps_test"
       - name: Dashboard assets check
         run: |
           python3 - << 'PY'

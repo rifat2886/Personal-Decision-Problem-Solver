@@ -27,12 +27,16 @@ control, for example a local Postgres):
 
 Files migrated: users.txt, decisions.txt, tasks.txt,
 transactions.txt, savings_goals.txt, habit_log.txt,
-decisions_backup.txt, daily_report.txt, error_log.txt.
+decisions_backup.txt, daily_report.txt, error_log.txt,
+ai_history.txt.
 Legacy records (no owner field) are inserted with owner NULL,
 so the legacy visibility rule is preserved exactly.
 IDs from decisions.txt/tasks.txt are preserved, and the SERIAL
 sequences are set to MAX(id) afterwards, so the next insert
-does not collide with a migrated id.
+does not collide with a migrated id. ai_history.txt rows keep
+their ids too (same sequence fix); a row with no usable owner
+is skipped, because the ai_history table requires owner NOT
+NULL and an ownerless row could never be seen by any user.
 """
 
 import argparse
@@ -122,6 +126,82 @@ def parse_habits(lines):
     return out
 
 
+def split_pipe_escaped(s):
+    """Split on '|' but not on '\\|' — mirrors splitPipeEscaped in
+    dashboard/cpp_server.cpp, so ai_history.txt parses exactly as
+    the server reads it."""
+    parts, cur, i = [], [], 0
+    while i < len(s):
+        c = s[i]
+        if c == "\\" and i + 1 < len(s):
+            cur.append(c)
+            cur.append(s[i + 1])
+            i += 2
+        elif c == "|":
+            parts.append("".join(cur))
+            cur = []
+            i += 1
+        else:
+            cur.append(c)
+            i += 1
+    parts.append("".join(cur))
+    return parts
+
+
+def ai_unescape(s):
+    """Reverse aiEscape in dashboard/cpp_server.cpp: \\ -> \\,
+    \\| -> |, \\n -> newline, \\r -> carriage return; an unknown
+    escape keeps the escaped char (same as the server)."""
+    out, i = [], 0
+    while i < len(s):
+        if s[i] == "\\" and i + 1 < len(s):
+            n = s[i + 1]
+            if n == "n":
+                out.append("\n")
+            elif n == "r":
+                out.append("\r")
+            elif n == "|":
+                out.append("|")
+            elif n == "\\":
+                out.append("\\")
+            else:
+                out.append(n)
+            i += 2
+        else:
+            out.append(s[i])
+            i += 1
+    return "".join(out)
+
+
+def parse_ai_history(lines):
+    """Parse ai_history.txt lines:
+    id|created_at|feature|prompt|response|owner, with prompt and
+    response escaped as the server writes them. Returns
+    (rows, skipped): rows are (id, owner, feature, prompt,
+    response, created_at) ready for the ai_history table, ids
+    preserved. A line is skipped (counted, not fatal) when it has
+    fewer than 6 fields, a non-integer id, or no owner — the
+    server's own loader skips short lines the same way, and an
+    ownerless row could never be returned to any user."""
+    out, skipped = [], 0
+    for ln in lines:
+        p = split_pipe_escaped(ln)
+        if len(p) < 6:
+            skipped += 1
+            continue
+        try:
+            row_id = int(p[0])
+        except ValueError:
+            skipped += 1
+            continue
+        owner = p[5]
+        if not owner:
+            skipped += 1
+            continue
+        out.append((row_id, owner, p[2], ai_unescape(p[3]), ai_unescape(p[4]), p[1]))
+    return out, skipped
+
+
 def main():
     ap = argparse.ArgumentParser(description="Migrate PDPS txt data to PostgreSQL (read-only source).")
     ap.add_argument("--data-dir", required=True, help="Directory holding the txt files (use a test copy).")
@@ -144,10 +224,14 @@ def main():
     backup = parse_decisions(read_lines(data_dir, "decisions_backup.txt"))
     daily = read_lines(data_dir, "daily_report.txt")
     errors = read_lines(data_dir, "error_log.txt")
+    ai_history, ai_skipped = parse_ai_history(read_lines(data_dir, "ai_history.txt"))
     counts = {"users": len(users), "decisions": len(decisions), "tasks": len(tasks),
               "transactions": len(txs), "savings_goals": len(goals), "habit_log": len(habits),
-              "decisions_backup": len(backup), "daily_reports": len(daily), "error_logs": len(errors)}
+              "decisions_backup": len(backup), "daily_reports": len(daily), "error_logs": len(errors),
+              "ai_history": len(ai_history)}
     print("Parsed txt counts:", counts)
+    if ai_skipped:
+        print(f"Note: skipped {ai_skipped} malformed/ownerless ai_history.txt line(s); they could never be returned to any user.")
     if args.dry_run:
         print("Dry run: no backup, no database writes.")
         return 0
@@ -169,7 +253,7 @@ def main():
                 with open(schema, encoding="utf-8") as f:
                     cur.execute(f.read())
             existing = {}
-            for table in ("users", "decisions", "tasks", "transactions", "savings_goals", "habit_log"):
+            for table in ("users", "decisions", "tasks", "transactions", "savings_goals", "habit_log", "ai_history"):
                 cur.execute(f"SELECT COUNT(*) FROM {table}")
                 existing[table] = cur.fetchone()[0]
             if not args.allow_nonempty and any(existing.values()):
@@ -201,8 +285,11 @@ def main():
                 cur.execute("INSERT INTO daily_reports (line) VALUES (%s)", (ln,))
             for ln in errors:
                 cur.execute("INSERT INTO error_logs (line) VALUES (%s)", (ln,))
+            for h in ai_history:
+                cur.execute("INSERT INTO ai_history (id, owner, feature, prompt, response, created_at) VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO NOTHING", h)
             cur.execute("SELECT setval('decisions_id_seq', COALESCE((SELECT MAX(id) FROM decisions), 1))")
             cur.execute("SELECT setval('tasks_id_seq', COALESCE((SELECT MAX(id) FROM tasks), 1))")
+            cur.execute("SELECT setval('ai_history_id_seq', COALESCE((SELECT MAX(id) FROM ai_history), 1))")
         conn.commit()
         # Verify counts back from Postgres.
         with conn.cursor() as cur:

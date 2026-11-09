@@ -113,5 +113,6 @@ void taskPrioritization() {
     // dashboard all see them (previously they were in-memory only
     // and lost when the console app exited).
     pdps_tasks::appendTasks(taskList);
-    cout << "Tasks saved to tasks.txt.\n";
+    cout << (console_pg::pgMode() ? "Tasks saved to the database.\n"
+                                  : "Tasks saved to tasks.txt.\n");
 }

@@ -9,7 +9,18 @@ if [ ! -x ./project ]; then
     echo "ERROR: g++ was not found. Install a C++ compiler (for example: sudo apt install g++), then run this script again. See RUN.md."
     exit 1
   fi
-  g++ -std=c++17 -Wall -Wextra -o project admin.cpp backup_restore.cpp budget.cpp compare_options.cpp control.cpp daily_decision.cpp deadline_alert.cpp decision_explanation.cpp delete_confirmation.cpp error_handler.cpp export_report.cpp filter_sort.cpp habit.cpp habit_streak.cpp history.cpp income_expense.cpp input_validation.cpp login.cpp logout.cpp main.cpp multi_task_decision.cpp password_change.cpp password_validation.cpp period_report.cpp priority_calculator.cpp problem.cpp profile.cpp registration.cpp report.cpp savings_goal.cpp search_history.cpp study_planner.cpp task_prioritization.cpp task_status.cpp time_allocation.cpp || {
+  # Phase 4, Batch B: link libpq only when pg_config exists (the
+  # case when libpq-dev is installed), so the console can use the
+  # shared PostgreSQL database when DATABASE_URL is set. Without
+  # pg_config the console builds txt-only, as before.
+  PG_CFLAGS=""
+  PG_LIBS=""
+  if command -v pg_config >/dev/null 2>&1; then
+    PG_CFLAGS="-I$(pg_config --includedir)"
+    PG_LIBS="-lpq"
+  fi
+  # shellcheck disable=SC2086
+  g++ -std=c++17 -Wall -Wextra $PG_CFLAGS -o project admin.cpp backup_restore.cpp budget.cpp compare_options.cpp control.cpp daily_decision.cpp deadline_alert.cpp decision_explanation.cpp delete_confirmation.cpp error_handler.cpp export_report.cpp filter_sort.cpp habit.cpp habit_streak.cpp history.cpp income_expense.cpp input_validation.cpp login.cpp logout.cpp main.cpp multi_task_decision.cpp password_change.cpp password_validation.cpp period_report.cpp priority_calculator.cpp problem.cpp profile.cpp registration.cpp report.cpp savings_goal.cpp search_history.cpp study_planner.cpp task_prioritization.cpp task_status.cpp time_allocation.cpp $PG_LIBS || {
     echo "ERROR: the build failed. See the messages above, or RUN.md troubleshooting."
     exit 1
   }

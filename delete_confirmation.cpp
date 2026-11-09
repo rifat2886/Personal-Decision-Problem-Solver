@@ -1,4 +1,5 @@
 #include "delete_confirmation.h"
+#include "console_pg.h"
 #include "data_owner.h"
 #include "file_lock.h"
 #include <iostream>
@@ -23,6 +24,25 @@ void confirmDelete(const string& id)
     if (choice != 'y' && choice != 'Y')
     {
         cout << "Delete cancelled.\n";
+        return;
+    }
+
+    // Phase 4, Batch B: Postgres mode deletes the one visible row
+    // with this id from the shared decisions table.
+    if (console_pg::pgMode())
+    {
+        bool deleted = false;
+        if (!console_pg::deleteById("decisions", id, deleted))
+        {
+            cout << "Could not delete decision.\n";
+            return;
+        }
+        if (!deleted)
+        {
+            cout << "Decision ID not found.\n";
+            return;
+        }
+        cout << "Decision deleted successfully.\n";
         return;
     }
 

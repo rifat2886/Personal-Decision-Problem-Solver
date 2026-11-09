@@ -61,7 +61,10 @@ bool available();
 // whether libcurl was compiled in).
 bool configured();
 
-// Model from GEMINI_MODEL, or "gemini-2.0-flash" when unset/invalid.
+// Model from GEMINI_MODEL, or "gemini-3-flash-preview" when
+// unset/invalid. The fallback model is gemini-3-flash-preview
+// (verified working live); the production target gemini-3.8-flash
+// is selectable with GEMINI_MODEL once it serves reliably.
 std::string modelName();
 
 // Send one prompt to Gemini and return the reply text.

@@ -1,4 +1,5 @@
 #include "filter_sort.h"
+#include "console_pg.h"
 #include "data_owner.h"
 #include <iostream>
 #include <fstream>
@@ -20,12 +21,26 @@ struct DecisionRecord
 vector<DecisionRecord> loadDecisions()
 {
     vector<DecisionRecord> records;
-    ifstream file("decisions.txt");
-    string line;
 
-    while (getline(file, line))
+    // Phase 4, Batch B: load the lines from the shared table in
+    // Postgres mode, or from decisions.txt as before.
+    std::vector<std::string> lines;
+    if (console_pg::pgMode())
     {
-        if (!lineVisibleFor(line, 5)) continue;
+        lines = console_pg::readLines("decisions");
+    }
+    else
+    {
+        std::ifstream file("decisions.txt");
+        std::string l;
+        while (std::getline(file, l)) lines.push_back(l);
+    }
+
+    for (const auto& line : lines)
+    {
+        if (console_pg::pgMode()) {
+            if (!console_pg::lineVisible(line, 5)) continue;
+        } else if (!lineVisibleFor(line, 5)) continue;
         stringstream ss(line);
         DecisionRecord d;
         string priorityText;

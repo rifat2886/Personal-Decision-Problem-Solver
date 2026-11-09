@@ -56,8 +56,15 @@ SOURCES = admin.cpp \
 
 all: project cpp_server
 
-project: $(SOURCES) *.h
-	$(CXX) $(CXXFLAGS) -o project $(SOURCES)
+project: $(SOURCES) *.h dashboard/pg_store.h console_pg.h
+	$(CXX) $(CXXFLAGS) $(PG_CFLAGS) -o project $(SOURCES) $(PG_LIBS)
+
+# Postgres mode (Route 2, Phase 1) for the console too (Phase 4,
+# Batch B): PG_LIBS/PG_CFLAGS above are shared with the console
+# target, so `make project` links -lpq and finds libpq-fe.h only
+# when libpq-dev is installed. Without pg_config, the console
+# compiles Postgres support out (see console_pg.h) and still builds
+# and runs in txt mode.
 
 # Postgres mode (Route 2, Phase 1): link libpq only when pg_config
 # exists, which is the case when libpq-dev is installed. (Do NOT
