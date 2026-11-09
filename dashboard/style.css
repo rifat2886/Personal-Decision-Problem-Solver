@@ -277,3 +277,29 @@ body.logged-out .sidebar button[data-section]:not([data-section="landing"]):not(
 body.logged-out .sidebar .nav-group {
   display: none !important;
 }
+
+/* ---- AI Daily Decision (Phase 3.1): new rules only, existing
+   rules above are untouched. The reply keeps the AI's line
+   breaks (white-space: pre-wrap) without any raw innerHTML —
+   app.js renders it with esc(). The textarea matches the
+   input/select styling, which does not cover textarea. */
+textarea {
+  display: block; width: 100%; margin-top: 5px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 9px;
+  background: var(--surface); color: var(--text); font: inherit; resize: vertical;
+}
+textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: var(--primary); }
+.ai-reply { white-space: pre-wrap; word-break: break-word; margin-top: 12px; }
+/* ---- AI History (Phase 3.7): one entry after another, separated
+   by a divider instead of nested cards. */
+.ai-history-entry { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
+.ai-history-entry:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+.ai-history-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ai-history-head .btn { margin-left: auto; }
+.ai-opt-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.ai-opt-row input { flex: 1; margin: 0; }
+.ai-opt-row .btn { flex-shrink: 0; }
+@media (max-width: 720px) {
+  textarea { min-height: 44px; padding: 12px; font-size: 16px; }
+  .ai-opt-row { flex-wrap: wrap; }
+}

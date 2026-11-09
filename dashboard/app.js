@@ -84,6 +84,14 @@ function clearSession() {
   sessionStorage.removeItem("pdps_token");
   sessionStorage.removeItem("pdps_user");
   setAuthState(false, "");
+  // The AI history list is the previous user's data: never leave
+  // it on screen after logout (it is reloaded on next login).
+  // clearSession only ever runs from event handlers / promise
+  // callbacks, i.e. after the whole script has evaluated, so the
+  // aiHistoryEntries declaration below has already run.
+  aiHistoryEntries = [];
+  const aiList = el("aiHistoryList");
+  if (aiList) aiList.innerHTML = "";
 }
 
 // Session expired / invalid on any protected call: drop the local
@@ -174,6 +182,7 @@ function showSection(name) {
   if (name === "finance") loadTransactions();
   if (name === "savings") loadSavings();
   if (name === "habits") loadHabits();
+  if (name === "ai-history") loadAiHistory();
   if (name === "profile") loadProfile();
   if (name === "admin") loadAdmin();
   if (name === "analytics") loadAnalytics();
@@ -298,6 +307,789 @@ el("mtBtn").addEventListener("click", async () => {
       " | Remaining energy " + r.remainingEnergy + ", time " + r.remainingTime + " min.", true);
   } catch (e) { showMsg("mtMsg", e.message, false); }
 });
+
+// -- AI Daily Decision (Phase 3.1) ----------------------------------
+// POST /api/ai/daily-decision. Server contract (verified from
+// cpp_server.cpp): input required, trimmed, non-empty, max 4000
+// BYTES (std::string::size(), not code points — a Bengali
+// character is 3 bytes); options optional, max 10, each trimmed,
+// non-empty, max 500 BYTES; empty options are ignored by the
+// server and are not sent at all here. The server's old JSON
+// helpers do NOT decode escapes, so newlines, tabs and other
+// control characters are replaced with spaces BEFORE sending —
+// otherwise "\n" would arrive at the server as the letter "n".
+// The reply is rendered with esc() only (never raw innerHTML).
+// history_id 0 means the reply arrived but the history row was
+// not saved (this endpoint has no save read-back check).
+const AI_DAILY_MAX_INPUT_BYTES = 4000;
+const AI_DAILY_MAX_OPTION_BYTES = 500;
+const AI_DAILY_MAX_OPTIONS = 10;
+
+function aiDailyByteLen(s) { return new TextEncoder().encode(s).length; }
+function aiDailySanitize(s) { return s.replace(/[\x00-\x1F\x7F]/g, " "); }
+
+function aiDailyOptCount() { return document.querySelectorAll("#aiDailyOptions .ai-opt-row").length; }
+function aiDailySyncAddBtn() {
+  el("aiDailyAddOpt").disabled = aiDailyOptCount() >= AI_DAILY_MAX_OPTIONS;
+}
+function addAiDailyOptRow() {
+  if (aiDailyOptCount() >= AI_DAILY_MAX_OPTIONS) return;
+  const div = document.createElement("div");
+  div.className = "ai-opt-row";
+  div.innerHTML = `<input placeholder="Option (optional)" class="ai-opt-input"><button type="button" class="btn btn-secondary ai-opt-remove">Remove</button>`;
+  div.querySelector(".ai-opt-remove").addEventListener("click", () => { div.remove(); aiDailySyncAddBtn(); });
+  el("aiDailyOptions").appendChild(div);
+  aiDailySyncAddBtn();
+}
+addAiDailyOptRow();
+el("aiDailyAddOpt").addEventListener("click", addAiDailyOptRow);
+
+el("aiDailyBtn").addEventListener("click", async () => {
+  const btn = el("aiDailyBtn");
+  const replyBox = el("aiDailyReply");
+  clearMsg("aiDailyMsg");
+  clearMsg("aiDailyWarn");
+  replyBox.innerHTML = "";
+  // Client-side validation mirrors the server, so the user gets an
+  // immediate error instead of a round trip that would fail anyway.
+  const input = aiDailySanitize(el("aiDailyInput").value.trim());
+  if (!input) { showMsg("aiDailyMsg", "Please describe the decision first.", false); return; }
+  if (aiDailyByteLen(input) > AI_DAILY_MAX_INPUT_BYTES) {
+    showMsg("aiDailyMsg", "Input is too long: maximum 4000 bytes (a Bengali character counts as 3 bytes).", false);
+    return;
+  }
+  const options = [];
+  let optionTooLong = false;
+  document.querySelectorAll("#aiDailyOptions .ai-opt-input").forEach(inp => {
+    const v = aiDailySanitize(inp.value.trim());
+    if (!v) return; // empty rows are ignored, never sent
+    if (aiDailyByteLen(v) > AI_DAILY_MAX_OPTION_BYTES) { optionTooLong = true; return; }
+    options.push(v);
+  });
+  if (optionTooLong) {
+    showMsg("aiDailyMsg", "An option is too long: maximum 500 bytes each (a Bengali character counts as 3 bytes).", false);
+    return;
+  }
+  const body = { input };
+  if (options.length) body.options = options;
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = "Thinking…";
+  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  try {
+    const r = await api("/api/ai/daily-decision", { method: "POST", body: JSON.stringify(body) });
+    replyBox.innerHTML = esc(r.reply || "");
+    let msg = "AI suggestion received.";
+    if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
+    showMsg("aiDailyMsg", msg, true);
+    if (r.history_id === 0) {
+      showMsg("aiDailyWarn", "Note: the reply was received, but it was NOT saved to your AI history.", false);
+    }
+  } catch (e) {
+    // A stale reply must never stay on screen after an error.
+    replyBox.innerHTML = "";
+    // api() already forces a logout on 401; the other messages come
+    // from the server (data.error) and are shown with a short note.
+    const m = e.message || "Request failed.";
+    if (m === "invalid input") showMsg("aiDailyMsg", "Invalid input — please check the fields and try again.", false);
+    else if (m === "AI requires the C++ server") showMsg("aiDailyMsg", "AI requires the C++ server — this Python fallback server cannot run AI features.", false);
+    else if (m === "AI unavailable" || m === "AI configuration error" || m === "AI request limit reached") showMsg("aiDailyMsg", m + " Please try again later.", false);
+    else if (m === "AI request timed out") showMsg("aiDailyMsg", "AI request timed out. Please try again.", false);
+    else if (m === "AI request failed") showMsg("aiDailyMsg", "AI request failed. Please try again later.", false);
+    else showMsg("aiDailyMsg", m, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+});
+
+// -- AI Task Analyzer (Phase 3.2) ---------------------------------
+// POST /api/ai/task-analyzer. Server contract (verified from
+// cpp_server.cpp): description required, trimmed, non-empty, max
+// 4000 BYTES (std::string::size(), not code points — same as
+// 3.1); title optional, trimmed, non-empty, max 500 BYTES;
+// urgency/importance optional strict integers 1-10, sent as JSON
+// numbers; deadline optional free text, trimmed, non-empty, max
+// 100 BYTES — the server does NO date validation, so the UI uses
+// a plain text field, never a date picker; status optional, one
+// of pending / in-progress / done (the server also accepts the
+// aliases in_progress and completed, but the UI only ever sends
+// the canonical values). Same escape quirk as 3.1: control
+// characters are replaced with spaces BEFORE sending, because
+// the server's old JSON helpers do not decode escapes.
+// history_id 0 means the reply arrived but the history row was
+// not saved (this endpoint has no save read-back check).
+// Byte length and sanitization reuse the 3.1 helpers.
+const AI_TASK_MAX_DESC_BYTES = 4000;
+const AI_TASK_MAX_TITLE_BYTES = 500;
+const AI_TASK_MAX_DEADLINE_BYTES = 100;
+
+function aiTaskStrictInt(s) {
+  if (!/^-?\d+$/.test(s)) return null;
+  const n = Number(s);
+  if (!Number.isInteger(n) || n < 1 || n > 10) return null;
+  return n;
+}
+
+el("aiTaskBtn").addEventListener("click", async () => {
+  const btn = el("aiTaskBtn");
+  const replyBox = el("aiTaskReply");
+  clearMsg("aiTaskMsg");
+  clearMsg("aiTaskWarn");
+  replyBox.innerHTML = "";
+  // Client-side validation mirrors the server, so the user gets an
+  // immediate error instead of a round trip that would fail anyway.
+  const desc = aiDailySanitize(el("aiTaskDesc").value.trim());
+  if (!desc) { showMsg("aiTaskMsg", "Please describe the task first.", false); return; }
+  if (aiDailyByteLen(desc) > AI_TASK_MAX_DESC_BYTES) {
+    showMsg("aiTaskMsg", "Description is too long: maximum 4000 bytes (a Bengali character counts as 3 bytes).", false);
+    return;
+  }
+  const title = aiDailySanitize(el("aiTaskTitle").value.trim());
+  if (title && aiDailyByteLen(title) > AI_TASK_MAX_TITLE_BYTES) {
+    showMsg("aiTaskMsg", "Title is too long: maximum 500 bytes (a Bengali character counts as 3 bytes).", false);
+    return;
+  }
+  const urgencyRaw = el("aiTaskUrgency").value.trim();
+  const urgency = urgencyRaw === "" ? null : aiTaskStrictInt(urgencyRaw);
+  if (urgencyRaw !== "" && urgency === null) {
+    showMsg("aiTaskMsg", "Urgency must be a whole number from 1 to 10.", false);
+    return;
+  }
+  const importanceRaw = el("aiTaskImportance").value.trim();
+  const importance = importanceRaw === "" ? null : aiTaskStrictInt(importanceRaw);
+  if (importanceRaw !== "" && importance === null) {
+    showMsg("aiTaskMsg", "Importance must be a whole number from 1 to 10.", false);
+    return;
+  }
+  const deadline = aiDailySanitize(el("aiTaskDeadline").value.trim());
+  if (deadline && aiDailyByteLen(deadline) > AI_TASK_MAX_DEADLINE_BYTES) {
+    showMsg("aiTaskMsg", "Deadline is too long: maximum 100 bytes (a Bengali character counts as 3 bytes).", false);
+    return;
+  }
+  const status = el("aiTaskStatus").value;
+  const body = { description: desc };
+  if (title) body.title = title;
+  if (urgency !== null) body.urgency = urgency;
+  if (importance !== null) body.importance = importance;
+  if (deadline) body.deadline = deadline;
+  if (status) body.status = status;
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = "Thinking…";
+  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  try {
+    const r = await api("/api/ai/task-analyzer", { method: "POST", body: JSON.stringify(body) });
+    replyBox.innerHTML = esc(r.reply || "");
+    let msg = "AI analysis received.";
+    if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
+    showMsg("aiTaskMsg", msg, true);
+    if (r.history_id === 0) {
+      showMsg("aiTaskWarn", "Note: the reply was received, but it was NOT saved to your AI history.", false);
+    }
+  } catch (e) {
+    // A stale reply must never stay on screen after an error.
+    replyBox.innerHTML = "";
+    // api() already forces a logout on 401; the other messages come
+    // from the server (data.error) and are shown with a short note.
+    const m = e.message || "Request failed.";
+    if (m === "invalid input") showMsg("aiTaskMsg", "Invalid input — please check the fields and try again.", false);
+    else if (m === "AI requires the C++ server") showMsg("aiTaskMsg", "AI requires the C++ server — this Python fallback server cannot run AI features.", false);
+    else if (m === "AI unavailable" || m === "AI configuration error" || m === "AI request limit reached") showMsg("aiTaskMsg", m + " Please try again later.", false);
+    else if (m === "AI request timed out") showMsg("aiTaskMsg", "AI request timed out. Please try again.", false);
+    else if (m === "AI request failed") showMsg("aiTaskMsg", "AI request failed. Please try again later.", false);
+    else showMsg("aiTaskMsg", m, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+});
+
+// -- AI Study Planner (Phase 3.3) ---------------------------------
+// POST /api/ai/study-planner. Server contract (verified from
+// cpp_server.cpp): subjects REQUIRED, a JSON array of strings,
+// 1-10 items (checked before dedup), each trimmed, non-empty,
+// max 200 BYTES; the server dedupes case-insensitively, and the
+// UI does the same and says so. hours_per_day REQUIRED, a plain
+// JSON number 0.5-24 — the server's jsonNumberField truncates
+// exponents ("1e3" -> 1) and dotted junk ("3.5.2" -> 3.5), so the
+// UI only ever sends a plain decimal number. exam_date optional,
+// strict YYYY-MM-DD, a real calendar date, today-or-future by the
+// SERVER's local date (the UI checks against the user's local
+// date; the server is the authority). description optional,
+// trimmed, non-empty, max 4000 BYTES (description wins over the
+// "input" compat alias; the UI only sends "description"). Same
+// escape quirk as 3.1/3.2: control characters are replaced with
+// spaces BEFORE sending. This endpoint verifies the history save
+// (read-back) — a failed save is a 502, never a 200 — but a
+// history_id of 0 is still handled with the same warning.
+// Byte length and sanitization reuse the 3.1 helpers.
+const AI_STUDY_MAX_SUBJECTS = 10;
+const AI_STUDY_MAX_SUBJECT_BYTES = 200;
+const AI_STUDY_MAX_DESC_BYTES = 4000;
+
+function aiStudySubjectCount() { return document.querySelectorAll("#aiStudySubjects .ai-opt-row").length; }
+function aiStudySyncAddBtn() {
+  el("aiStudyAddSubject").disabled = aiStudySubjectCount() >= AI_STUDY_MAX_SUBJECTS;
+}
+function addAiStudySubjectRow() {
+  if (aiStudySubjectCount() >= AI_STUDY_MAX_SUBJECTS) return;
+  const div = document.createElement("div");
+  div.className = "ai-opt-row";
+  div.innerHTML = `<input placeholder="Subject (e.g. Maths)" class="ai-subject-input"><button type="button" class="btn btn-secondary ai-opt-remove">Remove</button>`;
+  div.querySelector(".ai-opt-remove").addEventListener("click", () => { div.remove(); aiStudySyncAddBtn(); });
+  el("aiStudySubjects").appendChild(div);
+  aiStudySyncAddBtn();
+}
+addAiStudySubjectRow();
+el("aiStudyAddSubject").addEventListener("click", addAiStudySubjectRow);
+
+function aiStudyValidHours(s) {
+  // Plain decimal only: no exponent, no sign, no trailing junk.
+  if (!/^(\d+(\.\d+)?|\.\d+)$/.test(s)) return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < 0.5 || n > 24) return null;
+  return n;
+}
+function aiStudyValidExamDate(s) {
+  // Strict YYYY-MM-DD, real calendar date, today-or-future
+  // by the user's local date.
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return false;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (mo < 1 || mo > 12 || d < 1) return false;
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const dim = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1];
+  if (d > dim) return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return new Date(y, mo - 1, d) >= today;
+}
+
+el("aiStudyBtn").addEventListener("click", async () => {
+  const btn = el("aiStudyBtn");
+  const replyBox = el("aiStudyReply");
+  clearMsg("aiStudyMsg");
+  clearMsg("aiStudyWarn");
+  replyBox.innerHTML = "";
+  // Client-side validation mirrors the server, so the user gets an
+  // immediate error instead of a round trip that would fail anyway.
+  const subjects = [];
+  let subjectTooLong = false;
+  document.querySelectorAll("#aiStudySubjects .ai-subject-input").forEach(inp => {
+    const v = aiDailySanitize(inp.value.trim());
+    if (!v) return; // empty rows are ignored, never sent
+    if (aiDailyByteLen(v) > AI_STUDY_MAX_SUBJECT_BYTES) { subjectTooLong = true; return; }
+    subjects.push(v);
+  });
+  if (subjectTooLong) {
+    showMsg("aiStudyMsg", "A subject is too long: maximum 200 bytes each (a Bengali character counts as 3 bytes).", false);
+    return;
+  }
+  if (!subjects.length) { showMsg("aiStudyMsg", "Please add at least one subject first.", false); return; }
+  if (subjects.length > AI_STUDY_MAX_SUBJECTS) {
+    showMsg("aiStudyMsg", "Too many subjects: maximum 10.", false);
+    return;
+  }
+  // Dedupe case-insensitively, first occurrence wins (like the server).
+  const seen = new Set(), deduped = [];
+  subjects.forEach(s => { const k = s.toLowerCase(); if (!seen.has(k)) { seen.add(k); deduped.push(s); } });
+  const dupCount = subjects.length - deduped.length;
+  const hoursRaw = el("aiStudyHours").value.trim();
+  const hours = hoursRaw === "" ? null : aiStudyValidHours(hoursRaw);
+  if (hours === null) {
+    showMsg("aiStudyMsg", "Hours per day must be a number from 0.5 to 24.", false);
+    return;
+  }
+  const examDate = el("aiStudyExam").value.trim();
+  if (examDate && !aiStudyValidExamDate(examDate)) {
+    showMsg("aiStudyMsg", "Exam date must be a valid date, today or in the future (YYYY-MM-DD).", false);
+    return;
+  }
+  const desc = aiDailySanitize(el("aiStudyDesc").value.trim());
+  if (desc && aiDailyByteLen(desc) > AI_STUDY_MAX_DESC_BYTES) {
+    showMsg("aiStudyMsg", "Description is too long: maximum 4000 bytes (a Bengali character counts as 3 bytes).", false);
+    return;
+  }
+  const body = { subjects: deduped, hours_per_day: hours };
+  if (examDate) body.exam_date = examDate;
+  if (desc) body.description = desc;
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = "Thinking…";
+  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  try {
+    const r = await api("/api/ai/study-planner", { method: "POST", body: JSON.stringify(body) });
+    replyBox.innerHTML = esc(r.reply || "");
+    let msg = "AI study plan received (" + deduped.length + (deduped.length === 1 ? " subject" : " subjects") + ").";
+    if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
+    showMsg("aiStudyMsg", msg, true);
+    let warn = "";
+    if (dupCount) warn = "Note: " + dupCount + (dupCount === 1 ? " duplicate subject was" : " duplicate subjects were") + " removed.";
+    if (r.history_id === 0) warn = "Note: the reply was received, but it was NOT saved to your AI history.";
+    if (warn) showMsg("aiStudyWarn", warn, false);
+  } catch (e) {
+    // A stale reply must never stay on screen after an error.
+    replyBox.innerHTML = "";
+    // api() already forces a logout on 401; the other messages come
+    // from the server (data.error) and are shown with a short note.
+    const m = e.message || "Request failed.";
+    if (m === "invalid input") showMsg("aiStudyMsg", "Invalid input — please check the fields and try again.", false);
+    else if (m === "AI requires the C++ server") showMsg("aiStudyMsg", "AI requires the C++ server — this Python fallback server cannot run AI features.", false);
+    else if (m === "AI unavailable" || m === "AI configuration error" || m === "AI request limit reached") showMsg("aiStudyMsg", m + " Please try again later.", false);
+    else if (m === "AI request timed out") showMsg("aiStudyMsg", "AI request timed out. Please try again.", false);
+    else if (m === "AI request failed") showMsg("aiStudyMsg", "AI request failed. Please try again later.", false);
+    else showMsg("aiStudyMsg", m, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+});
+
+// -- AI Problem Solver (Phase 3.4) ---------------------------------
+// POST /api/ai/problem-solver. Server contract (verified from
+// cpp_server.cpp): problem REQUIRED, trimmed, non-empty, max
+// 4000 UTF-8 CODE POINTS — counted as characters, NOT bytes
+// (the server uses utf8CodePoints(); a 4000-Bengali-char problem
+// is about 12000 bytes and is VALID — the 2.4 change to
+// gemini_client.cpp counts the prompt budget in code points
+// exactly so this works). The "input" compat alias exists, but
+// the UI only sends "problem". Same escape quirk as 3.1-3.3:
+// control characters are replaced with spaces BEFORE sending,
+// because the server's old JSON helpers do not decode escapes.
+// This endpoint verifies the history save (read-back) — a failed
+// save is a 502, never a 200 — but a history_id of 0 is still
+// handled with the same warning. Sanitization reuses the 3.1
+// helper; the code-point count is new (spreading a string counts
+// code points, so astral characters count as one).
+const AI_PROBLEM_MAX_CODE_POINTS = 4000;
+
+function aiProblemCodePoints(s) { return [...s].length; }
+
+el("aiProblemBtn").addEventListener("click", async () => {
+  const btn = el("aiProblemBtn");
+  const replyBox = el("aiProblemReply");
+  clearMsg("aiProblemMsg");
+  clearMsg("aiProblemWarn");
+  replyBox.innerHTML = "";
+  // Client-side validation mirrors the server, so the user gets an
+  // immediate error instead of a round trip that would fail anyway.
+  const problem = aiDailySanitize(el("aiProblemDesc").value.trim());
+  if (!problem) { showMsg("aiProblemMsg", "Please describe the problem first.", false); return; }
+  if (aiProblemCodePoints(problem) > AI_PROBLEM_MAX_CODE_POINTS) {
+    showMsg("aiProblemMsg", "Problem is too long: maximum 4000 characters.", false);
+    return;
+  }
+  const body = { problem };
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = "Thinking…";
+  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  try {
+    const r = await api("/api/ai/problem-solver", { method: "POST", body: JSON.stringify(body) });
+    replyBox.innerHTML = esc(r.reply || "");
+    let msg = "AI solution received.";
+    if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
+    showMsg("aiProblemMsg", msg, true);
+    if (r.history_id === 0) {
+      showMsg("aiProblemWarn", "Note: the reply was received, but it was NOT saved to your AI history.", false);
+    }
+  } catch (e) {
+    // A stale reply must never stay on screen after an error.
+    replyBox.innerHTML = "";
+    // api() already forces a logout on 401; the other messages come
+    // from the server (data.error) and are shown with a short note.
+    const m = e.message || "Request failed.";
+    if (m === "invalid input") showMsg("aiProblemMsg", "Invalid input — please check the fields and try again.", false);
+    else if (m === "AI requires the C++ server") showMsg("aiProblemMsg", "AI requires the C++ server — this Python fallback server cannot run AI features.", false);
+    else if (m === "AI unavailable" || m === "AI configuration error" || m === "AI request limit reached") showMsg("aiProblemMsg", m + " Please try again later.", false);
+    else if (m === "AI request timed out") showMsg("aiProblemMsg", "AI request timed out. Please try again.", false);
+    else if (m === "AI request failed") showMsg("aiProblemMsg", "AI request failed. Please try again later.", false);
+    else showMsg("aiProblemMsg", m, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+});
+
+// -- AI Budget Assistant (Phase 3.5) ------------------------------
+// POST /api/ai/budget. Server contract (verified from
+// cpp_server.cpp): all fields optional, but at least one
+// meaningful field is required ({} and {"expenses": []} alone
+// are 400). `income` is a strict JSON number 0–1e9 — and
+// income 0 COUNTS as provided, so it must never be treated
+// as empty. `expenses` is an array of at most 20 items, each
+// {category (non-empty, max 100 UTF-8 code points), amount
+// (number 0–1e9)} — both required per item. `savings_goal`
+// needs ALL THREE sub-fields {name (max 200 code points),
+// target (>0, max 1e9), saved (>=0, max 1e9)} or none at all.
+// `input` is optional, max 2000 UTF-8 code points. Numbers are
+// sent as JSON numbers, never strings. Newlines are SAFE here
+// (the budget route decodes escapes properly, unlike 2.1–2.4),
+// but control characters are still replaced with spaces for
+// consistency. The server computes every figure
+// deterministically (totals, remaining, deficit, savings rate,
+// goal progress, months to goal) — Gemini never calculates,
+// so the UI only renders the reply. This endpoint verifies
+// the history save (read-back) — a failed save is a 502,
+// never a 200 — but a history_id of 0 is still handled with
+// the same warning. Code points are counted with
+// [...str].length, bytes are never used here.
+const AI_BUDGET_MAX_EXPENSES = 20;
+const AI_BUDGET_MAX_AMOUNT = 1000000000;
+const AI_BUDGET_MAX_CATEGORY_CODE_POINTS = 100;
+const AI_BUDGET_MAX_GOAL_NAME_CODE_POINTS = 200;
+const AI_BUDGET_MAX_INPUT_CODE_POINTS = 2000;
+
+function aiBudgetCodePoints(s) { return [...s].length; }
+
+// Strict JSON-number shape, like the server's parseStrictNumber:
+// optional -, no leading zeros, optional fraction, optional
+// exponent. Returns a finite Number, or null when the text is
+// not a valid JSON number (strings, NaN, Infinity, "01",
+// "+100", "1.2.3", "1e999" are all rejected).
+function aiBudgetValidNumber(raw) {
+  if (!/^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?$/.test(raw)) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+function aiBudgetExpenseCount() { return document.querySelectorAll("#aiBudgetExpenses .ai-opt-row").length; }
+function aiBudgetSyncAddBtn() {
+  el("aiBudgetAddExpense").disabled = aiBudgetExpenseCount() >= AI_BUDGET_MAX_EXPENSES;
+}
+function addAiBudgetExpenseRow() {
+  if (aiBudgetExpenseCount() >= AI_BUDGET_MAX_EXPENSES) return;
+  const div = document.createElement("div");
+  div.className = "ai-opt-row";
+  div.innerHTML = `<input placeholder="Category (e.g. Food)" class="ai-exp-category"><input type="number" placeholder="Amount" min="0" max="1000000000" step="0.01" class="ai-exp-amount"><button type="button" class="btn btn-secondary ai-opt-remove">Remove</button>`;
+  div.querySelector(".ai-opt-remove").addEventListener("click", () => { div.remove(); aiBudgetSyncAddBtn(); });
+  el("aiBudgetExpenses").appendChild(div);
+  aiBudgetSyncAddBtn();
+}
+addAiBudgetExpenseRow();
+el("aiBudgetAddExpense").addEventListener("click", addAiBudgetExpenseRow);
+
+el("aiBudgetBtn").addEventListener("click", async () => {
+  const btn = el("aiBudgetBtn");
+  const replyBox = el("aiBudgetReply");
+  clearMsg("aiBudgetMsg");
+  clearMsg("aiBudgetWarn");
+  replyBox.innerHTML = "";
+  // Client-side validation mirrors the server, so the user gets an
+  // immediate error instead of a round trip that would fail anyway.
+  // Income 0 counts as provided — only an empty field means "not
+  // provided".
+  const incomeRaw = el("aiBudgetIncome").value.trim();
+  let income = null;
+  if (incomeRaw !== "") {
+    income = aiBudgetValidNumber(incomeRaw);
+    if (income === null || income < 0 || income > AI_BUDGET_MAX_AMOUNT) {
+      showMsg("aiBudgetMsg", "Income must be a number from 0 to 1,000,000,000.", false);
+      return;
+    }
+  }
+  const expenses = [];
+  let expenseError = "";
+  document.querySelectorAll("#aiBudgetExpenses .ai-opt-row").forEach(row => {
+    if (expenseError) return;
+    const category = aiDailySanitize(row.querySelector(".ai-exp-category").value.trim());
+    const amountRaw = row.querySelector(".ai-exp-amount").value.trim();
+    if (!category && !amountRaw) return; // empty rows are ignored, never sent
+    if (!category) { expenseError = "Each expense needs a category."; return; }
+    if (!amountRaw) { expenseError = "Each expense needs an amount."; return; }
+    if (aiBudgetCodePoints(category) > AI_BUDGET_MAX_CATEGORY_CODE_POINTS) {
+      expenseError = "An expense category is too long: maximum 100 characters.";
+      return;
+    }
+    const amount = aiBudgetValidNumber(amountRaw);
+    if (amount === null || amount < 0 || amount > AI_BUDGET_MAX_AMOUNT) {
+      expenseError = "Expense amounts must be numbers from 0 to 1,000,000,000.";
+      return;
+    }
+    expenses.push({ category, amount });
+  });
+  if (expenseError) { showMsg("aiBudgetMsg", expenseError, false); return; }
+  if (expenses.length > AI_BUDGET_MAX_EXPENSES) {
+    showMsg("aiBudgetMsg", "Too many expenses: maximum 20.", false);
+    return;
+  }
+  // Savings goal: all three sub-fields or none at all.
+  const goalName = aiDailySanitize(el("aiBudgetGoalName").value.trim());
+  const goalTargetRaw = el("aiBudgetGoalTarget").value.trim();
+  const goalSavedRaw = el("aiBudgetGoalSaved").value.trim();
+  const goalFilled = goalName !== "" || goalTargetRaw !== "" || goalSavedRaw !== "";
+  let goal = null;
+  if (goalFilled) {
+    if (!goalName || goalTargetRaw === "" || goalSavedRaw === "") {
+      showMsg("aiBudgetMsg", "A savings goal needs all three fields: name, target and the amount already saved.", false);
+      return;
+    }
+    if (aiBudgetCodePoints(goalName) > AI_BUDGET_MAX_GOAL_NAME_CODE_POINTS) {
+      showMsg("aiBudgetMsg", "Savings goal name is too long: maximum 200 characters.", false);
+      return;
+    }
+    const target = aiBudgetValidNumber(goalTargetRaw);
+    if (target === null || target <= 0 || target > AI_BUDGET_MAX_AMOUNT) {
+      showMsg("aiBudgetMsg", "Savings goal target must be a number over 0 and up to 1,000,000,000.", false);
+      return;
+    }
+    const saved = aiBudgetValidNumber(goalSavedRaw);
+    if (saved === null || saved < 0 || saved > AI_BUDGET_MAX_AMOUNT) {
+      showMsg("aiBudgetMsg", "The amount already saved must be a number from 0 to 1,000,000,000.", false);
+      return;
+    }
+    goal = { name: goalName, target, saved };
+  }
+  const input = aiDailySanitize(el("aiBudgetInput").value.trim());
+  if (input && aiBudgetCodePoints(input) > AI_BUDGET_MAX_INPUT_CODE_POINTS) {
+    showMsg("aiBudgetMsg", "Extra notes are too long: maximum 2000 characters.", false);
+    return;
+  }
+  // At least one meaningful field is required — income 0 counts.
+  if (incomeRaw === "" && !expenses.length && !goal && !input) {
+    showMsg("aiBudgetMsg", "Please enter an income, at least one expense, a savings goal or a note first.", false);
+    return;
+  }
+  const body = {};
+  if (incomeRaw !== "") body.income = income;
+  if (expenses.length) body.expenses = expenses;
+  if (goal) body.savings_goal = goal;
+  if (input) body.input = input;
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = "Thinking…";
+  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  try {
+    const r = await api("/api/ai/budget", { method: "POST", body: JSON.stringify(body) });
+    replyBox.innerHTML = esc(r.reply || "");
+    let msg = "AI budget review received.";
+    if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
+    showMsg("aiBudgetMsg", msg, true);
+    if (r.history_id === 0) {
+      showMsg("aiBudgetWarn", "Note: the reply was received, but it was NOT saved to your AI history.", false);
+    }
+  } catch (e) {
+    // A stale reply must never stay on screen after an error.
+    replyBox.innerHTML = "";
+    // api() already forces a logout on 401; the other messages come
+    // from the server (data.error) and are shown with a short note.
+    const m = e.message || "Request failed.";
+    if (m === "invalid input") showMsg("aiBudgetMsg", "Invalid input — please check the fields and try again.", false);
+    else if (m === "AI requires the C++ server") showMsg("aiBudgetMsg", "AI requires the C++ server — this Python fallback server cannot run AI features.", false);
+    else if (m === "AI unavailable" || m === "AI configuration error" || m === "AI request limit reached") showMsg("aiBudgetMsg", m + " Please try again later.", false);
+    else if (m === "AI request timed out") showMsg("aiBudgetMsg", "AI request timed out. Please try again.", false);
+    else if (m === "AI request failed") showMsg("aiBudgetMsg", "AI request failed. Please try again later.", false);
+    else showMsg("aiBudgetMsg", m, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+});
+
+// -- AI Habit Assistant (Phase 3.6) -------------------------------
+// POST /api/ai/habit. Server contract (verified from
+// cpp_server.cpp): `habit` REQUIRED, trimmed, non-empty, max
+// 100 UTF-8 code points, no control characters and no `|`.
+// `target_streak` is optional, a strict integer 1–365.
+// `frequency` is "daily" (default) or "weekly". `input` is
+// optional, max 2000 UTF-8 code points. `today` is optional, a
+// strict YYYY-MM-DD within +/-2 days of the SERVER's local
+// date (empty means "use the server date"). Newlines are SAFE
+// here (the habit route decodes escapes properly, unlike
+// 2.1–2.4), but control characters are still replaced with
+// spaces for consistency. The server computes the real streaks
+// from the caller's OWN habit log — read-only, the log is
+// never changed — and Gemini never calculates, so the UI only
+// renders the reply. This endpoint verifies the history save
+// (read-back) — a failed save is a 502, never a 200 — but a
+// history_id of 0 is still handled with the same warning.
+// Code points are counted with [...str].length, bytes are
+// never used here.
+const AI_HABIT_MAX_CODE_POINTS = 100;
+const AI_HABIT_MAX_INPUT_CODE_POINTS = 2000;
+const AI_HABIT_MIN_TARGET = 1;
+const AI_HABIT_MAX_TARGET = 365;
+
+function aiHabitCodePoints(s) { return [...s].length; }
+
+// Strict integer: digits only, no sign, no fraction, no
+// exponent, no trailing junk. Returns the Number, or null.
+function aiHabitValidTarget(s) {
+  if (!/^\d+$/.test(s)) return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < AI_HABIT_MIN_TARGET || n > AI_HABIT_MAX_TARGET) return null;
+  return n;
+}
+function aiHabitValidToday(s) {
+  // Strict YYYY-MM-DD, real calendar date, within +/-2 days
+  // of the user's local date. The server re-validates against
+  // its own date and is the authority — a server 400 here
+  // surfaces as the friendly "Invalid input" message.
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return false;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (mo < 1 || mo > 12 || d < 1) return false;
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const dim = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1];
+  if (d > dim) return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diff = Math.round((new Date(y, mo - 1, d) - today) / 86400000);
+  return diff >= -2 && diff <= 2;
+}
+
+el("aiHabitBtn").addEventListener("click", async () => {
+  const btn = el("aiHabitBtn");
+  const replyBox = el("aiHabitReply");
+  clearMsg("aiHabitMsg");
+  clearMsg("aiHabitWarn");
+  replyBox.innerHTML = "";
+  // Client-side validation mirrors the server, so the user gets an
+  // immediate error instead of a round trip that would fail anyway.
+  const habit = aiDailySanitize(el("aiHabitName").value.trim());
+  if (!habit) { showMsg("aiHabitMsg", "Please enter a habit first.", false); return; }
+  if (habit.includes("|")) { showMsg("aiHabitMsg", "The habit name cannot contain the | character.", false); return; }
+  if (aiHabitCodePoints(habit) > AI_HABIT_MAX_CODE_POINTS) {
+    showMsg("aiHabitMsg", "Habit name is too long: maximum 100 characters.", false);
+    return;
+  }
+  const targetRaw = el("aiHabitTarget").value.trim();
+  let target = null;
+  if (targetRaw !== "") {
+    target = aiHabitValidTarget(targetRaw);
+    if (target === null) {
+      showMsg("aiHabitMsg", "Target streak must be a whole number from 1 to 365.", false);
+      return;
+    }
+  }
+  const frequency = el("aiHabitFrequency").value;
+  if (frequency !== "daily" && frequency !== "weekly") {
+    showMsg("aiHabitMsg", "Frequency must be daily or weekly.", false);
+    return;
+  }
+  const today = el("aiHabitToday").value.trim();
+  if (today && !aiHabitValidToday(today)) {
+    showMsg("aiHabitMsg", "Reference date must be a valid date within 2 days of today (YYYY-MM-DD).", false);
+    return;
+  }
+  const input = aiDailySanitize(el("aiHabitInput").value.trim());
+  if (input && aiHabitCodePoints(input) > AI_HABIT_MAX_INPUT_CODE_POINTS) {
+    showMsg("aiHabitMsg", "Extra notes are too long: maximum 2000 characters.", false);
+    return;
+  }
+  const body = { habit, frequency };
+  if (target !== null) body.target_streak = target;
+  if (today) body.today = today;
+  if (input) body.input = input;
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = "Thinking…";
+  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  try {
+    const r = await api("/api/ai/habit", { method: "POST", body: JSON.stringify(body) });
+    replyBox.innerHTML = esc(r.reply || "");
+    let msg = "AI habit advice received.";
+    if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
+    showMsg("aiHabitMsg", msg, true);
+    if (r.history_id === 0) {
+      showMsg("aiHabitWarn", "Note: the reply was received, but it was NOT saved to your AI history.", false);
+    }
+  } catch (e) {
+    // A stale reply must never stay on screen after an error.
+    replyBox.innerHTML = "";
+    // api() already forces a logout on 401; the other messages come
+    // from the server (data.error) and are shown with a short note.
+    const m = e.message || "Request failed.";
+    if (m === "invalid input") showMsg("aiHabitMsg", "Invalid input — please check the fields and try again.", false);
+    else if (m === "AI requires the C++ server") showMsg("aiHabitMsg", "AI requires the C++ server — this Python fallback server cannot run AI features.", false);
+    else if (m === "AI unavailable" || m === "AI configuration error" || m === "AI request limit reached") showMsg("aiHabitMsg", m + " Please try again later.", false);
+    else if (m === "AI request timed out") showMsg("aiHabitMsg", "AI request timed out. Please try again.", false);
+    else if (m === "AI request failed") showMsg("aiHabitMsg", "AI request failed. Please try again later.", false);
+    else showMsg("aiHabitMsg", m, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+});
+
+// -- AI History (Phase 3.7) ----------------------------------------
+// GET /api/ai/history (limit 50, newest first) + DELETE
+// /api/ai/history/{id}. Only the caller's own rows are ever
+// returned (owner-filtered server-side; ADMIN gets no exception).
+// Entries are rendered with esc(), never raw innerHTML; responses
+// keep their line breaks via the .ai-reply CSS class. The list is
+// loaded when the section opens and after a delete; the filter
+// re-renders the already-loaded entries without a network call.
+const AI_HISTORY_FEATURES = {
+  "daily-decision": "Daily Decision", "task-analyzer": "Task Analyzer",
+  "study-planner": "Study Planner", "problem-solver": "Problem Solver",
+  "budget": "Budget", "habit": "Habit"
+};
+let aiHistoryEntries = [];
+
+async function loadAiHistory() {
+  const list = el("aiHistoryList");
+  const filter = el("aiHistoryFilter");
+  clearMsg("aiHistoryMsg");
+  list.innerHTML = '<div class="loading">Loading AI history…</div>';
+  filter.disabled = true;
+  try {
+    const data = await api("/api/ai/history?limit=50");
+    aiHistoryEntries = Array.isArray(data.history) ? data.history : [];
+    renderAiHistory();
+  } catch (e) {
+    // A stale list must never stay on screen after an error.
+    // api() already forces a logout on 401.
+    aiHistoryEntries = [];
+    list.innerHTML = "";
+    showMsg("aiHistoryMsg", e.message || "Request failed.", false);
+  } finally {
+    filter.disabled = false;
+  }
+}
+function renderAiHistory() {
+  const list = el("aiHistoryList");
+  const filter = el("aiHistoryFilter").value;
+  const shown = filter === "all" ? aiHistoryEntries
+    : aiHistoryEntries.filter(e => e.feature === filter);
+  if (!shown.length) {
+    list.innerHTML = aiHistoryEntries.length
+      ? "<div class='empty'>No entries for this feature yet.</div>"
+      : "<div class='empty'>No AI history yet.</div>";
+    return;
+  }
+  list.innerHTML = shown.map(e =>
+    `<div class="ai-history-entry" data-id="${e.id}">` +
+    `<div class="ai-history-head"><b>${esc(AI_HISTORY_FEATURES[e.feature] || e.feature)}</b> ` +
+    `<span class="muted">${esc(e.created_at || "")}</span> ` +
+    `<button class="btn btn-danger" onclick="deleteAiHistory(${e.id})">Delete</button></div>` +
+    `<div class="muted">You asked:</div><div class="ai-reply">${esc(e.prompt || "")}</div>` +
+    `<div class="muted">AI answered:</div><div class="ai-reply">${esc(e.response || "")}</div></div>`
+  ).join("");
+}
+async function deleteAiHistory(id) {
+  if (!window.confirm("Delete this AI history entry?")) return;
+  try {
+    await api("/api/ai/history/" + id, { method: "DELETE" });
+    showMsg("aiHistoryMsg", "Entry deleted.", true);
+  } catch (e) {
+    // 404 means the entry is already gone (another tab, or a
+    // second delete): drop it from the list anyway and say so
+    // plainly instead of leaving a stale error on screen.
+    if ((e.message || "") === "History entry not found.") {
+      showMsg("aiHistoryMsg", "That entry was already removed.", false);
+    } else {
+      // api() already forces a logout on 401; any other error
+      // keeps the list as it is, with the server message shown.
+      showMsg("aiHistoryMsg", e.message || "Request failed.", false);
+      return;
+    }
+  }
+  aiHistoryEntries = aiHistoryEntries.filter(e => e.id !== id);
+  renderAiHistory();
+}
+window.deleteAiHistory = deleteAiHistory;
+el("aiHistoryFilter").addEventListener("change", renderAiHistory);
+el("aiHistoryRefreshBtn").addEventListener("click", loadAiHistory);
 
 // -- tasks ----------------------------------------------------------
 async function loadTasks() {

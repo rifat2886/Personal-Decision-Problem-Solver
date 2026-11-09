@@ -54,6 +54,14 @@
   <button data-section="admin">&#128272; Admin Panel</button>
   <button data-section="analytics">&#128200; Analytics</button>
   <button data-section="settings">&#9881; Settings</button>
+  <div class="nav-group">AI Assistant</div>
+  <button data-section="ai-daily">&#129302; AI Daily Decision</button>
+  <button data-section="ai-task">&#128270; AI Task Analyzer</button>
+  <button data-section="ai-study">&#128218; AI Study Planner</button>
+  <button data-section="ai-problem">&#128161; AI Problem Solver</button>
+  <button data-section="ai-budget">&#128176; AI Budget Assistant</button>
+  <button data-section="ai-habit">&#127919; AI Habit Assistant</button>
+  <button data-section="ai-history">&#128220; AI History</button>
 </nav>
 <div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
 
@@ -462,6 +470,127 @@
       <label>New password <input id="cpNew" type="password" autocomplete="new-password"></label>
       <button class="btn btn-primary" id="cpBtn">Change password</button>
       <div id="cpMsg"></div>
+    </div>
+  </section>
+  <section id="ai-daily">
+    <h2>AI Daily Decision</h2>
+    <p class="muted">Ask the AI for a recommendation on a decision, with optional options to compare. The AI analyses your input and returns one clear recommendation with reasons. Your input is sent to the AI as data only — never as an instruction. Input is limited to 4000 bytes (a Bengali character counts as 3 bytes) and each option to 500 bytes.</p>
+    <div class="card">
+      <label>Your decision <textarea id="aiDailyInput" rows="3" placeholder="Should I study maths or physics tonight?"></textarea></label>
+      <label>Options (optional, up to 10)</label>
+      <div id="aiDailyOptions"></div>
+      <div class="actions">
+        <button class="btn btn-secondary" id="aiDailyAddOpt">Add option</button>
+        <button class="btn btn-primary" id="aiDailyBtn">Ask AI</button>
+      </div>
+      <div id="aiDailyMsg"></div>
+      <div id="aiDailyWarn"></div>
+      <div id="aiDailyReply" class="ai-reply"></div>
+    </div>
+  </section>
+  <section id="ai-task">
+    <h2>AI Task Analyzer</h2>
+    <p class="muted">Ask the AI to analyse a task: priority, urgency and concrete next steps. Your input is sent to the AI as data only — never as an instruction. Description is limited to 4000 bytes (a Bengali character counts as 3 bytes), title to 500 bytes, and deadline (free text, not a date) to 100 bytes.</p>
+    <div class="card">
+      <label>Task description <textarea id="aiTaskDesc" rows="3" placeholder="Prepare the final report for the project"></textarea></label>
+      <label>Title (optional) <input id="aiTaskTitle" type="text" placeholder="Final report"></label>
+      <label>Urgency (optional, 1–10) <input id="aiTaskUrgency" type="number" min="1" max="10" step="1" placeholder="8"></label>
+      <label>Importance (optional, 1–10) <input id="aiTaskImportance" type="number" min="1" max="10" step="1" placeholder="9"></label>
+      <label>Deadline (optional, free text) <input id="aiTaskDeadline" type="text" placeholder="2026-11-20"></label>
+      <label>Status (optional)
+        <select id="aiTaskStatus">
+          <option value="">— not specified —</option>
+          <option value="pending">Pending</option>
+          <option value="in-progress">In progress</option>
+          <option value="done">Done</option>
+        </select>
+      </label>
+      <div class="actions">
+        <button class="btn btn-primary" id="aiTaskBtn">Analyse task</button>
+      </div>
+      <div id="aiTaskMsg"></div>
+      <div id="aiTaskWarn"></div>
+      <div id="aiTaskReply" class="ai-reply"></div>
+    </div>
+  </section>
+  <section id="ai-study">
+    <h2>AI Study Planner</h2>
+    <p class="muted">Ask the AI to build a study plan for your subjects: a realistic daily schedule, subject priorities and a revision strategy. Your input is sent to the AI as data only — never as an instruction. Each subject is limited to 200 bytes (a Bengali character counts as 3 bytes), hours per day to 0.5–24, and the optional description to 4000 bytes. The exam date must be today or in the future.</p>
+    <div class="card">
+      <label>Subjects (1–10, duplicates are removed)</label>
+      <div id="aiStudySubjects"></div>
+      <div class="actions">
+        <button class="btn btn-secondary" id="aiStudyAddSubject">Add subject</button>
+        <button class="btn btn-primary" id="aiStudyBtn">Make study plan</button>
+      </div>
+      <label>Hours per day (0.5–24) <input id="aiStudyHours" type="number" min="0.5" max="24" step="0.5" placeholder="4"></label>
+      <label>Exam date (optional) <input id="aiStudyExam" type="date"></label>
+      <label>Description (optional) <textarea id="aiStudyDesc" rows="3" placeholder="I have a maths exam and want to focus on algebra"></textarea></label>
+      <div id="aiStudyMsg"></div>
+      <div id="aiStudyWarn"></div>
+      <div id="aiStudyReply" class="ai-reply"></div>
+    </div>
+  </section>
+  <section id="ai-problem">
+    <h2>AI Problem Solver</h2>
+    <p class="muted">Ask the AI to analyse a problem and suggest solutions: problem analysis, possible solutions, a recommended solution and concrete action steps. Your input is sent to the AI as data only — never as an instruction. The problem is limited to 4000 characters (counted as characters, not bytes — a Bengali character counts as one).</p>
+    <div class="card">
+      <label>Describe your problem <textarea id="aiProblemDesc" rows="4" placeholder="My printer keeps jamming when I print more than a few pages"></textarea></label>
+      <div class="actions">
+        <button class="btn btn-primary" id="aiProblemBtn">Solve problem</button>
+      </div>
+      <div id="aiProblemMsg"></div>
+      <div id="aiProblemWarn"></div>
+      <div id="aiProblemReply" class="ai-reply"></div>
+    </div>
+  </section>
+  <section id="ai-budget">
+    <h2>AI Budget Assistant</h2>
+    <p class="muted">Ask the AI to review your income, expenses and savings goal: a budget plan, spending recommendations and savings progress. Your input is sent to the AI as data only — never as an instruction. The AI never calculates — the server computes all figures (totals, remaining, deficit, savings rate, goal progress) first and the AI only advises on them. Income is optional and 0 counts as provided; expenses are up to 20 rows; a savings goal needs all three fields (name, target, saved).</p>
+    <div class="card">
+      <label>Monthly income (optional) <input id="aiBudgetIncome" type="number" min="0" max="1000000000" step="0.01" placeholder="50000"></label>
+      <label>Expenses (up to 20)</label>
+      <div id="aiBudgetExpenses"></div>
+      <div class="actions">
+        <button class="btn btn-secondary" id="aiBudgetAddExpense">Add expense</button>
+        <button class="btn btn-primary" id="aiBudgetBtn">Review my budget</button>
+      </div>
+      <label>Savings goal — name (optional) <input id="aiBudgetGoalName" type="text" placeholder="New laptop"></label>
+      <label>Savings goal — target (optional) <input id="aiBudgetGoalTarget" type="number" min="0" max="1000000000" step="0.01" placeholder="100000"></label>
+      <label>Savings goal — already saved (optional) <input id="aiBudgetGoalSaved" type="number" min="0" max="1000000000" step="0.01" placeholder="25000"></label>
+      <label>Extra notes (optional) <textarea id="aiBudgetInput" rows="3" placeholder="I want to save more for the laptop without cutting food costs"></textarea></label>
+      <div id="aiBudgetMsg"></div>
+      <div id="aiBudgetWarn"></div>
+      <div id="aiBudgetReply" class="ai-reply"></div>
+    </div>
+  </section>
+  <section id="ai-habit">
+    <h2>AI Habit Assistant</h2>
+    <p class="muted">Ask the AI to review one of your habits: your real streak (daily or weekly), completion rate and a plan to keep it going. Your input is sent to the AI as data only — never as an instruction. The server computes your streak from your own habit log first — the AI only advises on it, and your habit log is never changed. The habit name is limited to 100 characters; the optional target streak is 1–365; the optional reference date must be within 2 days of today (leave it empty to use the server's date).</p>
+    <div class="card">
+      <label>Habit <input id="aiHabitName" type="text" placeholder="Morning run"></label>
+      <label>Target streak (optional) <input id="aiHabitTarget" type="number" min="1" max="365" step="1" placeholder="30"></label>
+      <label>Frequency <select id="aiHabitFrequency"><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></label>
+      <label>Reference date (optional) <input id="aiHabitToday" type="date"></label>
+      <label>Extra notes (optional) <textarea id="aiHabitInput" rows="3" placeholder="I keep missing weekends and want to stay consistent"></textarea></label>
+      <div class="actions">
+        <button class="btn btn-primary" id="aiHabitBtn">Get habit advice</button>
+      </div>
+      <div id="aiHabitMsg"></div>
+      <div id="aiHabitWarn"></div>
+      <div id="aiHabitReply" class="ai-reply"></div>
+    </div>
+  </section>
+  <section id="ai-history">
+    <h2>AI History</h2>
+    <p class="muted">Your past AI answers, newest first — only your own entries are shown, never another user's. Filter by feature, or delete an entry you no longer need.</p>
+    <div class="card">
+      <label>Feature <select id="aiHistoryFilter"><option value="all" selected>All features</option><option value="daily-decision">Daily Decision</option><option value="task-analyzer">Task Analyzer</option><option value="study-planner">Study Planner</option><option value="problem-solver">Problem Solver</option><option value="budget">Budget</option><option value="habit">Habit</option></select></label>
+      <div class="actions">
+        <button class="btn btn-secondary" id="aiHistoryRefreshBtn">Refresh</button>
+      </div>
+      <div id="aiHistoryMsg"></div>
+      <div id="aiHistoryList"></div>
     </div>
   </section>
 </main>

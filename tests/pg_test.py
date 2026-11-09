@@ -73,7 +73,7 @@ def main():
     conn = psycopg2.connect(args.database_url)
     conn.autocommit = True
     with conn.cursor() as cur:
-        for t in ("daily_reports", "error_logs", "habit_log", "savings_goals",
+        for t in ("ai_history", "daily_reports", "error_logs", "habit_log", "savings_goals",
                   "transactions", "tasks", "decisions_backup", "decisions", "users"):
             cur.execute(f"DROP TABLE IF EXISTS {t} CASCADE")
     conn.close()
@@ -148,6 +148,54 @@ def main():
         check("bob cannot see alice decision", s == 200 and "AliceDecision" not in b, b)
         s, b, _ = req(args.port, "GET", "/api/transactions", token=tok_b)
         check("bob cannot see alice transaction", s == 200 and "Salary" not in b, b)
+
+        # AI history (Phase 2.1, Postgres): the server's pgInit must
+        # have created the table; owner is NOT NULL (no legacy rows);
+        # reads/writes are owner-filtered. Rows are inserted directly
+        # in SQL here (the Gemini-call path is covered by
+        # tests/ai_endpoints_test.py in txt mode).
+        conn_h = psycopg2.connect(args.database_url)
+        conn_h.autocommit = True
+        with conn_h.cursor() as cur:
+            cur.execute("SELECT to_regclass('public.ai_history')")
+            check("ai_history table exists", cur.fetchone()[0] is not None)
+            try:
+                cur.execute("INSERT INTO ai_history (owner, feature, prompt, response, created_at) VALUES (NULL,'daily-decision','x','y','2026-11-08 00:00:00')")
+                check("ai_history owner NOT NULL enforced", False, "NULL owner insert succeeded")
+            except Exception:
+                check("ai_history owner NOT NULL enforced", True)
+            cur.execute("INSERT INTO ai_history (owner, feature, prompt, response, created_at) VALUES ('alice','daily-decision','AlicePrompt','AliceReply','2026-11-08 10:00:00') RETURNING id")
+            alice_hist_id = cur.fetchone()[0]
+            cur.execute("INSERT INTO ai_history (owner, feature, prompt, response, created_at) VALUES ('bob','daily-decision','BobPrompt','BobReply','2026-11-08 10:01:00') RETURNING id")
+            bob_hist_id = cur.fetchone()[0]
+        conn_h.close()
+        s, b, _ = req(args.port, "GET", "/api/ai/history", token=tok_a)
+        check("pg alice history only hers",
+              s == 200 and "AlicePrompt" in b and "BobPrompt" not in b, b)
+        s, b, _ = req(args.port, "GET", "/api/ai/history", token=tok_b)
+        check("pg bob history only his",
+              s == 200 and "BobPrompt" in b and "AlicePrompt" not in b, b)
+        s, b, _ = req(args.port, "GET", "/api/ai/history")
+        check("pg ai history without token 401", s == 401, str(s))
+        s, b, _ = req(args.port, "DELETE", f"/api/ai/history/{alice_hist_id}", token=tok_b)
+        check("pg bob delete alice history 404", s == 404, str(s))
+        conn_h = psycopg2.connect(args.database_url)
+        conn_h.autocommit = True
+        with conn_h.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM ai_history WHERE id=%s", (alice_hist_id,))
+            check("pg alice history row still in DB", cur.fetchone()[0] == 1)
+        conn_h.close()
+        s, b, _ = req(args.port, "DELETE", f"/api/ai/history/{alice_hist_id}", token=tok_a)
+        check("pg alice delete own history 200",
+              s == 200 and json.loads(b).get("deleted") is True, b)
+        conn_h = psycopg2.connect(args.database_url)
+        conn_h.autocommit = True
+        with conn_h.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM ai_history WHERE id=%s", (alice_hist_id,))
+            check("pg alice history row gone from DB", cur.fetchone()[0] == 0)
+            cur.execute("SELECT COUNT(*) FROM ai_history WHERE id=%s", (bob_hist_id,))
+            check("pg bob history row untouched", cur.fetchone()[0] == 1)
+        conn_h.close()
 
         # Backup / restore / export / daily-summary
         s, b, _ = req(args.port, "POST", "/api/backup", token=tok_a, body={})

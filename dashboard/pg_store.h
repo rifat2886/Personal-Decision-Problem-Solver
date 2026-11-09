@@ -93,7 +93,8 @@ inline const char* schemaSql() {
         "CREATE UNIQUE INDEX IF NOT EXISTS savings_goals_name_owner_idx ON savings_goals (name, (COALESCE(owner, '')));"
         "CREATE TABLE IF NOT EXISTS habit_log (id SERIAL PRIMARY KEY, habit TEXT NOT NULL, log_date TEXT NOT NULL, owner TEXT);"
         "CREATE TABLE IF NOT EXISTS daily_reports (id SERIAL PRIMARY KEY, line TEXT NOT NULL);"
-        "CREATE TABLE IF NOT EXISTS error_logs (id SERIAL PRIMARY KEY, line TEXT NOT NULL);";
+        "CREATE TABLE IF NOT EXISTS error_logs (id SERIAL PRIMARY KEY, line TEXT NOT NULL);"
+        "CREATE TABLE IF NOT EXISTS ai_history (id SERIAL PRIMARY KEY, owner TEXT NOT NULL, feature TEXT NOT NULL, prompt TEXT NOT NULL, response TEXT NOT NULL, created_at TEXT NOT NULL);";
 }
 }  // namespace detail
 

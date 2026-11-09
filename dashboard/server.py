@@ -577,6 +577,11 @@ class Handler(BaseHTTPRequestHandler):
         users = load_users(data_dir)
         role = users.get(user, {}).get("role", "USER")
 
+        # Gemini AI (Phase 2.1): the Python server never calls
+        # Gemini and never handles the key; AI needs the C++ server.
+        if path.startswith("/api/ai/"):
+            return self.send_error_json(501, "AI requires the C++ server")
+
         if path == "/api/me" and method == "GET":
             return self.send_json(200, {"username": user, "role": role})
 
