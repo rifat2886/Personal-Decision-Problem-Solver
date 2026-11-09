@@ -61,6 +61,7 @@
   <button data-section="ai-problem">&#128161; AI Problem Solver</button>
   <button data-section="ai-budget">&#128176; AI Budget Assistant</button>
   <button data-section="ai-habit">&#127919; AI Habit Assistant</button>
+  <button data-section="ai-history">&#128220; AI History</button>
 </nav>
 <div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
 
@@ -578,6 +579,18 @@
       <div id="aiHabitMsg"></div>
       <div id="aiHabitWarn"></div>
       <div id="aiHabitReply" class="ai-reply"></div>
+    </div>
+  </section>
+  <section id="ai-history">
+    <h2>AI History</h2>
+    <p class="muted">Your past AI answers, newest first — only your own entries are shown, never another user's. Filter by feature, or delete an entry you no longer need.</p>
+    <div class="card">
+      <label>Feature <select id="aiHistoryFilter"><option value="all" selected>All features</option><option value="daily-decision">Daily Decision</option><option value="task-analyzer">Task Analyzer</option><option value="study-planner">Study Planner</option><option value="problem-solver">Problem Solver</option><option value="budget">Budget</option><option value="habit">Habit</option></select></label>
+      <div class="actions">
+        <button class="btn btn-secondary" id="aiHistoryRefreshBtn">Refresh</button>
+      </div>
+      <div id="aiHistoryMsg"></div>
+      <div id="aiHistoryList"></div>
     </div>
   </section>
 </main>

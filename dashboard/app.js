@@ -84,6 +84,14 @@ function clearSession() {
   sessionStorage.removeItem("pdps_token");
   sessionStorage.removeItem("pdps_user");
   setAuthState(false, "");
+  // The AI history list is the previous user's data: never leave
+  // it on screen after logout (it is reloaded on next login).
+  // clearSession only ever runs from event handlers / promise
+  // callbacks, i.e. after the whole script has evaluated, so the
+  // aiHistoryEntries declaration below has already run.
+  aiHistoryEntries = [];
+  const aiList = el("aiHistoryList");
+  if (aiList) aiList.innerHTML = "";
 }
 
 // Session expired / invalid on any protected call: drop the local
@@ -174,6 +182,7 @@ function showSection(name) {
   if (name === "finance") loadTransactions();
   if (name === "savings") loadSavings();
   if (name === "habits") loadHabits();
+  if (name === "ai-history") loadAiHistory();
   if (name === "profile") loadProfile();
   if (name === "admin") loadAdmin();
   if (name === "analytics") loadAnalytics();
@@ -1001,6 +1010,86 @@ el("aiHabitBtn").addEventListener("click", async () => {
     btn.textContent = oldText;
   }
 });
+
+// -- AI History (Phase 3.7) ----------------------------------------
+// GET /api/ai/history (limit 50, newest first) + DELETE
+// /api/ai/history/{id}. Only the caller's own rows are ever
+// returned (owner-filtered server-side; ADMIN gets no exception).
+// Entries are rendered with esc(), never raw innerHTML; responses
+// keep their line breaks via the .ai-reply CSS class. The list is
+// loaded when the section opens and after a delete; the filter
+// re-renders the already-loaded entries without a network call.
+const AI_HISTORY_FEATURES = {
+  "daily-decision": "Daily Decision", "task-analyzer": "Task Analyzer",
+  "study-planner": "Study Planner", "problem-solver": "Problem Solver",
+  "budget": "Budget", "habit": "Habit"
+};
+let aiHistoryEntries = [];
+
+async function loadAiHistory() {
+  const list = el("aiHistoryList");
+  const filter = el("aiHistoryFilter");
+  clearMsg("aiHistoryMsg");
+  list.innerHTML = '<div class="loading">Loading AI history…</div>';
+  filter.disabled = true;
+  try {
+    const data = await api("/api/ai/history?limit=50");
+    aiHistoryEntries = Array.isArray(data.history) ? data.history : [];
+    renderAiHistory();
+  } catch (e) {
+    // A stale list must never stay on screen after an error.
+    // api() already forces a logout on 401.
+    aiHistoryEntries = [];
+    list.innerHTML = "";
+    showMsg("aiHistoryMsg", e.message || "Request failed.", false);
+  } finally {
+    filter.disabled = false;
+  }
+}
+function renderAiHistory() {
+  const list = el("aiHistoryList");
+  const filter = el("aiHistoryFilter").value;
+  const shown = filter === "all" ? aiHistoryEntries
+    : aiHistoryEntries.filter(e => e.feature === filter);
+  if (!shown.length) {
+    list.innerHTML = aiHistoryEntries.length
+      ? "<div class='empty'>No entries for this feature yet.</div>"
+      : "<div class='empty'>No AI history yet.</div>";
+    return;
+  }
+  list.innerHTML = shown.map(e =>
+    `<div class="ai-history-entry" data-id="${e.id}">` +
+    `<div class="ai-history-head"><b>${esc(AI_HISTORY_FEATURES[e.feature] || e.feature)}</b> ` +
+    `<span class="muted">${esc(e.created_at || "")}</span> ` +
+    `<button class="btn btn-danger" onclick="deleteAiHistory(${e.id})">Delete</button></div>` +
+    `<div class="muted">You asked:</div><div class="ai-reply">${esc(e.prompt || "")}</div>` +
+    `<div class="muted">AI answered:</div><div class="ai-reply">${esc(e.response || "")}</div></div>`
+  ).join("");
+}
+async function deleteAiHistory(id) {
+  if (!window.confirm("Delete this AI history entry?")) return;
+  try {
+    await api("/api/ai/history/" + id, { method: "DELETE" });
+    showMsg("aiHistoryMsg", "Entry deleted.", true);
+  } catch (e) {
+    // 404 means the entry is already gone (another tab, or a
+    // second delete): drop it from the list anyway and say so
+    // plainly instead of leaving a stale error on screen.
+    if ((e.message || "") === "History entry not found.") {
+      showMsg("aiHistoryMsg", "That entry was already removed.", false);
+    } else {
+      // api() already forces a logout on 401; any other error
+      // keeps the list as it is, with the server message shown.
+      showMsg("aiHistoryMsg", e.message || "Request failed.", false);
+      return;
+    }
+  }
+  aiHistoryEntries = aiHistoryEntries.filter(e => e.id !== id);
+  renderAiHistory();
+}
+window.deleteAiHistory = deleteAiHistory;
+el("aiHistoryFilter").addEventListener("change", renderAiHistory);
+el("aiHistoryRefreshBtn").addEventListener("click", loadAiHistory);
 
 // -- tasks ----------------------------------------------------------
 async function loadTasks() {
