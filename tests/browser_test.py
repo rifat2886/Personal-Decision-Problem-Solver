@@ -419,6 +419,67 @@ def main():
                 return [r.status, j.error || '']; }""")
             check("ai-study server 400 invalid input", st == [400, "invalid input"], str(st))
 
+            # AI Problem Solver (Phase 3.4): client-side validation,
+            # mock-Gemini success, newline sanitization, 503 and 400.
+            # The limit counts UTF-8 CODE POINTS, not bytes: 4000
+            # Bengali chars is about 12000 bytes and must still pass.
+            page.click("button[data-section='ai-problem']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'ai-problem'")
+            check("ai-problem section visible after login", page.is_visible("section#ai-problem"))
+            # Empty problem -> client-side validation error, no API call.
+            page.click("#aiProblemBtn")
+            page.wait_for_function("document.getElementById('aiProblemMsg').textContent.length > 0")
+            check("ai-problem empty problem error", "describe the problem" in page.evaluate("document.getElementById('aiProblemMsg').textContent").lower())
+            # Over 4000 CODE POINTS -> error. 4001 ASCII chars is 4001
+            # code points; 4001 Bengali chars is 4001 code points but
+            # about 12003 bytes, so this also proves the limit counts
+            # characters, not bytes. Clear the message first so the
+            # wait cannot pass on stale text from the previous check.
+            page.fill("#aiProblemDesc", "x" * 4001)
+            page.click("#aiProblemBtn")
+            page.wait_for_function("document.getElementById('aiProblemMsg').textContent.includes('4000 characters')")
+            check("ai-problem problem over 4000 code points error", "4000 characters" in page.evaluate("document.getElementById('aiProblemMsg').textContent"))
+            page.evaluate("document.getElementById('aiProblemMsg').textContent = ''")
+            page.fill("#aiProblemDesc", "অ" * 4001)
+            page.click("#aiProblemBtn")
+            page.wait_for_function("document.getElementById('aiProblemMsg').textContent.includes('4000 characters')")
+            check("ai-problem Bengali 4001 chars over 4000 code points error", "4000 characters" in page.evaluate("document.getElementById('aiProblemMsg').textContent"))
+            # 4000 Bengali chars (about 12000 bytes) is VALID and must
+            # reach the mock — this is the code-point proof. The
+            # success message shows the history id, no warning.
+            page.fill("#aiProblemDesc", "অ" * 4000)
+            page.click("#aiProblemBtn")
+            page.wait_for_function("document.getElementById('aiProblemReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            check("ai-problem Bengali 4000 chars mock reply shown", "Mocked AI reply." in page.content())
+            check("ai-problem history id shown", "history #" in page.evaluate("document.getElementById('aiProblemMsg').textContent"))
+            check("ai-problem no history-save warning", page.evaluate("document.getElementById('aiProblemWarn').textContent") == "")
+            # Newline sanitization: a multi-line problem reaches the
+            # mock with newlines as spaces.
+            page.fill("#aiProblemDesc", "Fix the printer\nin my office")
+            page.click("#aiProblemBtn")
+            page.wait_for_function("document.getElementById('aiProblemReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            check("ai-problem mock reply shown", "Mocked AI reply." in page.content())
+            sent = MockGemini.requests[-1] if MockGemini.requests else ""
+            check("ai-problem newline sent as space", "printer in my office" in sent and "printerin" not in sent, sent[:200])
+            check("ai-problem fields reach mock", "Fix the printer in my office" in sent, sent[:300])
+            # 503 via the mock rate-limit trigger: the UI shows the
+            # server message and clears the stale reply.
+            page.fill("#aiProblemDesc", "MOCK-RATE-LIMIT test")
+            page.click("#aiProblemBtn")
+            page.wait_for_function("document.getElementById('aiProblemMsg').textContent.includes('AI request limit reached')")
+            check("ai-problem 503 error shown", "AI request limit reached" in page.evaluate("document.getElementById('aiProblemMsg').textContent"))
+            check("ai-problem 503 clears stale reply", page.evaluate("document.getElementById('aiProblemReply').textContent") == "")
+            # 400 from the server (direct API call from the page: the
+            # UI's own validation cannot produce one, by design).
+            st = page.evaluate("""async () => {
+                const t = sessionStorage.getItem('pdps_token');
+                const r = await fetch('/api/ai/problem-solver', {method: 'POST',
+                  headers: {Authorization: 'Bearer ' + t, 'Content-Type': 'application/json'},
+                  body: JSON.stringify({problem: '   '})});
+                const j = await r.json().catch(() => ({}));
+                return [r.status, j.error || '']; }""")
+            check("ai-problem server 400 invalid input", st == [400, "invalid input"], str(st))
+
             # Reports section screenshot, then dark mode.
             page.click("button[data-section='reports']")
             page.wait_for_timeout(800)
@@ -452,13 +513,13 @@ def main():
             ctx.close()
 
             # Chromium logs a console error for every failed fetch,
-            # including the six intentional AI error calls (a 503 UI
+            # including the eight intentional AI error calls (a 503 UI
             # test and a direct 400 fetch for each of ai-daily,
-            # ai-task and ai-study). Remove exactly those six
-            # expected messages (three 503s, three 400s); any other
+            # ai-task, ai-study and ai-problem). Remove exactly those
+            # eight expected messages (four 503s, four 400s); any other
             # console error still fails.
             remaining_console = list(ERRORS)
-            for expected in ("status of 503", "status of 503", "status of 503", "status of 400", "status of 400", "status of 400"):
+            for expected in ("status of 503", "status of 503", "status of 503", "status of 503", "status of 400", "status of 400", "status of 400", "status of 400"):
                 for i, e in enumerate(remaining_console):
                     if "Failed to load resource" in e and expected in e:
                         del remaining_console[i]
@@ -470,7 +531,7 @@ def main():
             ai_errors = [u for u in failed if "/api/ai/" in u]
             unexpected = [u for u in failed if "/api/ai/" not in u]
             check("no unexpected failed API requests", len(unexpected) == 0, str(unexpected[:3]))
-            check("ai error states recorded (expected)", len(ai_errors) >= 6, str(ai_errors))
+            check("ai error states recorded (expected)", len(ai_errors) >= 8, str(ai_errors))
             browser.close()
     finally:
         proc.terminate()

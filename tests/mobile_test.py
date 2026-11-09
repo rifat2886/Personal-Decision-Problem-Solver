@@ -162,6 +162,21 @@ def main():
             check("mobile ai-study reply shown", "Mocked AI reply." in page.content())
             overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
             check("mobile ai-study no horizontal overflow", overflow <= 1, str(overflow))
+            # AI Problem Solver (Phase 3.4) at 390px: drawer nav
+            # reaches it, validation works, mock reply is shown, and
+            # the section has no horizontal overflow.
+            page.click("#menuBtn"); page.click("button[data-section='ai-problem']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'ai-problem'", timeout=10000)
+            check("mobile ai-problem opens via drawer", page.is_visible("section#ai-problem"))
+            page.click("#aiProblemBtn")
+            page.wait_for_function("document.getElementById('aiProblemMsg').textContent.length > 0", timeout=5000)
+            check("mobile ai-problem empty problem error", "describe the problem" in page.evaluate("document.getElementById('aiProblemMsg').textContent").lower())
+            page.fill("#aiProblemDesc", "My printer keeps jamming when I print more than a few pages")
+            page.click("#aiProblemBtn")
+            page.wait_for_function("document.getElementById('aiProblemReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            check("mobile ai-problem reply shown", "Mocked AI reply." in page.content())
+            overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
+            check("mobile ai-problem no horizontal overflow", overflow <= 1, str(overflow))
             overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
             check("mobile flow no horizontal overflow", overflow <= 1, str(overflow))
             page.screenshot(path="/tmp/pdps-mobile-390.png")
