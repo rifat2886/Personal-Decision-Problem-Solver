@@ -496,6 +496,146 @@ el("aiTaskBtn").addEventListener("click", async () => {
   }
 });
 
+// -- AI Study Planner (Phase 3.3) ---------------------------------
+// POST /api/ai/study-planner. Server contract (verified from
+// cpp_server.cpp): subjects REQUIRED, a JSON array of strings,
+// 1-10 items (checked before dedup), each trimmed, non-empty,
+// max 200 BYTES; the server dedupes case-insensitively, and the
+// UI does the same and says so. hours_per_day REQUIRED, a plain
+// JSON number 0.5-24 — the server's jsonNumberField truncates
+// exponents ("1e3" -> 1) and dotted junk ("3.5.2" -> 3.5), so the
+// UI only ever sends a plain decimal number. exam_date optional,
+// strict YYYY-MM-DD, a real calendar date, today-or-future by the
+// SERVER's local date (the UI checks against the user's local
+// date; the server is the authority). description optional,
+// trimmed, non-empty, max 4000 BYTES (description wins over the
+// "input" compat alias; the UI only sends "description"). Same
+// escape quirk as 3.1/3.2: control characters are replaced with
+// spaces BEFORE sending. This endpoint verifies the history save
+// (read-back) — a failed save is a 502, never a 200 — but a
+// history_id of 0 is still handled with the same warning.
+// Byte length and sanitization reuse the 3.1 helpers.
+const AI_STUDY_MAX_SUBJECTS = 10;
+const AI_STUDY_MAX_SUBJECT_BYTES = 200;
+const AI_STUDY_MAX_DESC_BYTES = 4000;
+
+function aiStudySubjectCount() { return document.querySelectorAll("#aiStudySubjects .ai-opt-row").length; }
+function aiStudySyncAddBtn() {
+  el("aiStudyAddSubject").disabled = aiStudySubjectCount() >= AI_STUDY_MAX_SUBJECTS;
+}
+function addAiStudySubjectRow() {
+  if (aiStudySubjectCount() >= AI_STUDY_MAX_SUBJECTS) return;
+  const div = document.createElement("div");
+  div.className = "ai-opt-row";
+  div.innerHTML = `<input placeholder="Subject (e.g. Maths)" class="ai-subject-input"><button type="button" class="btn btn-secondary ai-opt-remove">Remove</button>`;
+  div.querySelector(".ai-opt-remove").addEventListener("click", () => { div.remove(); aiStudySyncAddBtn(); });
+  el("aiStudySubjects").appendChild(div);
+  aiStudySyncAddBtn();
+}
+addAiStudySubjectRow();
+el("aiStudyAddSubject").addEventListener("click", addAiStudySubjectRow);
+
+function aiStudyValidHours(s) {
+  // Plain decimal only: no exponent, no sign, no trailing junk.
+  if (!/^(\d+(\.\d+)?|\.\d+)$/.test(s)) return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < 0.5 || n > 24) return null;
+  return n;
+}
+function aiStudyValidExamDate(s) {
+  // Strict YYYY-MM-DD, real calendar date, today-or-future
+  // by the user's local date.
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return false;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (mo < 1 || mo > 12 || d < 1) return false;
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const dim = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1];
+  if (d > dim) return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return new Date(y, mo - 1, d) >= today;
+}
+
+el("aiStudyBtn").addEventListener("click", async () => {
+  const btn = el("aiStudyBtn");
+  const replyBox = el("aiStudyReply");
+  clearMsg("aiStudyMsg");
+  clearMsg("aiStudyWarn");
+  replyBox.innerHTML = "";
+  // Client-side validation mirrors the server, so the user gets an
+  // immediate error instead of a round trip that would fail anyway.
+  const subjects = [];
+  let subjectTooLong = false;
+  document.querySelectorAll("#aiStudySubjects .ai-subject-input").forEach(inp => {
+    const v = aiDailySanitize(inp.value.trim());
+    if (!v) return; // empty rows are ignored, never sent
+    if (aiDailyByteLen(v) > AI_STUDY_MAX_SUBJECT_BYTES) { subjectTooLong = true; return; }
+    subjects.push(v);
+  });
+  if (subjectTooLong) {
+    showMsg("aiStudyMsg", "A subject is too long: maximum 200 bytes each (a Bengali character counts as 3 bytes).", false);
+    return;
+  }
+  if (!subjects.length) { showMsg("aiStudyMsg", "Please add at least one subject first.", false); return; }
+  if (subjects.length > AI_STUDY_MAX_SUBJECTS) {
+    showMsg("aiStudyMsg", "Too many subjects: maximum 10.", false);
+    return;
+  }
+  // Dedupe case-insensitively, first occurrence wins (like the server).
+  const seen = new Set(), deduped = [];
+  subjects.forEach(s => { const k = s.toLowerCase(); if (!seen.has(k)) { seen.add(k); deduped.push(s); } });
+  const dupCount = subjects.length - deduped.length;
+  const hoursRaw = el("aiStudyHours").value.trim();
+  const hours = hoursRaw === "" ? null : aiStudyValidHours(hoursRaw);
+  if (hours === null) {
+    showMsg("aiStudyMsg", "Hours per day must be a number from 0.5 to 24.", false);
+    return;
+  }
+  const examDate = el("aiStudyExam").value.trim();
+  if (examDate && !aiStudyValidExamDate(examDate)) {
+    showMsg("aiStudyMsg", "Exam date must be a valid date, today or in the future (YYYY-MM-DD).", false);
+    return;
+  }
+  const desc = aiDailySanitize(el("aiStudyDesc").value.trim());
+  if (desc && aiDailyByteLen(desc) > AI_STUDY_MAX_DESC_BYTES) {
+    showMsg("aiStudyMsg", "Description is too long: maximum 4000 bytes (a Bengali character counts as 3 bytes).", false);
+    return;
+  }
+  const body = { subjects: deduped, hours_per_day: hours };
+  if (examDate) body.exam_date = examDate;
+  if (desc) body.description = desc;
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = "Thinking…";
+  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  try {
+    const r = await api("/api/ai/study-planner", { method: "POST", body: JSON.stringify(body) });
+    replyBox.innerHTML = esc(r.reply || "");
+    let msg = "AI study plan received (" + deduped.length + (deduped.length === 1 ? " subject" : " subjects") + ").";
+    if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
+    showMsg("aiStudyMsg", msg, true);
+    let warn = "";
+    if (dupCount) warn = "Note: " + dupCount + (dupCount === 1 ? " duplicate subject was" : " duplicate subjects were") + " removed.";
+    if (r.history_id === 0) warn = "Note: the reply was received, but it was NOT saved to your AI history.";
+    if (warn) showMsg("aiStudyWarn", warn, false);
+  } catch (e) {
+    // A stale reply must never stay on screen after an error.
+    replyBox.innerHTML = "";
+    // api() already forces a logout on 401; the other messages come
+    // from the server (data.error) and are shown with a short note.
+    const m = e.message || "Request failed.";
+    if (m === "invalid input") showMsg("aiStudyMsg", "Invalid input — please check the fields and try again.", false);
+    else if (m === "AI requires the C++ server") showMsg("aiStudyMsg", "AI requires the C++ server — this Python fallback server cannot run AI features.", false);
+    else if (m === "AI unavailable" || m === "AI configuration error" || m === "AI request limit reached") showMsg("aiStudyMsg", m + " Please try again later.", false);
+    else if (m === "AI request timed out") showMsg("aiStudyMsg", "AI request timed out. Please try again.", false);
+    else if (m === "AI request failed") showMsg("aiStudyMsg", "AI request failed. Please try again later.", false);
+    else showMsg("aiStudyMsg", m, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+});
+
 // -- tasks ----------------------------------------------------------
 async function loadTasks() {
   el("taskList").innerHTML = '<div class="loading">Loading tasks…</div>';

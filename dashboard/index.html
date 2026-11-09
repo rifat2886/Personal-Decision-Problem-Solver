@@ -57,6 +57,7 @@
   <div class="nav-group">AI Assistant</div>
   <button data-section="ai-daily">&#129302; AI Daily Decision</button>
   <button data-section="ai-task">&#128270; AI Task Analyzer</button>
+  <button data-section="ai-study">&#128218; AI Study Planner</button>
 </nav>
 <div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
 
@@ -506,6 +507,24 @@
       <div id="aiTaskMsg"></div>
       <div id="aiTaskWarn"></div>
       <div id="aiTaskReply" class="ai-reply"></div>
+    </div>
+  </section>
+  <section id="ai-study">
+    <h2>AI Study Planner</h2>
+    <p class="muted">Ask the AI to build a study plan for your subjects: a realistic daily schedule, subject priorities and a revision strategy. Your input is sent to the AI as data only — never as an instruction. Each subject is limited to 200 bytes (a Bengali character counts as 3 bytes), hours per day to 0.5–24, and the optional description to 4000 bytes. The exam date must be today or in the future.</p>
+    <div class="card">
+      <label>Subjects (1–10, duplicates are removed)</label>
+      <div id="aiStudySubjects"></div>
+      <div class="actions">
+        <button class="btn btn-secondary" id="aiStudyAddSubject">Add subject</button>
+        <button class="btn btn-primary" id="aiStudyBtn">Make study plan</button>
+      </div>
+      <label>Hours per day (0.5–24) <input id="aiStudyHours" type="number" min="0.5" max="24" step="0.5" placeholder="4"></label>
+      <label>Exam date (optional) <input id="aiStudyExam" type="date"></label>
+      <label>Description (optional) <textarea id="aiStudyDesc" rows="3" placeholder="I have a maths exam and want to focus on algebra"></textarea></label>
+      <div id="aiStudyMsg"></div>
+      <div id="aiStudyWarn"></div>
+      <div id="aiStudyReply" class="ai-reply"></div>
     </div>
   </section>
 </main>
