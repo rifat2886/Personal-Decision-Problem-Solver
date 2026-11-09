@@ -60,6 +60,7 @@
   <button data-section="ai-study">&#128218; AI Study Planner</button>
   <button data-section="ai-problem">&#128161; AI Problem Solver</button>
   <button data-section="ai-budget">&#128176; AI Budget Assistant</button>
+  <button data-section="ai-habit">&#127919; AI Habit Assistant</button>
 </nav>
 <div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
 
@@ -560,6 +561,23 @@
       <div id="aiBudgetMsg"></div>
       <div id="aiBudgetWarn"></div>
       <div id="aiBudgetReply" class="ai-reply"></div>
+    </div>
+  </section>
+  <section id="ai-habit">
+    <h2>AI Habit Assistant</h2>
+    <p class="muted">Ask the AI to review one of your habits: your real streak (daily or weekly), completion rate and a plan to keep it going. Your input is sent to the AI as data only — never as an instruction. The server computes your streak from your own habit log first — the AI only advises on it, and your habit log is never changed. The habit name is limited to 100 characters; the optional target streak is 1–365; the optional reference date must be within 2 days of today (leave it empty to use the server's date).</p>
+    <div class="card">
+      <label>Habit <input id="aiHabitName" type="text" placeholder="Morning run"></label>
+      <label>Target streak (optional) <input id="aiHabitTarget" type="number" min="1" max="365" step="1" placeholder="30"></label>
+      <label>Frequency <select id="aiHabitFrequency"><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></label>
+      <label>Reference date (optional) <input id="aiHabitToday" type="date"></label>
+      <label>Extra notes (optional) <textarea id="aiHabitInput" rows="3" placeholder="I keep missing weekends and want to stay consistent"></textarea></label>
+      <div class="actions">
+        <button class="btn btn-primary" id="aiHabitBtn">Get habit advice</button>
+      </div>
+      <div id="aiHabitMsg"></div>
+      <div id="aiHabitWarn"></div>
+      <div id="aiHabitReply" class="ai-reply"></div>
     </div>
   </section>
 </main>

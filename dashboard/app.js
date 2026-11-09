@@ -877,6 +877,131 @@ el("aiBudgetBtn").addEventListener("click", async () => {
   }
 });
 
+// -- AI Habit Assistant (Phase 3.6) -------------------------------
+// POST /api/ai/habit. Server contract (verified from
+// cpp_server.cpp): `habit` REQUIRED, trimmed, non-empty, max
+// 100 UTF-8 code points, no control characters and no `|`.
+// `target_streak` is optional, a strict integer 1–365.
+// `frequency` is "daily" (default) or "weekly". `input` is
+// optional, max 2000 UTF-8 code points. `today` is optional, a
+// strict YYYY-MM-DD within +/-2 days of the SERVER's local
+// date (empty means "use the server date"). Newlines are SAFE
+// here (the habit route decodes escapes properly, unlike
+// 2.1–2.4), but control characters are still replaced with
+// spaces for consistency. The server computes the real streaks
+// from the caller's OWN habit log — read-only, the log is
+// never changed — and Gemini never calculates, so the UI only
+// renders the reply. This endpoint verifies the history save
+// (read-back) — a failed save is a 502, never a 200 — but a
+// history_id of 0 is still handled with the same warning.
+// Code points are counted with [...str].length, bytes are
+// never used here.
+const AI_HABIT_MAX_CODE_POINTS = 100;
+const AI_HABIT_MAX_INPUT_CODE_POINTS = 2000;
+const AI_HABIT_MIN_TARGET = 1;
+const AI_HABIT_MAX_TARGET = 365;
+
+function aiHabitCodePoints(s) { return [...s].length; }
+
+// Strict integer: digits only, no sign, no fraction, no
+// exponent, no trailing junk. Returns the Number, or null.
+function aiHabitValidTarget(s) {
+  if (!/^\d+$/.test(s)) return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < AI_HABIT_MIN_TARGET || n > AI_HABIT_MAX_TARGET) return null;
+  return n;
+}
+function aiHabitValidToday(s) {
+  // Strict YYYY-MM-DD, real calendar date, within +/-2 days
+  // of the user's local date. The server re-validates against
+  // its own date and is the authority — a server 400 here
+  // surfaces as the friendly "Invalid input" message.
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return false;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (mo < 1 || mo > 12 || d < 1) return false;
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const dim = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1];
+  if (d > dim) return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diff = Math.round((new Date(y, mo - 1, d) - today) / 86400000);
+  return diff >= -2 && diff <= 2;
+}
+
+el("aiHabitBtn").addEventListener("click", async () => {
+  const btn = el("aiHabitBtn");
+  const replyBox = el("aiHabitReply");
+  clearMsg("aiHabitMsg");
+  clearMsg("aiHabitWarn");
+  replyBox.innerHTML = "";
+  // Client-side validation mirrors the server, so the user gets an
+  // immediate error instead of a round trip that would fail anyway.
+  const habit = aiDailySanitize(el("aiHabitName").value.trim());
+  if (!habit) { showMsg("aiHabitMsg", "Please enter a habit first.", false); return; }
+  if (habit.includes("|")) { showMsg("aiHabitMsg", "The habit name cannot contain the | character.", false); return; }
+  if (aiHabitCodePoints(habit) > AI_HABIT_MAX_CODE_POINTS) {
+    showMsg("aiHabitMsg", "Habit name is too long: maximum 100 characters.", false);
+    return;
+  }
+  const targetRaw = el("aiHabitTarget").value.trim();
+  let target = null;
+  if (targetRaw !== "") {
+    target = aiHabitValidTarget(targetRaw);
+    if (target === null) {
+      showMsg("aiHabitMsg", "Target streak must be a whole number from 1 to 365.", false);
+      return;
+    }
+  }
+  const frequency = el("aiHabitFrequency").value;
+  if (frequency !== "daily" && frequency !== "weekly") {
+    showMsg("aiHabitMsg", "Frequency must be daily or weekly.", false);
+    return;
+  }
+  const today = el("aiHabitToday").value.trim();
+  if (today && !aiHabitValidToday(today)) {
+    showMsg("aiHabitMsg", "Reference date must be a valid date within 2 days of today (YYYY-MM-DD).", false);
+    return;
+  }
+  const input = aiDailySanitize(el("aiHabitInput").value.trim());
+  if (input && aiHabitCodePoints(input) > AI_HABIT_MAX_INPUT_CODE_POINTS) {
+    showMsg("aiHabitMsg", "Extra notes are too long: maximum 2000 characters.", false);
+    return;
+  }
+  const body = { habit, frequency };
+  if (target !== null) body.target_streak = target;
+  if (today) body.today = today;
+  if (input) body.input = input;
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = "Thinking…";
+  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  try {
+    const r = await api("/api/ai/habit", { method: "POST", body: JSON.stringify(body) });
+    replyBox.innerHTML = esc(r.reply || "");
+    let msg = "AI habit advice received.";
+    if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
+    showMsg("aiHabitMsg", msg, true);
+    if (r.history_id === 0) {
+      showMsg("aiHabitWarn", "Note: the reply was received, but it was NOT saved to your AI history.", false);
+    }
+  } catch (e) {
+    // A stale reply must never stay on screen after an error.
+    replyBox.innerHTML = "";
+    // api() already forces a logout on 401; the other messages come
+    // from the server (data.error) and are shown with a short note.
+    const m = e.message || "Request failed.";
+    if (m === "invalid input") showMsg("aiHabitMsg", "Invalid input — please check the fields and try again.", false);
+    else if (m === "AI requires the C++ server") showMsg("aiHabitMsg", "AI requires the C++ server — this Python fallback server cannot run AI features.", false);
+    else if (m === "AI unavailable" || m === "AI configuration error" || m === "AI request limit reached") showMsg("aiHabitMsg", m + " Please try again later.", false);
+    else if (m === "AI request timed out") showMsg("aiHabitMsg", "AI request timed out. Please try again.", false);
+    else if (m === "AI request failed") showMsg("aiHabitMsg", "AI request failed. Please try again later.", false);
+    else showMsg("aiHabitMsg", m, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+});
+
 // -- tasks ----------------------------------------------------------
 async function loadTasks() {
   el("taskList").innerHTML = '<div class="loading">Loading tasks…</div>';
