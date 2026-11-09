@@ -146,6 +146,22 @@ def main():
             check("mobile ai-task reply shown", "Mocked AI reply." in page.content())
             overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
             check("mobile ai-task no horizontal overflow", overflow <= 1, str(overflow))
+            # AI Study Planner (Phase 3.3) at 390px: drawer nav
+            # reaches it, validation works, mock reply is shown, and
+            # the section has no horizontal overflow.
+            page.click("#menuBtn"); page.click("button[data-section='ai-study']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'ai-study'", timeout=10000)
+            check("mobile ai-study opens via drawer", page.is_visible("section#ai-study"))
+            page.click("#aiStudyBtn")
+            page.wait_for_function("document.getElementById('aiStudyMsg').textContent.length > 0", timeout=5000)
+            check("mobile ai-study no subjects error", "at least one subject" in page.evaluate("document.getElementById('aiStudyMsg').textContent").lower())
+            page.locator("#aiStudySubjects input").nth(0).fill("Maths")
+            page.fill("#aiStudyHours", "3")
+            page.click("#aiStudyBtn")
+            page.wait_for_function("document.getElementById('aiStudyReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            check("mobile ai-study reply shown", "Mocked AI reply." in page.content())
+            overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
+            check("mobile ai-study no horizontal overflow", overflow <= 1, str(overflow))
             overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
             check("mobile flow no horizontal overflow", overflow <= 1, str(overflow))
             page.screenshot(path="/tmp/pdps-mobile-390.png")

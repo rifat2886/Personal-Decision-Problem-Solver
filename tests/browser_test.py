@@ -26,6 +26,7 @@ import sys
 import tempfile
 import threading
 import time
+from datetime import date, timedelta
 
 PASS = 0
 FAIL = 0
@@ -332,6 +333,92 @@ def main():
                 return [r.status, j.error || '']; }""")
             check("ai-task server 400 invalid input", st == [400, "invalid input"], str(st))
 
+            # AI Study Planner (Phase 3.3): client-side validation,
+            # mock-Gemini success, subject dedup, newline
+            # sanitization, 503 and 400.
+            page.click("button[data-section='ai-study']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'ai-study'")
+            check("ai-study section visible after login", page.is_visible("section#ai-study"))
+            # No subjects -> client-side validation error, no API call.
+            page.click("#aiStudyBtn")
+            page.wait_for_function("document.getElementById('aiStudyMsg').textContent.length > 0")
+            check("ai-study no subjects error", "at least one subject" in page.evaluate("document.getElementById('aiStudyMsg').textContent").lower())
+            # Subject over 200 bytes -> error.
+            page.locator("#aiStudySubjects input").nth(0).fill("x" * 201)
+            page.click("#aiStudyBtn")
+            page.wait_for_function("document.getElementById('aiStudyMsg').textContent.includes('200 bytes')")
+            check("ai-study subject over 200 bytes error", "200 bytes" in page.evaluate("document.getElementById('aiStudyMsg').textContent"))
+            # Hours missing / 0 / 25 / exponent -> error. Clear the
+            # message before each repeat so the wait cannot pass on
+            # the stale "0.5 to 24" text from the previous check.
+            page.locator("#aiStudySubjects input").nth(0).fill("Maths")
+            page.click("#aiStudyBtn")
+            page.wait_for_function("document.getElementById('aiStudyMsg').textContent.includes('0.5 to 24')")
+            check("ai-study hours missing error", "0.5 to 24" in page.evaluate("document.getElementById('aiStudyMsg').textContent"))
+            page.evaluate("document.getElementById('aiStudyMsg').textContent = ''")
+            page.fill("#aiStudyHours", "0")
+            page.click("#aiStudyBtn")
+            page.wait_for_function("document.getElementById('aiStudyMsg').textContent.includes('0.5 to 24')")
+            check("ai-study hours 0 error", "0.5 to 24" in page.evaluate("document.getElementById('aiStudyMsg').textContent"))
+            page.evaluate("document.getElementById('aiStudyMsg').textContent = ''")
+            page.fill("#aiStudyHours", "25")
+            page.click("#aiStudyBtn")
+            page.wait_for_function("document.getElementById('aiStudyMsg').textContent.includes('0.5 to 24')")
+            check("ai-study hours 25 error", "0.5 to 24" in page.evaluate("document.getElementById('aiStudyMsg').textContent"))
+            page.evaluate("document.getElementById('aiStudyMsg').textContent = ''")
+            page.fill("#aiStudyHours", "1e3")
+            page.click("#aiStudyBtn")
+            page.wait_for_function("document.getElementById('aiStudyMsg').textContent.includes('0.5 to 24')")
+            check("ai-study hours exponent error", "0.5 to 24" in page.evaluate("document.getElementById('aiStudyMsg').textContent"))
+            # Past exam date -> error (yesterday, by the local date).
+            page.fill("#aiStudyHours", "4")
+            past = (date.today() - timedelta(days=1)).isoformat()
+            page.fill("#aiStudyExam", past)
+            page.click("#aiStudyBtn")
+            page.wait_for_function("document.getElementById('aiStudyMsg').textContent.includes('today or in the future')")
+            check("ai-study past exam date error", "today or in the future" in page.evaluate("document.getElementById('aiStudyMsg').textContent"))
+            # Success via the mock Gemini server: duplicate subjects
+            # are deduped client-side, hours sent as a number, exam
+            # date and a multi-line description reach the mock.
+            future = (date.today() + timedelta(days=30)).isoformat()
+            page.click("#aiStudyAddSubject")
+            page.click("#aiStudyAddSubject")
+            page.locator("#aiStudySubjects input").nth(0).fill("Maths")
+            page.locator("#aiStudySubjects input").nth(1).fill("maths")
+            page.locator("#aiStudySubjects input").nth(2).fill("Physics")
+            page.fill("#aiStudyExam", future)
+            page.fill("#aiStudyDesc", "Plan my revision\nfor the exam")
+            page.click("#aiStudyBtn")
+            page.wait_for_function("document.getElementById('aiStudyReply').textContent.includes('Mocked AI reply.')")
+            check("ai-study mock reply shown", "Mocked AI reply." in page.content())
+            check("ai-study history id shown", "history #" in page.evaluate("document.getElementById('aiStudyMsg').textContent"))
+            check("ai-study 2 unique subjects shown", "(2 subjects)" in page.evaluate("document.getElementById('aiStudyMsg').textContent"))
+            check("ai-study duplicate note shown", "duplicate" in page.evaluate("document.getElementById('aiStudyWarn').textContent").lower())
+            sent = MockGemini.requests[-1] if MockGemini.requests else ""
+            check("ai-study newline sent as space", "revision for the exam" in sent and "revisionfor" not in sent, sent[:200])
+            # The mock body is JSON-encoded, so the prompt's quotes
+            # arrive escaped (\"Maths\"); match the bare subject
+            # names, as the 3.1/3.2 checks do.
+            check("ai-study subjects deduped in prompt", sent.count('Maths') == 1 and 'Physics' in sent, sent[:300])
+            check("ai-study fields reach mock", all(x in sent for x in ("Hours per day: 4", "Exam date:", future)), sent[:300])
+            # 503 via the mock rate-limit trigger: the UI shows the
+            # server message and clears the stale reply.
+            page.fill("#aiStudyDesc", "MOCK-RATE-LIMIT test")
+            page.click("#aiStudyBtn")
+            page.wait_for_function("document.getElementById('aiStudyMsg').textContent.includes('AI request limit reached')")
+            check("ai-study 503 error shown", "AI request limit reached" in page.evaluate("document.getElementById('aiStudyMsg').textContent"))
+            check("ai-study 503 clears stale reply", page.evaluate("document.getElementById('aiStudyReply').textContent") == "")
+            # 400 from the server (direct API call from the page: the
+            # UI's own validation cannot produce one, by design).
+            st = page.evaluate("""async () => {
+                const t = sessionStorage.getItem('pdps_token');
+                const r = await fetch('/api/ai/study-planner', {method: 'POST',
+                  headers: {Authorization: 'Bearer ' + t, 'Content-Type': 'application/json'},
+                  body: JSON.stringify({})});
+                const j = await r.json().catch(() => ({}));
+                return [r.status, j.error || '']; }""")
+            check("ai-study server 400 invalid input", st == [400, "invalid input"], str(st))
+
             # Reports section screenshot, then dark mode.
             page.click("button[data-section='reports']")
             page.wait_for_timeout(800)
@@ -365,12 +452,13 @@ def main():
             ctx.close()
 
             # Chromium logs a console error for every failed fetch,
-            # including the four intentional AI error calls (a 503 UI
-            # test and a direct 400 fetch for each of ai-daily and
-            # ai-task). Remove exactly those four expected messages
-            # (two 503s, two 400s); any other console error still fails.
+            # including the six intentional AI error calls (a 503 UI
+            # test and a direct 400 fetch for each of ai-daily,
+            # ai-task and ai-study). Remove exactly those six
+            # expected messages (three 503s, three 400s); any other
+            # console error still fails.
             remaining_console = list(ERRORS)
-            for expected in ("status of 503", "status of 503", "status of 400", "status of 400"):
+            for expected in ("status of 503", "status of 503", "status of 503", "status of 400", "status of 400", "status of 400"):
                 for i, e in enumerate(remaining_console):
                     if "Failed to load resource" in e and expected in e:
                         del remaining_console[i]
@@ -382,7 +470,7 @@ def main():
             ai_errors = [u for u in failed if "/api/ai/" in u]
             unexpected = [u for u in failed if "/api/ai/" not in u]
             check("no unexpected failed API requests", len(unexpected) == 0, str(unexpected[:3]))
-            check("ai error states recorded (expected)", len(ai_errors) >= 4, str(ai_errors))
+            check("ai error states recorded (expected)", len(ai_errors) >= 6, str(ai_errors))
             browser.close()
     finally:
         proc.terminate()
