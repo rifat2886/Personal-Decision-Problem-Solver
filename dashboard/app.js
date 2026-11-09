@@ -702,6 +702,181 @@ el("aiProblemBtn").addEventListener("click", async () => {
   }
 });
 
+// -- AI Budget Assistant (Phase 3.5) ------------------------------
+// POST /api/ai/budget. Server contract (verified from
+// cpp_server.cpp): all fields optional, but at least one
+// meaningful field is required ({} and {"expenses": []} alone
+// are 400). `income` is a strict JSON number 0–1e9 — and
+// income 0 COUNTS as provided, so it must never be treated
+// as empty. `expenses` is an array of at most 20 items, each
+// {category (non-empty, max 100 UTF-8 code points), amount
+// (number 0–1e9)} — both required per item. `savings_goal`
+// needs ALL THREE sub-fields {name (max 200 code points),
+// target (>0, max 1e9), saved (>=0, max 1e9)} or none at all.
+// `input` is optional, max 2000 UTF-8 code points. Numbers are
+// sent as JSON numbers, never strings. Newlines are SAFE here
+// (the budget route decodes escapes properly, unlike 2.1–2.4),
+// but control characters are still replaced with spaces for
+// consistency. The server computes every figure
+// deterministically (totals, remaining, deficit, savings rate,
+// goal progress, months to goal) — Gemini never calculates,
+// so the UI only renders the reply. This endpoint verifies
+// the history save (read-back) — a failed save is a 502,
+// never a 200 — but a history_id of 0 is still handled with
+// the same warning. Code points are counted with
+// [...str].length, bytes are never used here.
+const AI_BUDGET_MAX_EXPENSES = 20;
+const AI_BUDGET_MAX_AMOUNT = 1000000000;
+const AI_BUDGET_MAX_CATEGORY_CODE_POINTS = 100;
+const AI_BUDGET_MAX_GOAL_NAME_CODE_POINTS = 200;
+const AI_BUDGET_MAX_INPUT_CODE_POINTS = 2000;
+
+function aiBudgetCodePoints(s) { return [...s].length; }
+
+// Strict JSON-number shape, like the server's parseStrictNumber:
+// optional -, no leading zeros, optional fraction, optional
+// exponent. Returns a finite Number, or null when the text is
+// not a valid JSON number (strings, NaN, Infinity, "01",
+// "+100", "1.2.3", "1e999" are all rejected).
+function aiBudgetValidNumber(raw) {
+  if (!/^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?$/.test(raw)) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+function aiBudgetExpenseCount() { return document.querySelectorAll("#aiBudgetExpenses .ai-opt-row").length; }
+function aiBudgetSyncAddBtn() {
+  el("aiBudgetAddExpense").disabled = aiBudgetExpenseCount() >= AI_BUDGET_MAX_EXPENSES;
+}
+function addAiBudgetExpenseRow() {
+  if (aiBudgetExpenseCount() >= AI_BUDGET_MAX_EXPENSES) return;
+  const div = document.createElement("div");
+  div.className = "ai-opt-row";
+  div.innerHTML = `<input placeholder="Category (e.g. Food)" class="ai-exp-category"><input type="number" placeholder="Amount" min="0" max="1000000000" step="0.01" class="ai-exp-amount"><button type="button" class="btn btn-secondary ai-opt-remove">Remove</button>`;
+  div.querySelector(".ai-opt-remove").addEventListener("click", () => { div.remove(); aiBudgetSyncAddBtn(); });
+  el("aiBudgetExpenses").appendChild(div);
+  aiBudgetSyncAddBtn();
+}
+addAiBudgetExpenseRow();
+el("aiBudgetAddExpense").addEventListener("click", addAiBudgetExpenseRow);
+
+el("aiBudgetBtn").addEventListener("click", async () => {
+  const btn = el("aiBudgetBtn");
+  const replyBox = el("aiBudgetReply");
+  clearMsg("aiBudgetMsg");
+  clearMsg("aiBudgetWarn");
+  replyBox.innerHTML = "";
+  // Client-side validation mirrors the server, so the user gets an
+  // immediate error instead of a round trip that would fail anyway.
+  // Income 0 counts as provided — only an empty field means "not
+  // provided".
+  const incomeRaw = el("aiBudgetIncome").value.trim();
+  let income = null;
+  if (incomeRaw !== "") {
+    income = aiBudgetValidNumber(incomeRaw);
+    if (income === null || income < 0 || income > AI_BUDGET_MAX_AMOUNT) {
+      showMsg("aiBudgetMsg", "Income must be a number from 0 to 1,000,000,000.", false);
+      return;
+    }
+  }
+  const expenses = [];
+  let expenseError = "";
+  document.querySelectorAll("#aiBudgetExpenses .ai-opt-row").forEach(row => {
+    if (expenseError) return;
+    const category = aiDailySanitize(row.querySelector(".ai-exp-category").value.trim());
+    const amountRaw = row.querySelector(".ai-exp-amount").value.trim();
+    if (!category && !amountRaw) return; // empty rows are ignored, never sent
+    if (!category) { expenseError = "Each expense needs a category."; return; }
+    if (!amountRaw) { expenseError = "Each expense needs an amount."; return; }
+    if (aiBudgetCodePoints(category) > AI_BUDGET_MAX_CATEGORY_CODE_POINTS) {
+      expenseError = "An expense category is too long: maximum 100 characters.";
+      return;
+    }
+    const amount = aiBudgetValidNumber(amountRaw);
+    if (amount === null || amount < 0 || amount > AI_BUDGET_MAX_AMOUNT) {
+      expenseError = "Expense amounts must be numbers from 0 to 1,000,000,000.";
+      return;
+    }
+    expenses.push({ category, amount });
+  });
+  if (expenseError) { showMsg("aiBudgetMsg", expenseError, false); return; }
+  if (expenses.length > AI_BUDGET_MAX_EXPENSES) {
+    showMsg("aiBudgetMsg", "Too many expenses: maximum 20.", false);
+    return;
+  }
+  // Savings goal: all three sub-fields or none at all.
+  const goalName = aiDailySanitize(el("aiBudgetGoalName").value.trim());
+  const goalTargetRaw = el("aiBudgetGoalTarget").value.trim();
+  const goalSavedRaw = el("aiBudgetGoalSaved").value.trim();
+  const goalFilled = goalName !== "" || goalTargetRaw !== "" || goalSavedRaw !== "";
+  let goal = null;
+  if (goalFilled) {
+    if (!goalName || goalTargetRaw === "" || goalSavedRaw === "") {
+      showMsg("aiBudgetMsg", "A savings goal needs all three fields: name, target and the amount already saved.", false);
+      return;
+    }
+    if (aiBudgetCodePoints(goalName) > AI_BUDGET_MAX_GOAL_NAME_CODE_POINTS) {
+      showMsg("aiBudgetMsg", "Savings goal name is too long: maximum 200 characters.", false);
+      return;
+    }
+    const target = aiBudgetValidNumber(goalTargetRaw);
+    if (target === null || target <= 0 || target > AI_BUDGET_MAX_AMOUNT) {
+      showMsg("aiBudgetMsg", "Savings goal target must be a number over 0 and up to 1,000,000,000.", false);
+      return;
+    }
+    const saved = aiBudgetValidNumber(goalSavedRaw);
+    if (saved === null || saved < 0 || saved > AI_BUDGET_MAX_AMOUNT) {
+      showMsg("aiBudgetMsg", "The amount already saved must be a number from 0 to 1,000,000,000.", false);
+      return;
+    }
+    goal = { name: goalName, target, saved };
+  }
+  const input = aiDailySanitize(el("aiBudgetInput").value.trim());
+  if (input && aiBudgetCodePoints(input) > AI_BUDGET_MAX_INPUT_CODE_POINTS) {
+    showMsg("aiBudgetMsg", "Extra notes are too long: maximum 2000 characters.", false);
+    return;
+  }
+  // At least one meaningful field is required — income 0 counts.
+  if (incomeRaw === "" && !expenses.length && !goal && !input) {
+    showMsg("aiBudgetMsg", "Please enter an income, at least one expense, a savings goal or a note first.", false);
+    return;
+  }
+  const body = {};
+  if (incomeRaw !== "") body.income = income;
+  if (expenses.length) body.expenses = expenses;
+  if (goal) body.savings_goal = goal;
+  if (input) body.input = input;
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = "Thinking…";
+  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  try {
+    const r = await api("/api/ai/budget", { method: "POST", body: JSON.stringify(body) });
+    replyBox.innerHTML = esc(r.reply || "");
+    let msg = "AI budget review received.";
+    if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
+    showMsg("aiBudgetMsg", msg, true);
+    if (r.history_id === 0) {
+      showMsg("aiBudgetWarn", "Note: the reply was received, but it was NOT saved to your AI history.", false);
+    }
+  } catch (e) {
+    // A stale reply must never stay on screen after an error.
+    replyBox.innerHTML = "";
+    // api() already forces a logout on 401; the other messages come
+    // from the server (data.error) and are shown with a short note.
+    const m = e.message || "Request failed.";
+    if (m === "invalid input") showMsg("aiBudgetMsg", "Invalid input — please check the fields and try again.", false);
+    else if (m === "AI requires the C++ server") showMsg("aiBudgetMsg", "AI requires the C++ server — this Python fallback server cannot run AI features.", false);
+    else if (m === "AI unavailable" || m === "AI configuration error" || m === "AI request limit reached") showMsg("aiBudgetMsg", m + " Please try again later.", false);
+    else if (m === "AI request timed out") showMsg("aiBudgetMsg", "AI request timed out. Please try again.", false);
+    else if (m === "AI request failed") showMsg("aiBudgetMsg", "AI request failed. Please try again later.", false);
+    else showMsg("aiBudgetMsg", m, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+});
+
 // -- tasks ----------------------------------------------------------
 async function loadTasks() {
   el("taskList").innerHTML = '<div class="loading">Loading tasks…</div>';

@@ -59,6 +59,7 @@
   <button data-section="ai-task">&#128270; AI Task Analyzer</button>
   <button data-section="ai-study">&#128218; AI Study Planner</button>
   <button data-section="ai-problem">&#128161; AI Problem Solver</button>
+  <button data-section="ai-budget">&#128176; AI Budget Assistant</button>
 </nav>
 <div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
 
@@ -539,6 +540,26 @@
       <div id="aiProblemMsg"></div>
       <div id="aiProblemWarn"></div>
       <div id="aiProblemReply" class="ai-reply"></div>
+    </div>
+  </section>
+  <section id="ai-budget">
+    <h2>AI Budget Assistant</h2>
+    <p class="muted">Ask the AI to review your income, expenses and savings goal: a budget plan, spending recommendations and savings progress. Your input is sent to the AI as data only — never as an instruction. The AI never calculates — the server computes all figures (totals, remaining, deficit, savings rate, goal progress) first and the AI only advises on them. Income is optional and 0 counts as provided; expenses are up to 20 rows; a savings goal needs all three fields (name, target, saved).</p>
+    <div class="card">
+      <label>Monthly income (optional) <input id="aiBudgetIncome" type="number" min="0" max="1000000000" step="0.01" placeholder="50000"></label>
+      <label>Expenses (up to 20)</label>
+      <div id="aiBudgetExpenses"></div>
+      <div class="actions">
+        <button class="btn btn-secondary" id="aiBudgetAddExpense">Add expense</button>
+        <button class="btn btn-primary" id="aiBudgetBtn">Review my budget</button>
+      </div>
+      <label>Savings goal — name (optional) <input id="aiBudgetGoalName" type="text" placeholder="New laptop"></label>
+      <label>Savings goal — target (optional) <input id="aiBudgetGoalTarget" type="number" min="0" max="1000000000" step="0.01" placeholder="100000"></label>
+      <label>Savings goal — already saved (optional) <input id="aiBudgetGoalSaved" type="number" min="0" max="1000000000" step="0.01" placeholder="25000"></label>
+      <label>Extra notes (optional) <textarea id="aiBudgetInput" rows="3" placeholder="I want to save more for the laptop without cutting food costs"></textarea></label>
+      <div id="aiBudgetMsg"></div>
+      <div id="aiBudgetWarn"></div>
+      <div id="aiBudgetReply" class="ai-reply"></div>
     </div>
   </section>
 </main>
