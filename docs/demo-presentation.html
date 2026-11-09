@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Personal Decision &amp; Problem Solver — Phase 4 Demo</title>
+<style>
+  :root { --navy:#12355b; --teal:#0e7c7b; --amber:#d98e00; --ink:#1c2430;
+         --muted:#5a6b7d; --line:#d7e0e8; --bg:#f4f7fa; --card:#ffffff;
+         --good:#1a7f37; --warn:#b54708; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--ink);
+    font-family:"Segoe UI", Arial, Helvetica, sans-serif; }
+  #deck { position:relative; }
+  .slide { display:none; min-height:100vh; padding:64px 72px 96px;
+    max-width:1100px; margin:0 auto; background:var(--card); }
+  .slide.active { display:block; }
+  .slide.title { background:linear-gradient(135deg, var(--navy), #1d5c8a);
+    color:#fff; }
+  .slide.title h1 { color:#fff; font-size:56px; line-height:1.1; margin:18px 0 12px; }
+  .slide.title h2 { color:#cfe3f2; font-weight:400; font-size:26px; margin:0 0 8px; }
+  .slide.title p { color:#bcd3e6; font-size:18px; }
+  .kicker { text-transform:uppercase; letter-spacing:2px; font-size:13px;
+    font-weight:700; color:var(--teal); }
+  .slide.title .kicker { color:#7fd1c0; }
+  h1 { font-size:42px; margin:10px 0 18px; color:var(--navy); line-height:1.15; }
+  h2 { font-size:24px; color:var(--navy); margin:26px 0 10px; }
+  h3 { font-size:19px; color:var(--navy); margin:18px 0 6px; }
+  p, li { font-size:19px; line-height:1.5; }
+  li { margin:6px 0; }
+  .small { font-size:15px; color:var(--muted); }
+  .tag { display:inline-block; padding:3px 10px; border-radius:20px;
+    font-size:14px; font-weight:700; }
+  .tag.tbd { background:#fff3e0; color:var(--warn); border:1px solid #f0c98a; }
+  .tag.done { background:#e6f4ea; color:var(--good); border:1px solid #a3d9b1; }
+  table { border-collapse:collapse; width:100%; margin:14px 0; font-size:17px; }
+  th, td { border:1px solid var(--line); padding:9px 12px; text-align:left;
+    vertical-align:top; }
+  th { background:var(--navy); color:#fff; }
+  tr:nth-child(even) td { background:#f7fafc; }
+  .cols { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; }
+  .card { border:1px solid var(--line); border-radius:10px; padding:18px;
+    background:#fbfcfe; }
+  .card h3 { margin-top:0; }
+  .card ul { margin:6px 0 0; padding-left:20px; }
+  .card li { font-size:16px; }
+  .num { font-size:40px; font-weight:800; color:var(--teal); }
+  .demo-step { border-left:5px solid var(--teal); padding:10px 16px;
+    margin:12px 0; background:#f2faf9; }
+  .demo-step b { color:var(--navy); }
+  code { background:#eef2f6; padding:2px 6px; border-radius:4px;
+    font-size:0.9em; }
+  .url { font-family:Consolas, monospace; background:#eef2f6; padding:4px 8px;
+    border-radius:4px; word-break:break-all; }
+  #nav { position:fixed; left:0; right:0; bottom:0; background:#fff;
+    border-top:1px solid var(--line); padding:10px 20px;
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:15px; color:var(--muted); z-index:10; }
+  #nav button { font-size:16px; padding:8px 18px; border-radius:6px;
+    border:1px solid var(--navy); background:var(--navy); color:#fff;
+    cursor:pointer; }
+  #nav button:disabled { opacity:.4; cursor:default; }
+  #bar { height:5px; background:var(--teal); width:0; }
+  .hint { font-size:14px; }
+  svg.diagram { width:100%; height:auto; border:1px solid var(--line);
+    border-radius:10px; background:#fbfcfe; }
+  @media print {
+    body { background:#fff; }
+    #nav, #bar { display:none; }
+    .slide { display:block !important; min-height:auto; page-break-after:always;
+      padding:32px 40px; max-width:none; }
+    .slide.title { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="deck">
+
+<!-- 1. TITLE -->
+<section class="slide title active">
+  <div class="kicker">Project Demonstration &mdash; 10 November 2026</div>
+  <h1>Personal Decision &amp;<br>Problem Solver</h1>
+  <h2>Phase 4: Backend Integration &amp; Complete System Testing</h2>
+  <p>One shared online database for the C++ console app and the website,
+     six Gemini AI features, and a full test suite &mdash; built, tested,
+     and ready to demonstrate.</p>
+  <p style="margin-top:48px;">Team: <b>Rifat</b> &middot; <b>Umma Habiba Nuriya</b>
+     &middot; <b>Sweety Akter</b></p>
+  <p class="small" style="color:#9db9cf;">Repository:
+     github.com/rifat2886/Personal-Decision-Problem-Solver &middot;
+     Branch: phase4-backend-integration</p>
+</section>
+
+<!-- 2. PROBLEM + TEAM -->
+<section class="slide">
+  <div class="kicker">The problem</div>
+  <h1>Everyday decisions are scattered</h1>
+  <p>Decisions, tasks, money, and habits live in different notebooks and apps.
+     Nothing connects a decision to the task, the budget, or the habit that
+     follows it &mdash; and nothing explains <i>why</i> one option is better
+     than another.</p>
+  <h2>Our answer</h2>
+  <ul>
+    <li><b>One system:</b> a C++ console app and a website that share the same
+        online PostgreSQL database.</li>
+    <li><b>One login:</b> every user sees only their own data.</li>
+    <li><b>AI help:</b> six Gemini assistants that explain their
+        recommendations instead of just giving an answer.</li>
+  </ul>
+  <h2>The team</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>Rifat</h3>
+      <p class="small">System Core &amp; Authentication</p>
+      <ul>
+        <li>Registration, login / logout, profile, admin</li>
+        <li>Password validation &amp; change</li>
+        <li>Time allocation, study planner</li>
+        <li>Dashboard &amp; C++ backend server</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Umma Habiba Nuriya</h3>
+      <p class="small">Logic &amp; Decision Engine</p>
+      <ul>
+        <li>Daily decision maker, priority calculator</li>
+        <li>Task prioritization, task status</li>
+        <li>Compare options, deadline alert</li>
+        <li>Decision explanation, multi-task decision</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Sweety Akter</h3>
+      <p class="small">Planner &amp; Habit Tracker</p>
+      <ul>
+        <li>Budget management, income &amp; expense tracking</li>
+        <li>Savings goals, habit tracker, habit streak</li>
+        <li>Weekly / monthly reports</li>
+        <li>TXT / CSV export</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 3. ARCHITECTURE -->
+<section class="slide">
+  <div class="kicker">Architecture</div>
+  <h1>Four parts, one database</h1>
+  <svg class="diagram" viewBox="0 0 980 470" role="img"
+       aria-label="Architecture diagram: user reaches the dashboard frontend and the console app; both reach the C++ backend server and the Neon PostgreSQL database; the server calls the Gemini API.">
+    <defs>
+      <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4"
+              orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#12355b"/></marker>
+    </defs>
+    <rect x="20" y="30" width="180" height="70" rx="8" fill="#12355b"/>
+    <text x="110" y="60" fill="#fff" text-anchor="middle" font-size="16" font-weight="bold">User</text>
+    <text x="110" y="82" fill="#cfe3f2" text-anchor="middle" font-size="13">browser / terminal</text>
+    <rect x="280" y="30" width="260" height="70" rx="8" fill="#eaf4f4" stroke="#0e7c7b" stroke-width="2"/>
+    <text x="410" y="60" fill="#12355b" text-anchor="middle" font-size="16" font-weight="bold">Dashboard frontend</text>
+    <text x="410" y="82" fill="#5a6b7d" text-anchor="middle" font-size="13">index.html / app.js / style.css — 30 sections</text>
+    <rect x="280" y="150" width="260" height="70" rx="8" fill="#eaf4f4" stroke="#0e7c7b" stroke-width="2"/>
+    <text x="410" y="180" fill="#12355b" text-anchor="middle" font-size="16" font-weight="bold">C++ console app</text>
+    <text x="410" y="202" fill="#5a6b7d" text-anchor="middle" font-size="13">project — menus 0–43</text>
+    <rect x="620" y="30" width="330" height="110" rx="8" fill="#fff3e0" stroke="#d98e00" stroke-width="2"/>
+    <text x="785" y="60" fill="#12355b" text-anchor="middle" font-size="16" font-weight="bold">C++ backend server</text>
+    <text x="785" y="82" fill="#5a6b7d" text-anchor="middle" font-size="13">dashboard/cpp_server.cpp</text>
+    <text x="785" y="102" fill="#5a6b7d" text-anchor="middle" font-size="13">REST API + static files + Gemini client</text>
+    <text x="785" y="122" fill="#5a6b7d" text-anchor="middle" font-size="13">hosted on Render Free (Docker)</text>
+    <rect x="620" y="190" width="330" height="90" rx="8" fill="#e8f0f8" stroke="#12355b" stroke-width="2"/>
+    <text x="785" y="220" fill="#12355b" text-anchor="middle" font-size="16" font-weight="bold">Neon PostgreSQL</text>
+    <text x="785" y="242" fill="#5a6b7d" text-anchor="middle" font-size="13">shared database — 10 tables</text>
+    <text x="785" y="262" fill="#5a6b7d" text-anchor="middle" font-size="13">console + website read &amp; write the same rows</text>
+    <rect x="620" y="320" width="330" height="90" rx="8" fill="#f3eefc" stroke="#6a4fb3" stroke-width="2"/>
+    <text x="785" y="350" fill="#12355b" text-anchor="middle" font-size="16" font-weight="bold">Gemini API</text>
+    <text x="785" y="372" fill="#5a6b7d" text-anchor="middle" font-size="13">default model: gemini-3-flash-preview</text>
+    <text x="785" y="392" fill="#5a6b7d" text-anchor="middle" font-size="13">key only in the GEMINI_API_KEY env var</text>
+    <line x1="200" y1="60" x2="272" y2="60" stroke="#12355b" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="200" y1="75" x2="272" y2="170" stroke="#12355b" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="540" y1="65" x2="612" y2="75" stroke="#12355b" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="540" y1="185" x2="612" y2="225" stroke="#12355b" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="785" y1="140" x2="785" y2="182" stroke="#12355b" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="785" y1="280" x2="785" y2="312" stroke="#12355b" stroke-width="2" marker-end="url(#arr)"/>
+    <text x="490" y="440" text-anchor="middle" font-size="14" fill="#5a6b7d">Vercel hosts the frontend only (no /api proxy) — the demo URL is the Render service URL, which serves dashboard + API from one origin.</text>
+  </svg>
+  <ul>
+    <li><b>Shared database:</b> a decision saved in the console appears on the
+        website, and vice versa.</li>
+    <li><b>Fail fast:</b> if the database is unreachable, server and console
+        stop with an error &mdash; they never silently fall back to local files.</li>
+    <li><b>Render Free:</b> sleeps after 15 minutes idle, about 1 minute to wake.</li>
+  </ul>
+</section>
+
+<!-- 4. FEATURES -->
+<section class="slide">
+  <div class="kicker">Features</div>
+  <h1>Console, dashboard, and AI</h1>
+  <div class="cols">
+    <div class="card">
+      <h3>Console app</h3>
+      <p class="small">Menus 0–43</p>
+      <ul>
+        <li>Register / login / profile / admin</li>
+        <li>Daily decision, priority, multi-task</li>
+        <li>Tasks, deadlines, compare options</li>
+        <li>Income / expense, savings, habits</li>
+        <li>Reports, export, backup / restore</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Dashboard</h3>
+      <p class="small">30 sections</p>
+      <ul>
+        <li>Overview with charts and totals</li>
+        <li>All console features in the browser</li>
+        <li>Login gate: only landing + auth are public</li>
+        <li>Mobile responsive (drawer under 720 px)</li>
+        <li>Works from the Render URL or localhost</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Formulas (verified)</h3>
+      <ul>
+        <li>Priority = urgency &times; 2 + importance &times; 3 (max 50)</li>
+        <li>Compare = benefit &times; 3 &minus; cost &minus; risk</li>
+        <li>Multi-task: highest urgency first, within energy / time budgets</li>
+        <li>Budget: remaining &lt; 0 &rarr; &ldquo;Reduce expenses.&rdquo;</li>
+      </ul>
+    </div>
+  </div>
+  <h2>Six Gemini AI features</h2>
+  <table>
+    <tr><th>Feature</th><th>What it does</th></tr>
+    <tr><td>Daily Decision Assistant</td><td>Recommends one option, with reasons</td></tr>
+    <tr><td>Task Analyzer</td><td>Priority, urgency, and next action for a task</td></tr>
+    <tr><td>Study Planner</td><td>Day-by-day plan from subjects, hours, and exam date</td></tr>
+    <tr><td>Problem Solver</td><td>Analysis, options, recommended solution, action steps</td></tr>
+    <tr><td>Budget Assistant</td><td>Advice on server-computed figures &mdash; Gemini never calculates</td></tr>
+    <tr><td>Habit Assistant</td><td>Advice from real streak and completion figures</td></tr>
+  </table>
+  <p>Every AI reply is saved to a per-user AI history (view and delete in the
+     dashboard). The API key is never in the code, the repo, a log, or a response.</p>
+</section>
+
+<!-- 5. LIVE DEMO FLOW -->
+<section class="slide">
+  <div class="kicker">Live demo</div>
+  <h1>Demo flow</h1>
+  <p>Demo URL: <span class="url">http://127.0.0.1:8000/</span>
+     <span class="tag tbd">Local demo &mdash; Render blocked (card required)</span></p>
+  <p class="small">The demo runs on this PC (localhost). No wake-up wait: the
+     local server is already running. The console and the dashboard share the
+     same database (Neon online database when <code>DATABASE_URL</code> is
+     set, otherwise the local txt files).</p>
+  <div class="demo-step"><b>1. Register first &mdash;</b> the first account on a
+    fresh database becomes ADMIN. Register before sharing the URL.</div>
+  <div class="demo-step"><b>2. Log in &mdash;</b> show the overview: decisions,
+    tasks, income / expense / balance, savings, habits.</div>
+  <div class="demo-step"><b>3. Console + website, same data &mdash;</b> add a
+    task in the console (menu 13), refresh the dashboard, and show it there.
+    Then add a transaction on the website and show the balance in the
+    console (menu 18).</div>
+  <div class="demo-step"><b>4. AI Daily Decision &mdash;</b> ask &ldquo;Should I study
+    maths or physics tonight?&rdquo; and show the recommendation, then open
+    AI History to show the saved reply.</div>
+  <div class="demo-step"><b>5. AI Budget Assistant &mdash;</b> enter an income
+    and expenses, show the server-computed remaining and the DEFICIT warning
+    when expenses exceed income.</div>
+  <div class="demo-step"><b>6. Per-user security &mdash;</b> log in as a second
+    user and show that the first user's tasks, decisions, and AI history are
+    not visible.</div>
+  <p class="small">Health check during the demo:
+     <code>http://127.0.0.1:8000/api/health</code> should answer
+     <code>{"ok":true,"backend":"C++","storage":"postgres"}</code>.</p>
+</section>
+
+<!-- 6. TESTING EVIDENCE -->
+<section class="slide">
+  <div class="kicker">Testing evidence</div>
+  <h1>Tested, not claimed</h1>
+  <p>Full local regression, all passing (verified 2026-11-09). Every number
+     below is a real test run &mdash; no test is reported as passed unless it ran.</p>
+  <table>
+    <tr><th>Suite</th><th>Result</th></tr>
+    <tr><td>Build (C++ server + console)</td><td>0 warnings</td></tr>
+    <tr><td>Gemini client tests</td><td>27 / 27</td></tr>
+    <tr><td>AI endpoint tests (mock Gemini)</td><td>609 / 609</td></tr>
+    <tr><td>Console tests</td><td>14 / 14</td></tr>
+    <tr><td>Console + Postgres tests</td><td>58 / 58</td></tr>
+    <tr><td>API tests</td><td>36 / 36 (C++ server) + 36 / 36 (Python server)</td></tr>
+    <tr><td>Per-user isolation tests</td><td>29 / 29 (C++ server) + 29 / 29 (Python server)</td></tr>
+    <tr><td>Postgres tests</td><td>51 / 51</td></tr>
+    <tr><td>Browser (dashboard) tests</td><td>150 / 150</td></tr>
+    <tr><td>Auth-gate tests</td><td>58 / 58</td></tr>
+    <tr><td>Mobile tests</td><td>48 / 48</td></tr>
+    <tr><td>Live end-to-end (server + real Gemini API)</td><td>11 / 11</td></tr>
+  </table>
+  <p><span class="tag done">PASS</span> &nbsp;Linux + Windows CI run for the
+     Phase 4 branch &mdash; CI #24 SUCCESS (2026-11-09, 4m 37s; both jobs green,
+     pg_test 51/51 in CI).</p>
+  <p><span class="tag tbd">TBD</span> &nbsp;Live verification of the console +
+     dashboard against the real Neon database from the demo PC &mdash; the
+     local cross-check passed (console &harr; API, both directions); the
+     Neon-from-PC step is in the demo runbook, not claimed here.</p>
+</section>
+
+<!-- 7. SECURITY -->
+<section class="slide">
+  <div class="kicker">Security</div>
+  <h1>Your data stays yours</h1>
+  <ul>
+    <li><b>First user is ADMIN.</b> Later users are USER. There is no
+        promote / demote / password-reset endpoint by design.</li>
+    <li><b>Per-user isolation.</b> Every read is owner-filtered; asking for
+        another user's row returns 404, never the data.</li>
+    <li><b>Passwords</b> are stored as PBKDF2 hashes, never in plain text.
+        Minimum 8 characters, with a letter and a digit.</li>
+    <li><b>Sessions</b> are in-memory tokens, 12-hour expiry. A server
+        restart (or a Render sleep / wake) logs users out.</li>
+    <li><b>Login rate limit:</b> 5 failed attempts per username in 300
+        seconds, then 429.</li>
+    <li><b>AI history</b> is strictly per-user; the Gemini key is sent only
+        as the <code>x-goog-api-key</code> header and never appears in a
+        response, log, or the database.</li>
+    <li><b>Input is data, not instructions.</b> The AI instruction is a
+        fixed server-side constant; user text is quoted data.</li>
+  </ul>
+  <h2>Known limits (stated honestly)</h2>
+  <ul>
+    <li>Render Free sleeps after 15 minutes idle (~1 minute to wake) and has
+        no persistent disk &mdash; that is why Postgres mode is mandatory.</li>
+    <li>The default Gemini model is <code>gemini-3-flash-preview</code>;
+        <code>gemini-2.0-flash</code> and <code>gemini-2.5-flash</code> are
+        retired, and <code>gemini-3.8-flash</code> (production target) was
+        answering 503 on 2026-11-09.</li>
+    <li>The Python server is a local fallback only: no AI (501), no Postgres.</li>
+  </ul>
+</section>
+
+<!-- 8. FUTURE WORK -->
+<section class="slide">
+  <div class="kicker">Future work</div>
+  <h1>What comes next</h1>
+  <table>
+    <tr><th>Item</th><th>Status</th></tr>
+    <tr><td>Render Free web service live + verified (health, database, auth, API, website)</td><td><span class="tag tbd">Blocked &mdash; Render requires a card</span></td></tr>
+    <tr><td>Linux + Windows CI green on the Phase 4 branch</td><td><span class="tag done">Done &mdash; CI #24 SUCCESS</span></td></tr>
+    <tr><td>Re-test <code>gemini-3.8-flash</code> as the production model</td><td><span class="tag tbd">TBD</span></td></tr>
+    <tr><td>Full-database backup / restore rehearsal on the live database</td><td><span class="tag tbd">TBD</span></td></tr>
+    <tr><td>Merge to <code>main</code> (needs separate permission)</td><td><span class="tag tbd">TBD</span></td></tr>
+    <tr><td>Vercel <code>/api</code> proxy so the Vercel site can call the backend</td><td><span class="tag tbd">TBD</span></td></tr>
+  </table>
+  <h2>Deliberately not built</h2>
+  <ul>
+    <li>No promote / demote / password-reset endpoint (admin recovery is a
+        database-owner-only offline operation).</li>
+    <li>No paid service, no card, no billing &mdash; the whole deployment is
+        free-tier only.</li>
+    <li>No public launch, domain, or DNS change in this phase.</li>
+  </ul>
+  <h1 style="margin-top:40px;">Thank you — questions?</h1>
+  <p>Repository: github.com/rifat2886/Personal-Decision-Problem-Solver</p>
+  <p class="small">Full documentation: architecture.md and api.md (Phase 4 docs).
+     Test numbers on the testing slide are the verified local regression of
+     2026-11-09; anything marked TBD is not yet verified and is not claimed as done.</p>
+</section>
+
+</div>
+<div id="nav">
+  <button id="prevBtn" type="button">&larr; Previous</button>
+  <span><span id="counter">1 / 8</span> &nbsp;·&nbsp;
+    <span class="hint">Use &larr; &rarr; keys, Space, or click the buttons. Print (Ctrl/Cmd+P) shows all slides.</span></span>
+  <button id="nextBtn" type="button">Next &rarr;</button>
+</div>
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var idx = 0;
+  var counter = document.getElementById('counter');
+  var prevBtn = document.getElementById('prevBtn');
+  var nextBtn = document.getElementById('nextBtn');
+  var bar = document.getElementById('bar');
+  function show(i) {
+    idx = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach(function (s, j) { s.classList.toggle('active', j === idx); });
+    counter.textContent = (idx + 1) + ' / ' + slides.length;
+    prevBtn.disabled = idx === 0;
+    nextBtn.disabled = idx === slides.length - 1;
+    bar.style.width = ((idx + 1) / slides.length * 100) + '%';
+    window.scrollTo(0, 0);
+  }
+  prevBtn.addEventListener('click', function () { show(idx - 1); });
+  nextBtn.addEventListener('click', function () { show(idx + 1); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(idx + 1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(idx - 1); }
+    if (e.key === 'Home') { show(0); }
+    if (e.key === 'End') { show(slides.length - 1); }
+  });
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('button') || e.target.closest('a')) return;
+    if (e.clientX > window.innerWidth * 0.6) show(idx + 1);
+    else if (e.clientX < window.innerWidth * 0.4) show(idx - 1);
+  });
+  show(0);
+})();
+</script>
+</body>
+</html>
