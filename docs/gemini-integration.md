@@ -651,6 +651,66 @@ was needed for Phase 3.3.
   existing `input`/`select` styling (including the 44px
   mobile tap targets) already cover this form.
 
+## Phase 3.4 — AI Problem Solver in the dashboard
+
+The fourth AI section in the dashboard. It calls only
+`POST /api/ai/problem-solver` (Phase 2.4) — no backend change
+was needed for Phase 3.4.
+
+- UI: a nav button `data-section="ai-problem"` in the existing
+  "AI Assistant" group, and a section
+  `<section id="ai-problem">` following the existing section
+  pattern (`<h2>`, `.muted` description, `.card` with the
+  form, action button, `<div id="aiProblemMsg">`, a warning
+  div and the reply div). The section is protected by the
+  existing auth gate: it is NOT in `PUBLIC_SECTIONS`
+  (landing, auth only), the nav button is hidden by the
+  logged-out body class, and the server still returns 401
+  without a session.
+- Form: a single problem textarea and a "Solve problem"
+  button. The problem is the only field — there is no
+  `input` alias in the UI (the server accepts it, but the
+  UI only ever sends `problem`).
+- Validation (client-side, mirrors the server): the problem
+  is trimmed, non-empty, max **4000 UTF-8 CODE POINTS**
+  (counted with `[...str].length`, NOT with `TextEncoder`
+  bytes and NOT with `str.length`, so astral characters
+  count as one). This is the key difference from 3.1–3.3:
+  a 4000-Bengali-character problem is about 12000 bytes
+  and is VALID — the 2.4 change to `gemini_client.cpp`
+  (the 8000-character prompt budget counts code points)
+  exists exactly so this works. Validation errors are
+  shown immediately, before any network call.
+- Newline sanitization: `\r`, `\n`, `\t` and other control
+  characters (U+0000–U+001F, U+007F) are replaced with spaces
+  BEFORE sending, because the backend's old JSON helpers
+  (`jsonStringField`, Phase 2.1–2.4) do NOT decode escapes —
+  a `\n` in the request body would otherwise arrive as the
+  letter `n`. The sanitization helper is shared with
+  Phase 3.1.
+- Reply: rendered with `esc()` into the reply div (never raw
+  `innerHTML`); line breaks are preserved by the `.ai-reply`
+  CSS class (`white-space: pre-wrap`). The `history_id` is
+  shown next to the success message. This endpoint verifies
+  the history save (read-back) — a failed save is a 502,
+  never a 200 — but if `history_id` is ever 0, the reply is
+  shown AND the same "not saved" warning as in 3.1–3.3.
+- Loading/error states: the button is disabled and shows
+  "Thinking…" while the call runs (double-submit blocked);
+  an error clears any stale reply. `400
+  {"error":"invalid input"}` shows a friendly "Invalid
+  input" message; `401` is handled by the shared `api()`
+  (forced logout to Login); `501` explains that AI needs
+  the C++ server; `502`/`503`/`504` show the server's
+  message with a short note. No API key is ever sent,
+  logged or shown by the frontend.
+- Files: `dashboard/index.html`, `dashboard/app.js`,
+  `tests/browser_test.py`, `tests/auth_gate_test.py`,
+  `tests/mobile_test.py`. No `dashboard/style.css` change
+  was needed: the 3.1 `textarea` and `.ai-reply` rules and
+  the existing `input` styling (including the 44px mobile
+  tap targets) already cover this form.
+
 ## Tests
 
 ```sh
