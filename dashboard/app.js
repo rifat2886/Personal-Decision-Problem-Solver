@@ -394,6 +394,108 @@ el("aiDailyBtn").addEventListener("click", async () => {
   }
 });
 
+// -- AI Task Analyzer (Phase 3.2) ---------------------------------
+// POST /api/ai/task-analyzer. Server contract (verified from
+// cpp_server.cpp): description required, trimmed, non-empty, max
+// 4000 BYTES (std::string::size(), not code points — same as
+// 3.1); title optional, trimmed, non-empty, max 500 BYTES;
+// urgency/importance optional strict integers 1-10, sent as JSON
+// numbers; deadline optional free text, trimmed, non-empty, max
+// 100 BYTES — the server does NO date validation, so the UI uses
+// a plain text field, never a date picker; status optional, one
+// of pending / in-progress / done (the server also accepts the
+// aliases in_progress and completed, but the UI only ever sends
+// the canonical values). Same escape quirk as 3.1: control
+// characters are replaced with spaces BEFORE sending, because
+// the server's old JSON helpers do not decode escapes.
+// history_id 0 means the reply arrived but the history row was
+// not saved (this endpoint has no save read-back check).
+// Byte length and sanitization reuse the 3.1 helpers.
+const AI_TASK_MAX_DESC_BYTES = 4000;
+const AI_TASK_MAX_TITLE_BYTES = 500;
+const AI_TASK_MAX_DEADLINE_BYTES = 100;
+
+function aiTaskStrictInt(s) {
+  if (!/^-?\d+$/.test(s)) return null;
+  const n = Number(s);
+  if (!Number.isInteger(n) || n < 1 || n > 10) return null;
+  return n;
+}
+
+el("aiTaskBtn").addEventListener("click", async () => {
+  const btn = el("aiTaskBtn");
+  const replyBox = el("aiTaskReply");
+  clearMsg("aiTaskMsg");
+  clearMsg("aiTaskWarn");
+  replyBox.innerHTML = "";
+  // Client-side validation mirrors the server, so the user gets an
+  // immediate error instead of a round trip that would fail anyway.
+  const desc = aiDailySanitize(el("aiTaskDesc").value.trim());
+  if (!desc) { showMsg("aiTaskMsg", "Please describe the task first.", false); return; }
+  if (aiDailyByteLen(desc) > AI_TASK_MAX_DESC_BYTES) {
+    showMsg("aiTaskMsg", "Description is too long: maximum 4000 bytes (a Bengali character counts as 3 bytes).", false);
+    return;
+  }
+  const title = aiDailySanitize(el("aiTaskTitle").value.trim());
+  if (title && aiDailyByteLen(title) > AI_TASK_MAX_TITLE_BYTES) {
+    showMsg("aiTaskMsg", "Title is too long: maximum 500 bytes (a Bengali character counts as 3 bytes).", false);
+    return;
+  }
+  const urgencyRaw = el("aiTaskUrgency").value.trim();
+  const urgency = urgencyRaw === "" ? null : aiTaskStrictInt(urgencyRaw);
+  if (urgencyRaw !== "" && urgency === null) {
+    showMsg("aiTaskMsg", "Urgency must be a whole number from 1 to 10.", false);
+    return;
+  }
+  const importanceRaw = el("aiTaskImportance").value.trim();
+  const importance = importanceRaw === "" ? null : aiTaskStrictInt(importanceRaw);
+  if (importanceRaw !== "" && importance === null) {
+    showMsg("aiTaskMsg", "Importance must be a whole number from 1 to 10.", false);
+    return;
+  }
+  const deadline = aiDailySanitize(el("aiTaskDeadline").value.trim());
+  if (deadline && aiDailyByteLen(deadline) > AI_TASK_MAX_DEADLINE_BYTES) {
+    showMsg("aiTaskMsg", "Deadline is too long: maximum 100 bytes (a Bengali character counts as 3 bytes).", false);
+    return;
+  }
+  const status = el("aiTaskStatus").value;
+  const body = { description: desc };
+  if (title) body.title = title;
+  if (urgency !== null) body.urgency = urgency;
+  if (importance !== null) body.importance = importance;
+  if (deadline) body.deadline = deadline;
+  if (status) body.status = status;
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = "Thinking…";
+  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  try {
+    const r = await api("/api/ai/task-analyzer", { method: "POST", body: JSON.stringify(body) });
+    replyBox.innerHTML = esc(r.reply || "");
+    let msg = "AI analysis received.";
+    if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
+    showMsg("aiTaskMsg", msg, true);
+    if (r.history_id === 0) {
+      showMsg("aiTaskWarn", "Note: the reply was received, but it was NOT saved to your AI history.", false);
+    }
+  } catch (e) {
+    // A stale reply must never stay on screen after an error.
+    replyBox.innerHTML = "";
+    // api() already forces a logout on 401; the other messages come
+    // from the server (data.error) and are shown with a short note.
+    const m = e.message || "Request failed.";
+    if (m === "invalid input") showMsg("aiTaskMsg", "Invalid input — please check the fields and try again.", false);
+    else if (m === "AI requires the C++ server") showMsg("aiTaskMsg", "AI requires the C++ server — this Python fallback server cannot run AI features.", false);
+    else if (m === "AI unavailable" || m === "AI configuration error" || m === "AI request limit reached") showMsg("aiTaskMsg", m + " Please try again later.", false);
+    else if (m === "AI request timed out") showMsg("aiTaskMsg", "AI request timed out. Please try again.", false);
+    else if (m === "AI request failed") showMsg("aiTaskMsg", "AI request failed. Please try again later.", false);
+    else showMsg("aiTaskMsg", m, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+});
+
 // -- tasks ----------------------------------------------------------
 async function loadTasks() {
   el("taskList").innerHTML = '<div class="loading">Loading tasks…</div>';

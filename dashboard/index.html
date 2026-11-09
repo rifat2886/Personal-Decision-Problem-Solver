@@ -56,6 +56,7 @@
   <button data-section="settings">&#9881; Settings</button>
   <div class="nav-group">AI Assistant</div>
   <button data-section="ai-daily">&#129302; AI Daily Decision</button>
+  <button data-section="ai-task">&#128270; AI Task Analyzer</button>
 </nav>
 <div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
 
@@ -480,6 +481,31 @@
       <div id="aiDailyMsg"></div>
       <div id="aiDailyWarn"></div>
       <div id="aiDailyReply" class="ai-reply"></div>
+    </div>
+  </section>
+  <section id="ai-task">
+    <h2>AI Task Analyzer</h2>
+    <p class="muted">Ask the AI to analyse a task: priority, urgency and concrete next steps. Your input is sent to the AI as data only — never as an instruction. Description is limited to 4000 bytes (a Bengali character counts as 3 bytes), title to 500 bytes, and deadline (free text, not a date) to 100 bytes.</p>
+    <div class="card">
+      <label>Task description <textarea id="aiTaskDesc" rows="3" placeholder="Prepare the final report for the project"></textarea></label>
+      <label>Title (optional) <input id="aiTaskTitle" type="text" placeholder="Final report"></label>
+      <label>Urgency (optional, 1–10) <input id="aiTaskUrgency" type="number" min="1" max="10" step="1" placeholder="8"></label>
+      <label>Importance (optional, 1–10) <input id="aiTaskImportance" type="number" min="1" max="10" step="1" placeholder="9"></label>
+      <label>Deadline (optional, free text) <input id="aiTaskDeadline" type="text" placeholder="2026-11-20"></label>
+      <label>Status (optional)
+        <select id="aiTaskStatus">
+          <option value="">— not specified —</option>
+          <option value="pending">Pending</option>
+          <option value="in-progress">In progress</option>
+          <option value="done">Done</option>
+        </select>
+      </label>
+      <div class="actions">
+        <button class="btn btn-primary" id="aiTaskBtn">Analyse task</button>
+      </div>
+      <div id="aiTaskMsg"></div>
+      <div id="aiTaskWarn"></div>
+      <div id="aiTaskReply" class="ai-reply"></div>
     </div>
   </section>
 </main>
