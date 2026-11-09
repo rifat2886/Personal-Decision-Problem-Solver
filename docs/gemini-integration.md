@@ -849,6 +849,56 @@ was needed for Phase 3.6.
   styling (including the 44px mobile tap targets) already
   cover this form.
 
+## Phase 3.7 — AI History view in the dashboard
+
+The seventh AI section in the dashboard. It calls only
+`GET /api/ai/history` and `DELETE /api/ai/history/{id}` — no
+backend change was needed for Phase 3.7.
+
+- UI: a nav button `data-section="ai-history"` in the existing
+  "AI Assistant" group, and a section
+  `<section id="ai-history">` following the existing section
+  pattern (`<h2>`, `.muted` description, `.card` with a feature
+  filter dropdown, a Refresh button, `<div id="aiHistoryMsg">`
+  and `<div id="aiHistoryList">`). The section is protected by
+  the existing auth gate: it is NOT in `PUBLIC_SECTIONS`
+  (landing, auth only), the nav button is hidden by the
+  logged-out body class, and the server still returns 401
+  without a session.
+- Loading: the history is loaded (limit 50, newest first) when
+  the section is opened, on Refresh, and after a delete. The
+  filter (`All features` + one option per feature, with
+  friendly labels) re-renders the already-loaded entries
+  without a network call, and is disabled while a load is in
+  flight. A "Loading…" state shows while fetching.
+- Entries: each entry is a `<div class="ai-history-entry">`
+  with the feature label, `created_at`, the prompt ("You
+  asked:") and the response ("AI answered:"), both rendered
+  with `esc()` (never raw `innerHTML`); responses keep their
+  line breaks via the `.ai-reply` class. Only the caller's
+  own rows are ever returned (owner-filtered server-side;
+  ADMIN gets no exception).
+- Delete: each entry has a Delete button with a `confirm()`
+  dialog. On success the entry is dropped from the list and
+  "Entry deleted." is shown. A 404 (the entry is already
+  gone) removes the entry from the list anyway and shows
+  "That entry was already removed." — no stale error is left
+  on screen. Other errors (401 is handled by the shared
+  `api()` forced logout; 502/503/504 show the server message)
+  keep the list as it is.
+- Empty states: "No AI history yet." when there are no
+  entries at all, "No entries for this feature yet." when
+  the filter matches nothing. On logout the rendered list is
+  cleared (`clearSession` empties `#aiHistoryList` and the
+  in-memory entries, so the next user never sees the
+  previous user's entries); the list is reloaded on next
+  login when the section opens.
+- Files: `dashboard/index.html`, `dashboard/app.js`,
+  `dashboard/style.css` (one new rule only:
+  `.ai-history-entry` divider + header layout, no existing
+  rule changed), `tests/browser_test.py`,
+  `tests/auth_gate_test.py`, `tests/mobile_test.py`.
+
 ## Tests
 
 ```sh
