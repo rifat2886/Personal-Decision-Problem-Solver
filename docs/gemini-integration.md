@@ -516,6 +516,71 @@ was needed for Phase 3.1.
   `tests/browser_test.py`, `tests/auth_gate_test.py`,
   `tests/mobile_test.py`.
 
+## Phase 3.2 — AI Task Analyzer in the dashboard
+
+The second AI section in the dashboard. It calls only
+`POST /api/ai/task-analyzer` (Phase 2.2) — no backend change
+was needed for Phase 3.2.
+
+- UI: a nav button `data-section="ai-task"` in the existing
+  "AI Assistant" group, and a section
+  `<section id="ai-task">` following the existing section
+  pattern (`<h2>`, `.muted` description, `.card` with the
+  form, an action button, `<div id="aiTaskMsg">`, a warning
+  div and the reply div). The section is protected by the
+  existing auth gate: it is NOT in `PUBLIC_SECTIONS`
+  (landing, auth only), the nav button is hidden by the
+  logged-out body class, and the server still returns 401
+  without a session.
+- Form: a textarea for the task description, an optional
+  title, optional urgency and importance (number inputs,
+  1–10), an optional deadline as a plain text field, and an
+  optional status dropdown (Pending / In progress / Done).
+  The deadline is deliberately NOT a date picker: the server
+  does no date validation on it, so any text up to 100 bytes
+  is accepted.
+- Validation (client-side, mirrors the server): description
+  trimmed, non-empty, max **4000 UTF-8 BYTES** — counted
+  with `TextEncoder`, not characters. Title trimmed,
+  non-empty, max **500 bytes**. Urgency and importance must
+  be whole numbers from 1 to 10, sent as JSON numbers.
+  Deadline trimmed, non-empty, max **100 bytes**. Status is
+  only ever one of `pending`, `in-progress`, `done` (the
+  server also accepts the aliases `in_progress` and
+  `completed`, but the UI never sends them). Empty optional
+  fields are omitted from the request entirely. Validation
+  errors are shown immediately, before any network call.
+- Newline sanitization: `\r`, `\n`, `\t` and other control
+  characters (U+0000–U+001F, U+007F) are replaced with spaces
+  BEFORE sending, because the backend's old JSON helpers
+  (`jsonStringField`, Phase 2.1–2.4) do NOT decode escapes —
+  a `\n` in the request body would otherwise arrive as the
+  letter `n`. The byte-length and sanitization helpers are
+  shared with Phase 3.1.
+- Reply: rendered with `esc()` into the reply div (never raw
+  `innerHTML`); line breaks are preserved by the `.ai-reply`
+  CSS class (`white-space: pre-wrap`). The `history_id` is
+  shown next to the success message. If `history_id` is 0,
+  the reply is shown AND a warning is shown that the reply
+  was received but was NOT saved to AI history (this endpoint
+  has no history read-back check — a failed save can still
+  return 200 with `history_id` 0).
+- Loading/error states: the Analyse button is disabled and
+  shows "Thinking…" while the call runs (double-submit
+  blocked); an error clears any stale reply. `400
+  {"error":"invalid input"}` shows a friendly "Invalid
+  input" message; `401` is handled by the shared `api()`
+  (forced logout to Login); `501` explains that AI needs
+  the C++ server; `502`/`503`/`504` show the server's
+  message with a short note. No API key is ever sent,
+  logged or shown by the frontend.
+- Files: `dashboard/index.html`, `dashboard/app.js`,
+  `tests/browser_test.py`, `tests/auth_gate_test.py`,
+  `tests/mobile_test.py`. No `dashboard/style.css` change
+  was needed: the 3.1 `textarea` and `.ai-reply` rules and
+  the existing `input`/`select` styling (including the
+  44px mobile tap targets) already cover this form.
+
 ## Tests
 
 ```sh
