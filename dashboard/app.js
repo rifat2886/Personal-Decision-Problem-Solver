@@ -636,6 +636,72 @@ el("aiStudyBtn").addEventListener("click", async () => {
   }
 });
 
+// -- AI Problem Solver (Phase 3.4) ---------------------------------
+// POST /api/ai/problem-solver. Server contract (verified from
+// cpp_server.cpp): problem REQUIRED, trimmed, non-empty, max
+// 4000 UTF-8 CODE POINTS — counted as characters, NOT bytes
+// (the server uses utf8CodePoints(); a 4000-Bengali-char problem
+// is about 12000 bytes and is VALID — the 2.4 change to
+// gemini_client.cpp counts the prompt budget in code points
+// exactly so this works). The "input" compat alias exists, but
+// the UI only sends "problem". Same escape quirk as 3.1-3.3:
+// control characters are replaced with spaces BEFORE sending,
+// because the server's old JSON helpers do not decode escapes.
+// This endpoint verifies the history save (read-back) — a failed
+// save is a 502, never a 200 — but a history_id of 0 is still
+// handled with the same warning. Sanitization reuses the 3.1
+// helper; the code-point count is new (spreading a string counts
+// code points, so astral characters count as one).
+const AI_PROBLEM_MAX_CODE_POINTS = 4000;
+
+function aiProblemCodePoints(s) { return [...s].length; }
+
+el("aiProblemBtn").addEventListener("click", async () => {
+  const btn = el("aiProblemBtn");
+  const replyBox = el("aiProblemReply");
+  clearMsg("aiProblemMsg");
+  clearMsg("aiProblemWarn");
+  replyBox.innerHTML = "";
+  // Client-side validation mirrors the server, so the user gets an
+  // immediate error instead of a round trip that would fail anyway.
+  const problem = aiDailySanitize(el("aiProblemDesc").value.trim());
+  if (!problem) { showMsg("aiProblemMsg", "Please describe the problem first.", false); return; }
+  if (aiProblemCodePoints(problem) > AI_PROBLEM_MAX_CODE_POINTS) {
+    showMsg("aiProblemMsg", "Problem is too long: maximum 4000 characters.", false);
+    return;
+  }
+  const body = { problem };
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = "Thinking…";
+  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  try {
+    const r = await api("/api/ai/problem-solver", { method: "POST", body: JSON.stringify(body) });
+    replyBox.innerHTML = esc(r.reply || "");
+    let msg = "AI solution received.";
+    if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
+    showMsg("aiProblemMsg", msg, true);
+    if (r.history_id === 0) {
+      showMsg("aiProblemWarn", "Note: the reply was received, but it was NOT saved to your AI history.", false);
+    }
+  } catch (e) {
+    // A stale reply must never stay on screen after an error.
+    replyBox.innerHTML = "";
+    // api() already forces a logout on 401; the other messages come
+    // from the server (data.error) and are shown with a short note.
+    const m = e.message || "Request failed.";
+    if (m === "invalid input") showMsg("aiProblemMsg", "Invalid input — please check the fields and try again.", false);
+    else if (m === "AI requires the C++ server") showMsg("aiProblemMsg", "AI requires the C++ server — this Python fallback server cannot run AI features.", false);
+    else if (m === "AI unavailable" || m === "AI configuration error" || m === "AI request limit reached") showMsg("aiProblemMsg", m + " Please try again later.", false);
+    else if (m === "AI request timed out") showMsg("aiProblemMsg", "AI request timed out. Please try again.", false);
+    else if (m === "AI request failed") showMsg("aiProblemMsg", "AI request failed. Please try again later.", false);
+    else showMsg("aiProblemMsg", m, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+});
+
 // -- tasks ----------------------------------------------------------
 async function loadTasks() {
   el("taskList").innerHTML = '<div class="loading">Loading tasks…</div>';

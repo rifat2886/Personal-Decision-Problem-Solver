@@ -58,6 +58,7 @@
   <button data-section="ai-daily">&#129302; AI Daily Decision</button>
   <button data-section="ai-task">&#128270; AI Task Analyzer</button>
   <button data-section="ai-study">&#128218; AI Study Planner</button>
+  <button data-section="ai-problem">&#128161; AI Problem Solver</button>
 </nav>
 <div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
 
@@ -525,6 +526,19 @@
       <div id="aiStudyMsg"></div>
       <div id="aiStudyWarn"></div>
       <div id="aiStudyReply" class="ai-reply"></div>
+    </div>
+  </section>
+  <section id="ai-problem">
+    <h2>AI Problem Solver</h2>
+    <p class="muted">Ask the AI to analyse a problem and suggest solutions: problem analysis, possible solutions, a recommended solution and concrete action steps. Your input is sent to the AI as data only — never as an instruction. The problem is limited to 4000 characters (counted as characters, not bytes — a Bengali character counts as one).</p>
+    <div class="card">
+      <label>Describe your problem <textarea id="aiProblemDesc" rows="4" placeholder="My printer keeps jamming when I print more than a few pages"></textarea></label>
+      <div class="actions">
+        <button class="btn btn-primary" id="aiProblemBtn">Solve problem</button>
+      </div>
+      <div id="aiProblemMsg"></div>
+      <div id="aiProblemWarn"></div>
+      <div id="aiProblemReply" class="ai-reply"></div>
     </div>
   </section>
 </main>
