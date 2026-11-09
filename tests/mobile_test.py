@@ -177,6 +177,21 @@ def main():
             check("mobile ai-problem reply shown", "Mocked AI reply." in page.content())
             overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
             check("mobile ai-problem no horizontal overflow", overflow <= 1, str(overflow))
+            # AI Budget Assistant (Phase 3.5) at 390px: drawer nav
+            # reaches it, validation works, mock reply is shown, and
+            # the section has no horizontal overflow.
+            page.click("#menuBtn"); page.click("button[data-section='ai-budget']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'ai-budget'", timeout=10000)
+            check("mobile ai-budget opens via drawer", page.is_visible("section#ai-budget"))
+            page.click("#aiBudgetBtn")
+            page.wait_for_function("document.getElementById('aiBudgetMsg').textContent.length > 0", timeout=5000)
+            check("mobile ai-budget empty form error", "income" in page.evaluate("document.getElementById('aiBudgetMsg').textContent").lower())
+            page.fill("#aiBudgetIncome", "50000")
+            page.click("#aiBudgetBtn")
+            page.wait_for_function("document.getElementById('aiBudgetReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            check("mobile ai-budget reply shown", "Mocked AI reply." in page.content())
+            overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
+            check("mobile ai-budget no horizontal overflow", overflow <= 1, str(overflow))
             overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
             check("mobile flow no horizontal overflow", overflow <= 1, str(overflow))
             page.screenshot(path="/tmp/pdps-mobile-390.png")

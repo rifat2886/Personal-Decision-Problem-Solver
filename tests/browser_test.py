@@ -480,6 +480,69 @@ def main():
                 return [r.status, j.error || '']; }""")
             check("ai-problem server 400 invalid input", st == [400, "invalid input"], str(st))
 
+            # AI Budget Assistant (Phase 3.5): client-side validation,
+            # mock-Gemini success, income 0 counts, goal all-three
+            # rule, 503 and 400. Numbers are sent as JSON numbers.
+            page.click("button[data-section='ai-budget']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'ai-budget'")
+            check("ai-budget section visible after login", page.is_visible("section#ai-budget"))
+            # Empty form -> client-side validation error, no API call.
+            page.click("#aiBudgetBtn")
+            page.wait_for_function("document.getElementById('aiBudgetMsg').textContent.length > 0")
+            check("ai-budget empty form error", "income" in page.evaluate("document.getElementById('aiBudgetMsg').textContent").lower())
+            # Savings goal with only the name -> all-three error.
+            page.fill("#aiBudgetGoalName", "Laptop")
+            page.click("#aiBudgetBtn")
+            page.wait_for_function("document.getElementById('aiBudgetMsg').textContent.includes('all three')")
+            check("ai-budget goal partial error", "all three" in page.evaluate("document.getElementById('aiBudgetMsg').textContent"))
+            page.fill("#aiBudgetGoalName", "")
+            # Income 0 alone is meaningful and must reach the mock:
+            # the server computes "Total income: 0.00" from it.
+            page.fill("#aiBudgetIncome", "0")
+            page.click("#aiBudgetBtn")
+            page.wait_for_function("document.getElementById('aiBudgetReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            check("ai-budget income 0 mock reply shown", "Mocked AI reply." in page.content())
+            check("ai-budget history id shown", "history #" in page.evaluate("document.getElementById('aiBudgetMsg').textContent"))
+            check("ai-budget no history-save warning", page.evaluate("document.getElementById('aiBudgetWarn').textContent") == "")
+            sent = MockGemini.requests[-1] if MockGemini.requests else ""
+            check("ai-budget income 0 reaches mock", "Total income: 0.00" in sent, sent[:300])
+            # One expense row: category + amount reach the mock as
+            # "Food: 1200.00" in the server-computed prompt.
+            page.locator("#aiBudgetExpenses .ai-exp-category").nth(0).fill("Food")
+            page.locator("#aiBudgetExpenses .ai-exp-amount").nth(0).fill("1200")
+            page.click("#aiBudgetBtn")
+            page.wait_for_function("document.getElementById('aiBudgetReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            check("ai-budget expense mock reply shown", "Mocked AI reply." in page.content())
+            sent = MockGemini.requests[-1] if MockGemini.requests else ""
+            check("ai-budget expense reaches mock", "Food: 1200.00" in sent, sent[:300])
+            # Savings goal, all three fields: the goal reaches the
+            # mock as "Laptop (target 100000.00, saved 25000.00)".
+            page.fill("#aiBudgetGoalName", "Laptop")
+            page.fill("#aiBudgetGoalTarget", "100000")
+            page.fill("#aiBudgetGoalSaved", "25000")
+            page.click("#aiBudgetBtn")
+            page.wait_for_function("document.getElementById('aiBudgetReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            check("ai-budget goal mock reply shown", "Mocked AI reply." in page.content())
+            sent = MockGemini.requests[-1] if MockGemini.requests else ""
+            check("ai-budget goal reaches mock", "Laptop (target 100000.00, saved 25000.00)" in sent, sent[:300])
+            # 503 via the mock rate-limit trigger: the UI shows the
+            # server message and clears the stale reply.
+            page.fill("#aiBudgetInput", "MOCK-RATE-LIMIT test")
+            page.click("#aiBudgetBtn")
+            page.wait_for_function("document.getElementById('aiBudgetMsg').textContent.includes('AI request limit reached')")
+            check("ai-budget 503 error shown", "AI request limit reached" in page.evaluate("document.getElementById('aiBudgetMsg').textContent"))
+            check("ai-budget 503 clears stale reply", page.evaluate("document.getElementById('aiBudgetReply').textContent") == "")
+            # 400 from the server (direct API call from the page: the
+            # UI's own validation cannot produce one, by design).
+            st = page.evaluate("""async () => {
+                const t = sessionStorage.getItem('pdps_token');
+                const r = await fetch('/api/ai/budget', {method: 'POST',
+                  headers: {Authorization: 'Bearer ' + t, 'Content-Type': 'application/json'},
+                  body: JSON.stringify({})});
+                const j = await r.json().catch(() => ({}));
+                return [r.status, j.error || '']; }""")
+            check("ai-budget server 400 invalid input", st == [400, "invalid input"], str(st))
+
             # Reports section screenshot, then dark mode.
             page.click("button[data-section='reports']")
             page.wait_for_timeout(800)
@@ -513,13 +576,13 @@ def main():
             ctx.close()
 
             # Chromium logs a console error for every failed fetch,
-            # including the eight intentional AI error calls (a 503 UI
+            # including the ten intentional AI error calls (a 503 UI
             # test and a direct 400 fetch for each of ai-daily,
-            # ai-task, ai-study and ai-problem). Remove exactly those
-            # eight expected messages (four 503s, four 400s); any other
-            # console error still fails.
+            # ai-task, ai-study, ai-problem and ai-budget). Remove
+            # exactly those ten expected messages (five 503s, five
+            # 400s); any other console error still fails.
             remaining_console = list(ERRORS)
-            for expected in ("status of 503", "status of 503", "status of 503", "status of 503", "status of 400", "status of 400", "status of 400", "status of 400"):
+            for expected in ("status of 503", "status of 503", "status of 503", "status of 503", "status of 503", "status of 400", "status of 400", "status of 400", "status of 400", "status of 400"):
                 for i, e in enumerate(remaining_console):
                     if "Failed to load resource" in e and expected in e:
                         del remaining_console[i]
@@ -531,7 +594,7 @@ def main():
             ai_errors = [u for u in failed if "/api/ai/" in u]
             unexpected = [u for u in failed if "/api/ai/" not in u]
             check("no unexpected failed API requests", len(unexpected) == 0, str(unexpected[:3]))
-            check("ai error states recorded (expected)", len(ai_errors) >= 8, str(ai_errors))
+            check("ai error states recorded (expected)", len(ai_errors) >= 10, str(ai_errors))
             browser.close()
     finally:
         proc.terminate()
