@@ -249,6 +249,89 @@ def main():
                 return [r.status, j.error || '']; }""")
             check("ai-daily server 400 invalid input", st == [400, "invalid input"], str(st))
 
+            # AI Task Analyzer (Phase 3.2): client-side validation,
+            # mock-Gemini success, newline sanitization, 503 and 400.
+            page.click("button[data-section='ai-task']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'ai-task'")
+            check("ai-task section visible after login", page.is_visible("section#ai-task"))
+            # Empty description -> client-side validation error, no API call.
+            page.click("#aiTaskBtn")
+            page.wait_for_function("document.getElementById('aiTaskMsg').textContent.length > 0")
+            check("ai-task empty description error", "describe the task" in page.evaluate("document.getElementById('aiTaskMsg').textContent").lower())
+            # Over 4000 BYTES -> error. 4001 ASCII chars is 4001
+            # bytes; 1334 Bengali chars is 4002 bytes but only 1334
+            # characters, so this also proves the limit counts bytes,
+            # not characters. Clear the message first so the wait
+            # cannot pass on the stale text from the previous check.
+            page.fill("#aiTaskDesc", "x" * 4001)
+            page.click("#aiTaskBtn")
+            page.wait_for_function("document.getElementById('aiTaskMsg').textContent.includes('4000 bytes')")
+            check("ai-task description over 4000 bytes error", "4000 bytes" in page.evaluate("document.getElementById('aiTaskMsg').textContent"))
+            page.evaluate("document.getElementById('aiTaskMsg').textContent = ''")
+            page.fill("#aiTaskDesc", "অ" * 1334)
+            page.click("#aiTaskBtn")
+            page.wait_for_function("document.getElementById('aiTaskMsg').textContent.includes('4000 bytes')")
+            check("ai-task Bengali 1334 chars over 4000 bytes error", "4000 bytes" in page.evaluate("document.getElementById('aiTaskMsg').textContent"))
+            # Title over 500 bytes -> error.
+            page.fill("#aiTaskDesc", "Prepare the final report")
+            page.fill("#aiTaskTitle", "y" * 501)
+            page.click("#aiTaskBtn")
+            page.wait_for_function("document.getElementById('aiTaskMsg').textContent.includes('500 bytes')")
+            check("ai-task title over 500 bytes error", "500 bytes" in page.evaluate("document.getElementById('aiTaskMsg').textContent"))
+            # Urgency out of range (11) and non-integer (8.5) -> error.
+            # Clear the message before the second one so the wait
+            # cannot pass on the stale "1 to 10" text.
+            page.fill("#aiTaskTitle", "")
+            page.fill("#aiTaskUrgency", "11")
+            page.click("#aiTaskBtn")
+            page.wait_for_function("document.getElementById('aiTaskMsg').textContent.includes('1 to 10')")
+            check("ai-task urgency 11 error", "1 to 10" in page.evaluate("document.getElementById('aiTaskMsg').textContent"))
+            page.evaluate("document.getElementById('aiTaskMsg').textContent = ''")
+            page.fill("#aiTaskUrgency", "8.5")
+            page.click("#aiTaskBtn")
+            page.wait_for_function("document.getElementById('aiTaskMsg').textContent.includes('1 to 10')")
+            check("ai-task urgency 8.5 error", "1 to 10" in page.evaluate("document.getElementById('aiTaskMsg').textContent"))
+            # Deadline over 100 bytes -> error.
+            page.fill("#aiTaskUrgency", "")
+            page.fill("#aiTaskDeadline", "z" * 101)
+            page.click("#aiTaskBtn")
+            page.wait_for_function("document.getElementById('aiTaskMsg').textContent.includes('100 bytes')")
+            check("ai-task deadline over 100 bytes error", "100 bytes" in page.evaluate("document.getElementById('aiTaskMsg').textContent"))
+            # Success via the mock Gemini server, with all fields and
+            # a multi-line description: the newlines must reach the
+            # mock as spaces (the old JSON helper turns "\n" into "n").
+            page.fill("#aiTaskDeadline", "2026-11-20")
+            page.fill("#aiTaskTitle", "Final report")
+            page.fill("#aiTaskUrgency", "8")
+            page.fill("#aiTaskImportance", "9")
+            page.select_option("#aiTaskStatus", "in-progress")
+            page.fill("#aiTaskDesc", "Prepare the final\nreport for the project")
+            page.click("#aiTaskBtn")
+            page.wait_for_function("document.getElementById('aiTaskReply').textContent.includes('Mocked AI reply.')")
+            check("ai-task mock reply shown", "Mocked AI reply." in page.content())
+            check("ai-task history id shown", "history #" in page.evaluate("document.getElementById('aiTaskMsg').textContent"))
+            check("ai-task no history-save warning", page.evaluate("document.getElementById('aiTaskWarn').textContent") == "")
+            sent = MockGemini.requests[-1] if MockGemini.requests else ""
+            check("ai-task newline sent as space", "final report" in sent and "finalreport" not in sent, sent[:200])
+            check("ai-task fields reach mock", all(x in sent for x in ("Final report", "Urgency: 8", "Importance: 9", "Deadline", "2026-11-20", "in-progress")), sent[:300])
+            # 503 via the mock rate-limit trigger: the UI shows the
+            # server message and clears the stale reply.
+            page.fill("#aiTaskDesc", "MOCK-RATE-LIMIT test")
+            page.click("#aiTaskBtn")
+            page.wait_for_function("document.getElementById('aiTaskMsg').textContent.includes('AI request limit reached')")
+            check("ai-task 503 error shown", "AI request limit reached" in page.evaluate("document.getElementById('aiTaskMsg').textContent"))
+            check("ai-task 503 clears stale reply", page.evaluate("document.getElementById('aiTaskReply').textContent") == "")
+            # 400 from the server (direct API call from the page: the
+            # UI's own validation cannot produce one, by design).
+            st = page.evaluate("""async () => {
+                const t = sessionStorage.getItem('pdps_token');
+                const r = await fetch('/api/ai/task-analyzer', {method: 'POST',
+                  headers: {Authorization: 'Bearer ' + t, 'Content-Type': 'application/json'},
+                  body: JSON.stringify({description: '   '})});
+                const j = await r.json().catch(() => ({}));
+                return [r.status, j.error || '']; }""")
+            check("ai-task server 400 invalid input", st == [400, "invalid input"], str(st))
+
             # Reports section screenshot, then dark mode.
             page.click("button[data-section='reports']")
             page.wait_for_timeout(800)
@@ -282,23 +365,24 @@ def main():
             ctx.close()
 
             # Chromium logs a console error for every failed fetch,
-            # including the two intentional AI error calls (503 UI
-            # test, direct 400 fetch). Remove exactly those two
-            # expected messages; any other console error still fails.
+            # including the four intentional AI error calls (a 503 UI
+            # test and a direct 400 fetch for each of ai-daily and
+            # ai-task). Remove exactly those four expected messages
+            # (two 503s, two 400s); any other console error still fails.
             remaining_console = list(ERRORS)
-            for expected in ("status of 503", "status of 400"):
+            for expected in ("status of 503", "status of 503", "status of 400", "status of 400"):
                 for i, e in enumerate(remaining_console):
                     if "Failed to load resource" in e and expected in e:
                         del remaining_console[i]
                         break
             check("no JS page errors", len(remaining_console) == 0, str(remaining_console[:3]))
-            # The two intentionally-triggered AI error calls (the 503
-            # UI test and the direct 400 fetch above) are expected
+            # The intentionally-triggered AI error calls (the 503 UI
+            # tests and direct 400 fetches above) are expected
             # failures; anything else is not.
-            ai_errors = [u for u in failed if "/api/ai/daily-decision" in u]
-            unexpected = [u for u in failed if "/api/ai/daily-decision" not in u]
+            ai_errors = [u for u in failed if "/api/ai/" in u]
+            unexpected = [u for u in failed if "/api/ai/" not in u]
             check("no unexpected failed API requests", len(unexpected) == 0, str(unexpected[:3]))
-            check("ai error states recorded (expected)", len(ai_errors) >= 2, str(ai_errors))
+            check("ai error states recorded (expected)", len(ai_errors) >= 4, str(ai_errors))
             browser.close()
     finally:
         proc.terminate()
