@@ -251,8 +251,12 @@ be re-verified at signup, because free tiers change:
 4. **Session persistence across sleep/restart** — sessions
    stay in-memory; users re-login after a wake (by design in
    Phase 1, documented in section 7).
-5. **Backup/restore redesign** — the global backup-set flaw
-   from txt mode is preserved, not fixed (section 3).
+5. **Backup/restore redesign** — DONE (2026-11-05, after
+   Phase 1): the per-user redesign is implemented — a backup
+   replaces only the caller's own rows and preserves other
+   users' rows and hidden legacy rows; restore requires
+   confirmation. The global backup-set flaw described in
+   Phase 1 no longer exists.
 6. **Console ↔ online data sync** — not built; console stays
    local txt, online stays Postgres (section 7).
 7. **Live Render/Neon end-to-end test** — impossible in Phase 1
@@ -262,8 +266,11 @@ be re-verified at signup, because free tiers change:
 8. **Windows build with libpq** — the code compiles Postgres
    support out when libpq is missing (so Windows txt builds
    still work), but a Windows Postgres build was not tested
-   (no Windows machine in this environment, and Windows CI is
-   still blocked by the GitHub Workflows permission).
+   (no Windows machine in this environment). Windows CI itself
+   is NOT blocked: CI runs #20/#21 (2026-11-09) passed on
+   Linux + Windows via browser-triggered workflow_dispatch.
+   The GitHub App still lacks the Workflows permission, so
+   workflow files are updated through the browser upload flow.
 
 ## 10. Tests run in Phase 1 (local only, 2026-11-05)
 
@@ -273,7 +280,7 @@ be re-verified at signup, because free tiers change:
   browser 33/33, mobile 19/19, auth_gate 30/30 on both servers.
   `make` builds clean (0 warnings) with libpq.
 - Postgres mode (local PostgreSQL 16, DATABASE_URL pointing
-  at a test database only): `tests/pg_test.py` **41/41 PASS**
+  at a test database only): `tests/pg_test.py` **51/51 PASS**
   — schema creation, register/login, task/decision/transaction/
   savings/habit CRUD, per-user isolation (Alice/Bob, PATCH/
   DELETE 404), legacy hidden with 2 users / visible to sole

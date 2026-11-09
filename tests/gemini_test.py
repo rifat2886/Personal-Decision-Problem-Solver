@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
     unsetenv("GEMINI_TIMEOUT_SECS");
     check("available() true with libcurl", gemini::available());
     check("configured() true with key", gemini::configured());
-    check("model default", gemini::modelName() == "gemini-2.0-flash", gemini::modelName());
+    check("model default", gemini::modelName() == "gemini-3-flash-preview", gemini::modelName());
     setBase("/v1beta");
     gemini::Result r = gemini::generate("Hello, test prompt");
     check("success ok", r.ok, r.error);
@@ -361,7 +361,7 @@ def main():
         check("ai health configured=true",
               body.get("configured") is True, str(body))
         check("ai health model present",
-              body.get("model") == "gemini-2.0-flash", str(body))
+              body.get("model") == "gemini-3-flash-preview", str(body))
         check("ai health response has no key", FAKE_KEY not in raw, raw[:200])
         status, _, _ = req(args.port, "GET", "/api/health")
         check("existing /api/health still 200", status == 200, str(status))

@@ -45,6 +45,7 @@
 // decision, without that class's priority/compare/task methods).
 #include "multi_task_decision.h"
 #include "data_owner.h"
+#include "console_pg.h"
 
 using namespace std;
 
@@ -113,6 +114,22 @@ void showMenu()
 
 int main()
 {
+    // Phase 4, Batch B: when DATABASE_URL is set, the console uses
+    // the shared online PostgreSQL database; when unset, it uses
+    // local txt files exactly as before. A set-but-unusable
+    // DATABASE_URL is fatal (no silent txt fallback — that would
+    // serve a different, empty data set).
+    std::string pgErr;
+    if (!console_pg::initStorage(pgErr)) {
+        std::cout << "Postgres mode failed: " << pgErr << '\n';
+        std::cout << "The console will not fall back to txt files "
+                     "when DATABASE_URL is set.\n";
+        return 1;
+    }
+    if (console_pg::pgMode())
+        std::cout << "Postgres mode: using the online database "
+                     "(DATABASE_URL is set).\n";
+
     int choice;
     bool running = true;
     string username;
@@ -535,5 +552,6 @@ int main()
         }
     }
 
+    console_pg::shutdown();
     return 0;
 }

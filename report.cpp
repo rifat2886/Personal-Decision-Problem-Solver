@@ -1,9 +1,11 @@
 #include "report.h"
+#include "console_pg.h"
 #include "data_owner.h"
 #include "file_lock.h"
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <sstream>
 #include <limits>
 using namespace std;
 
@@ -65,6 +67,26 @@ void generateReport() {
     cout << "Expenses: " << expenses << " Tk\n";
     cout << "Balance: " << balance << " Tk\n";
     cout << "Habit completion: " << habitRate << "%\n";
+
+    // Phase 4, Batch B: Postgres mode appends the report line to
+    // the shared daily_reports table.
+    if (console_pg::pgMode())
+    {
+        std::ostringstream line;
+        line << std::fixed << std::setprecision(2);
+        line << "User: " << g_currentUser
+             << ", Income: " << income
+             << ", Expenses: " << expenses
+             << ", Balance: " << balance
+             << ", Habit completion: " << habitRate << "%";
+        if (!console_pg::appendFreeLine("daily_reports", line.str()))
+        {
+            cout << "Could not save the report.\n";
+            return;
+        }
+        cout << "Report saved to the database.\n";
+        return;
+    }
 
     FileLock lock("daily_report.txt");
     ofstream file("daily_report.txt", ios::app);

@@ -1,4 +1,5 @@
 #include "admin.h"
+#include "console_pg.h"
 
 #include <fstream>
 #include <iostream>
@@ -10,9 +11,25 @@
 // admin username/password, and it never prints stored passwords.
 void adminPanel()
 {
-    std::ifstream in("users.txt");
-
     std::cout << "\n===== ADMIN PANEL =====\n";
+
+    // Phase 4, Batch B: Postgres mode lists the shared users table.
+    if (console_pg::pgMode())
+    {
+        auto users = console_pg::listUsers();
+        if (users.empty())
+        {
+            std::cout << "No registered users found.\n";
+            return;
+        }
+        std::cout << "Registered Users:\n";
+        for (auto& u : users)
+            std::cout << "Username: " << u.first
+                      << " | Role: " << u.second << '\n';
+        return;
+    }
+
+    std::ifstream in("users.txt");
 
     if (!in)
     {

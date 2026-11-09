@@ -1,4 +1,5 @@
 #include "habit_streak.h"
+#include "console_pg.h"
 #include "error_handler.h"
 #include "file_lock.h"
 #include "data_owner.h"
@@ -84,6 +85,15 @@ void markHabitDone()
         return;
     }
 
+    // Phase 4, Batch B: Postgres mode inserts into the shared
+    // habit_log table.
+    if (console_pg::pgMode())
+    {
+        console_pg::appendHabit(habit, date);
+        cout << "Habit completion recorded!\n";
+        return;
+    }
+
     FileLock lock(HABIT_FILE);
     ofstream file(HABIT_FILE, ios::app);
 
@@ -101,7 +111,7 @@ void markHabitDone()
 
 void showHabitStreak()
 {
-    string habit, line;
+    string habit;
     int count = 0;
     vector<int> days;
 
@@ -110,17 +120,30 @@ void showHabitStreak()
     cout << "\nEnter habit name to search: ";
     getline(cin, habit);
 
-    ifstream file(HABIT_FILE);
-
-    if (!file)
+    // Phase 4, Batch B: load the lines from the shared table in
+    // Postgres mode, or from habit_log.txt as before.
+    std::vector<std::string> lines;
+    if (console_pg::pgMode())
     {
-        cout << "No habit records found.\n";
-        return;
+        lines = console_pg::readLines("habit_log");
+    }
+    else
+    {
+        std::ifstream file(HABIT_FILE);
+        if (!file)
+        {
+            cout << "No habit records found.\n";
+            return;
+        }
+        std::string l;
+        while (std::getline(file, l)) lines.push_back(l);
     }
 
-    while (getline(file, line))
+    for (const auto& line : lines)
     {
-        if (!lineVisibleFor(line, 2)) continue;
+        if (console_pg::pgMode()) {
+            if (!console_pg::lineVisible(line, 2)) continue;
+        } else if (!lineVisibleFor(line, 2)) continue;
         size_t separator = line.find('|');
 
         if (separator == string::npos)

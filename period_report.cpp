@@ -1,10 +1,12 @@
 #include "period_report.h"
+#include "console_pg.h"
 #include "data_owner.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
 #include <string>
+#include <vector>
 
 using namespace std;
 
@@ -43,12 +45,23 @@ static bool parseDate(const string& date, long long& days)
 
 void showReportByPeriod(bool monthly)
 {
-    ifstream file("transactions.txt");
-
-    if (!file)
+    // Phase 4, Batch B: load the lines from the shared table in
+    // Postgres mode, or from transactions.txt as before.
+    std::vector<std::string> lines;
+    if (console_pg::pgMode())
     {
-        cout << "No transaction records found.\n";
-        return;
+        lines = console_pg::readLines("transactions");
+    }
+    else
+    {
+        std::ifstream file("transactions.txt");
+        if (!file)
+        {
+            cout << "No transaction records found.\n";
+            return;
+        }
+        std::string l;
+        while (std::getline(file, l)) lines.push_back(l);
     }
 
     // Previously this function totalled ALL transactions for both
@@ -81,9 +94,12 @@ void showReportByPeriod(bool monthly)
     double income = 0, expense = 0;
     int matched = 0;
 
-    while (getline(file, line))
+    for (const auto& l : lines)
     {
-        if (!lineVisibleFor(line, 5)) continue;
+        line = l;
+        if (console_pg::pgMode()) {
+            if (!console_pg::lineVisible(line, 5)) continue;
+        } else if (!lineVisibleFor(line, 5)) continue;
         stringstream ss(line);
 
         if (!getline(ss, date, '|') ||

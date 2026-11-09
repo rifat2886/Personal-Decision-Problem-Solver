@@ -1,4 +1,5 @@
 #include "login.h"
+#include "console_pg.h"
 #include "file_lock.h"
 #include "password_hash.h"
 
@@ -16,6 +17,30 @@ bool loginUser(std::string& currentUser, bool& isAdmin)
 
     std::cout << "Enter password: ";
     std::cin >> password;
+
+    // Phase 4, Batch B: Postgres mode reads the shared users table.
+    if (console_pg::pgMode())
+    {
+        std::string storedHash, role;
+        if (!console_pg::getUser(username, storedHash, role) ||
+            !pdps_hash::verifyPassword(password, storedHash))
+        {
+            std::cout << "Invalid username or password!\n";
+            return false;
+        }
+        currentUser = username;
+        isAdmin = (role == "ADMIN");
+
+        // Backward-compatible migration, same as txt mode: a
+        // plaintext credential that just matched is rewritten as a
+        // hash (UPDATE, not a file rewrite).
+        if (!pdps_hash::isHashed(storedHash))
+            console_pg::updateUserHash(username,
+                                       pdps_hash::hashPassword(password));
+
+        std::cout << "Login successful!\n";
+        return true;
+    }
 
     std::ifstream file("users.txt");
 

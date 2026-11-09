@@ -1,11 +1,11 @@
 # Personal Decision & Problem Solver — C++ backend for Render (Route 2, Phase 1)
 #
-# This image builds ONLY the C++ server (dashboard/cpp_server.cpp).
-# It does not build or run the console app, and it does not need
-# any txt data files: in production it runs in Postgres mode
-# (DATABASE_URL is set by Render from the Neon database, as an
-# environment variable — never baked into this image, never
-# committed to the repo).
+# This image builds ONLY the C++ server (dashboard/cpp_server.cpp
+# + dashboard/gemini_client.cpp). It does not build or run the
+# console app, and it does not need any txt data files: in
+# production it runs in Postgres mode (DATABASE_URL is set by
+# Render from the Neon database, as an environment variable —
+# never baked into this image, never committed to the repo).
 #
 # Build locally (no account needed, for a smoke test only):
 #   docker build -t pdps-cpp-server .
@@ -21,6 +21,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ \
         libpq-dev \
+        libcurl4-openssl-dev \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -32,9 +33,17 @@ COPY password_hash.h ./
 # Debian, not a default search path. Without it, Postgres support
 # is silently compiled out (see pg_store.h) and the server would
 # fail fast on Render instead of connecting to Postgres.
+# Gemini (Phase 1/2): gemini_client.cpp MUST be compiled and
+# linked with the curl-config flags. Without the file the link
+# fails (undefined gemini::* symbols, called from cpp_server.cpp);
+# without libcurl the client compiles to the stub (available()
+# returns false) and every AI endpoint answers 503 in production.
+# curl-config is provided by libcurl4-openssl-dev above.
 RUN g++ -std=c++17 -Wall -Wextra -pthread \
         -I/usr/include/postgresql \
-        -o /app/cpp_server dashboard/cpp_server.cpp -lpq
+        $(curl-config --cflags) \
+        -o /app/cpp_server dashboard/cpp_server.cpp dashboard/gemini_client.cpp \
+        -lpq $(curl-config --libs)
 
 # Render sets PORT at runtime; EXPOSE is documentation only.
 EXPOSE 8000

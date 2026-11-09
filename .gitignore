@@ -1,4 +1,17 @@
 users.txt
+decisions.txt
+tasks.txt
+transactions.txt
+savings_goals.txt
+habit_log.txt
+daily_report.txt
+financial_report.txt
+error_log.txt
+ai_history.txt
+decisions_backup.txt
+.env
+*.pem
+*.key
 project.exe
 project_new.exe
 cpp_server

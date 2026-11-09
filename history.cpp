@@ -1,4 +1,5 @@
 #include "history.h"
+#include "console_pg.h"
 #include "data_owner.h"
 #include <iostream>
 #include <fstream>
@@ -25,20 +26,34 @@ void writeLog(const string& message) {
 
 // Feature 10: Decision History
 void decisionHistory() {
-    ifstream file(HISTORY_FILE);
-
     cout << "\n===== DECISION HISTORY =====\n";
 
-    if (!file) {
-        cout << "No history found.\n";
-        return;
+    // Phase 4, Batch B: load the lines from the shared table in
+    // Postgres mode, or from decisions.txt as before.
+    std::vector<std::string> lines;
+    if (console_pg::pgMode())
+    {
+        lines = console_pg::readLines("decisions");
+    }
+    else
+    {
+        std::ifstream file(HISTORY_FILE);
+        if (!file) {
+            cout << "No history found.\n";
+            return;
+        }
+        std::string l;
+        while (std::getline(file, l)) lines.push_back(l);
     }
 
     string line;
     int count = 0;
 
-    while (getline(file, line)) {
-        if (!lineVisibleFor(line, 5)) continue;
+    for (const auto& l : lines) {
+        line = l;
+        if (console_pg::pgMode()) {
+            if (!console_pg::lineVisible(line, 5)) continue;
+        } else if (!lineVisibleFor(line, 5)) continue;
         cout << ++count << ". " << line << '\n';
     }
 
@@ -57,19 +72,33 @@ void decisionHistory() {
 // version, which searches the same decisions.txt file.
 // Extra: Filter and Sort
 void filterSortHistory() {
-    ifstream file(HISTORY_FILE);
+    // Phase 4, Batch B: load the lines from the shared table in
+    // Postgres mode, or from decisions.txt as before.
+    std::vector<std::string> lines;
+    if (console_pg::pgMode())
+    {
+        lines = console_pg::readLines("decisions");
+    }
+    else
+    {
+        std::ifstream file(HISTORY_FILE);
+        if (!file) {
+            cout << "No history file found.\n";
+            return;
+        }
+        std::string l;
+        while (std::getline(file, l)) lines.push_back(l);
+    }
+
     vector<string> records;
     string line, keyword;
 
-    if (!file) {
-        cout << "No history file found.\n";
-        return;
+    for (const auto& l : lines) {
+        line = l;
+        if (console_pg::pgMode()) {
+            if (console_pg::lineVisible(line, 5)) records.push_back(line);
+        } else if (lineVisibleFor(line, 5)) records.push_back(line);
     }
-
-    while (getline(file, line)) {
-        if (lineVisibleFor(line, 5)) records.push_back(line);
-    }
-    file.close();
 
     cout << "Enter keyword or * for all records: ";
     cin >> keyword;
@@ -101,6 +130,26 @@ void filterSortHistory() {
 
 // Extra: Backup
 void backupHistory() {
+    // Phase 4, Batch B: Postgres mode replaces only the caller's
+    // backup rows in the shared decisions_backup table, keeping
+    // other users' backup rows (same per-user rule as txt mode).
+    if (console_pg::pgMode()) {
+        std::vector<std::string> myLines;
+        for (const auto& line : console_pg::readLines("decisions"))
+            if (console_pg::lineVisible(line, 5)) myLines.push_back(line);
+        if (!console_pg::beginTx() ||
+            !console_pg::deleteVisible("decisions_backup") ||
+            !console_pg::insertLines("decisions_backup", myLines) ||
+            !console_pg::commitTx()) {
+            console_pg::rollbackTx();
+            cout << "Could not create backup.\n";
+            return;
+        }
+        cout << "Backup created successfully.\n";
+        writeLog("History backup created.");
+        return;
+    }
+
     ifstream source(HISTORY_FILE);
 
     if (!source) {
@@ -126,6 +175,37 @@ void backupHistory() {
 
 // Extra: Restore
 void restoreHistory() {
+    // Phase 4, Batch B: Postgres mode restores only the current
+    // user's backup rows into the shared decisions table.
+    if (console_pg::pgMode()) {
+        char confirm;
+
+        cout << "Replace current history with backup? (y/n): ";
+        cin >> confirm;
+
+        if (confirm != 'y' && confirm != 'Y') {
+            cout << "Restore cancelled.\n";
+            return;
+        }
+
+        std::vector<std::string> myBackup;
+        for (const auto& line : console_pg::readLines("decisions_backup"))
+            if (console_pg::lineVisible(line, 5)) myBackup.push_back(line);
+        if (myBackup.empty())
+        {
+            cout << "No backup found for this user. Nothing was changed.\n";
+            return;
+        }
+        if (!console_pg::rewriteVisible("decisions", myBackup))
+        {
+            cout << "Could not restore history.\n";
+            return;
+        }
+        cout << "History restored successfully.\n";
+        writeLog("History restored.");
+        return;
+    }
+
     ifstream backup(BACKUP_FILE);
 
     if (!backup) {
@@ -179,6 +259,19 @@ void deleteHistory() {
 
     if (confirm != 'y' && confirm != 'Y') {
         cout << "Deletion cancelled.\n";
+        return;
+    }
+
+    // Phase 4, Batch B: Postgres mode deletes only the current
+    // user's rows from the shared decisions table.
+    if (console_pg::pgMode()) {
+        if (!console_pg::deleteVisible("decisions")) {
+            cout << "Could not delete history.\n";
+            writeLog("Error deleting history.");
+            return;
+        }
+        cout << "History deleted successfully.\n";
+        writeLog("History deleted.");
         return;
     }
 

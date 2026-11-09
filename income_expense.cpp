@@ -1,4 +1,5 @@
 #include "income_expense.h"
+#include "console_pg.h"
 #include "file_lock.h"
 #include "data_owner.h"
 #include <iostream>
@@ -56,6 +57,15 @@ void addTransaction()
     cout << "Enter note: ";
     getline(cin, note);
 
+    // Phase 4, Batch B: Postgres mode inserts into the shared
+    // transactions table.
+    if (console_pg::pgMode())
+    {
+        console_pg::appendTransaction(date, type, category, amount, note);
+        cout << "Transaction saved successfully!\n";
+        return;
+    }
+
     FileLock lock(TRANSACTION_FILE);
     ofstream file(TRANSACTION_FILE, ios::app);
 
@@ -75,10 +85,21 @@ void addTransaction()
 
 void showTransactions()
 {
+    cout << "\n--- Transaction History ---\n";
+
+    // Phase 4, Batch B: Postgres mode reads the shared table.
+    if (console_pg::pgMode())
+    {
+        for (const auto& line : console_pg::readLines("transactions"))
+        {
+            if (!console_pg::lineVisible(line, 5)) continue;
+            cout << line << '\n';
+        }
+        return;
+    }
+
     ifstream file(TRANSACTION_FILE);
     string line;
-
-    cout << "\n--- Transaction History ---\n";
 
     if (!file)
     {
@@ -97,13 +118,28 @@ void showTransactions()
 
 void showBalance()
 {
-    ifstream file(TRANSACTION_FILE);
-    string line;
+    // Phase 4, Batch B: load the lines from the shared table in
+    // Postgres mode, or from transactions.txt as before. The
+    // summing body below is identical for both.
+    std::vector<std::string> lines;
+    if (console_pg::pgMode())
+    {
+        lines = console_pg::readLines("transactions");
+    }
+    else
+    {
+        std::ifstream file(TRANSACTION_FILE);
+        std::string l;
+        while (std::getline(file, l)) lines.push_back(l);
+    }
+
     double income = 0, expense = 0;
 
-    while (getline(file, line))
+    for (const auto& line : lines)
     {
-        if (!lineVisibleFor(line, 5)) continue;
+        if (console_pg::pgMode()) {
+            if (!console_pg::lineVisible(line, 5)) continue;
+        } else if (!lineVisibleFor(line, 5)) continue;
         // date|type|category|amount|note
         size_t p1 = line.find('|');
         if (p1 == string::npos) continue;

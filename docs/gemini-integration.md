@@ -11,9 +11,17 @@ endpoints come in later phases (2.2–2.6).
 | Variable | Meaning | Default |
 |---|---|---|
 | `GEMINI_API_KEY` | Gemini API key. Read by the C++ backend only, fresh on every call. Never commit it, never put it in a file, never paste it in chat. | (unset = AI not configured) |
-| `GEMINI_MODEL` | Model name used in the request URL. Only `[A-Za-z0-9._-]` are allowed; anything else falls back to the default. | `gemini-2.0-flash` |
+| `GEMINI_MODEL` | Model name used in the request URL. Only `[A-Za-z0-9._-]` are allowed; anything else falls back to the default. | `gemini-3-flash-preview` |
 | `GEMINI_API_BASE_URL` | Base URL of the Gemini API. Test seam: point it at a local mock server. | `https://generativelanguage.googleapis.com/v1beta` |
 | `GEMINI_TIMEOUT_SECS` | Total request timeout, clamped to 1–120 s (connect timeout is always 10 s). | `30` |
+
+Model status (verified live 2026-11-09): the old default
+`gemini-2.0-flash` and `gemini-2.5-flash` are retired (the API
+answers 404). `gemini-3-flash-preview` is the verified working
+model and the current default. `gemini-3.8-flash` is the production
+target: it exists but answered 503 (high demand) on every attempt
+that day, so select it with `GEMINI_MODEL` only after it serves
+reliably again.
 
 Set the key only in the environment of the machine that runs
 `cpp_server`, for example:
@@ -50,7 +58,7 @@ Login required (401 without a valid session), like `/api/me`.
 Response (example):
 
 ```json
-{"available": true, "configured": true, "model": "gemini-2.0-flash"}
+{"available": true, "configured": true, "model": "gemini-3-flash-preview"}
 ```
 
 - `available` — libcurl client compiled in.

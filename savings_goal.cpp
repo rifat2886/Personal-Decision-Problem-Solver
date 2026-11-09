@@ -1,10 +1,13 @@
 #include "savings_goal.h"
+#include "console_pg.h"
 #include "file_lock.h"
 #include "data_owner.h"
 #include <iostream>
 #include <fstream>
 #include <iomanip>
 #include <limits>
+#include <sstream>
+#include <vector>
 
 using namespace std;
 
@@ -27,6 +30,22 @@ void addSavingsGoal()
         cout << "Invalid target amount!\n";
         cin.clear();
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return;
+    }
+
+    // Phase 4, Batch B: Postgres mode inserts into the shared
+    // savings_goals table. A goal with this name already exists for
+    // this user when the UNIQUE index rejects the insert (txt mode
+    // allowed duplicate names; the shared table does not).
+    if (console_pg::pgMode())
+    {
+        if (!console_pg::appendSavingsGoal(name, target))
+        {
+            cout << "Could not save the savings goal. A goal with "
+                    "this name may already exist.\n";
+            return;
+        }
+        cout << "Savings goal added successfully!\n";
         return;
     }
 
@@ -60,6 +79,59 @@ void addSavingsAmount()
         cout << "Invalid amount!\n";
         cin.clear();
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return;
+    }
+
+    // Phase 4, Batch B: Postgres mode loads the caller's visible
+    // goals, adds the amount to every matching one (same as the txt
+    // temp-file rewrite), and writes them back in one transaction.
+    if (console_pg::pgMode())
+    {
+        std::vector<std::string> updated;
+        bool found = false;
+        for (const auto& line : console_pg::readLines("savings_goals"))
+        {
+            if (!console_pg::lineVisible(line, 3)) continue;
+            size_t first = line.find('|');
+            size_t second = line.find('|', first + 1);
+            size_t third = (second == string::npos)
+                               ? string::npos
+                               : line.find('|', second + 1);
+            if (first == string::npos || second == string::npos) continue;
+            std::string goalName = line.substr(0, first);
+            std::string owner =
+                (third == string::npos) ? "" : line.substr(third + 1);
+            double goalTarget, goalSaved;
+            try {
+                goalTarget = stod(line.substr(first + 1, second - first - 1));
+                goalSaved = stod(line.substr(
+                    second + 1, (third == string::npos
+                                     ? string::npos
+                                     : third - second - 1)));
+            } catch (...) {
+                continue;
+            }
+            if (goalName == name)
+            {
+                goalSaved += amount;
+                found = true;
+            }
+            std::ostringstream rebuilt;
+            rebuilt << goalName << "|" << goalTarget << "|" << goalSaved
+                    << "|" << (owner.empty() ? g_currentUser : owner);
+            updated.push_back(rebuilt.str());
+        }
+        if (!found)
+        {
+            cout << "Goal not found!\n";
+            return;
+        }
+        if (!console_pg::rewriteVisible("savings_goals", updated))
+        {
+            cout << "Could not update savings.\n";
+            return;
+        }
+        cout << "Savings amount updated!\n";
         return;
     }
 
@@ -133,28 +205,43 @@ void addSavingsAmount()
 
 void showSavingsGoals()
 {
-    ifstream file(SAVINGS_FILE);
-    string name;
-    double target, saved;
-
     cout << "\n--- Savings Goals ---\n";
 
-    if (!file)
+    // Phase 4, Batch B: load the lines from the shared table in
+    // Postgres mode, or from savings_goals.txt as before.
+    std::vector<std::string> lines;
+    if (console_pg::pgMode())
     {
-        cout << "No savings goals found.\n";
-        return;
+        lines = console_pg::readLines("savings_goals");
+    }
+    else
+    {
+        std::ifstream file(SAVINGS_FILE);
+        if (!file)
+        {
+            cout << "No savings goals found.\n";
+            return;
+        }
+        std::string l;
+        while (std::getline(file, l)) lines.push_back(l);
     }
 
     cout << fixed << setprecision(2);
+
+    string name;
+    double target, saved;
 
     // Parse line by line. The old getline(name, '|') version treated
     // a malformed line with no '|' as the start of the next line
     // (getline with a non-newline delimiter does not stop at '\n'),
     // so one bad line hid every goal after it.
     string line;
-    while (getline(file, line))
+    for (const auto& l : lines)
     {
-        if (!lineVisibleFor(line, 3)) continue;
+        line = l;
+        if (console_pg::pgMode()) {
+            if (!console_pg::lineVisible(line, 3)) continue;
+        } else if (!lineVisibleFor(line, 3)) continue;
         size_t first = line.find('|');
         if (first == string::npos)
             continue;
