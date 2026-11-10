@@ -68,6 +68,7 @@ Python server: `{"ok": true, "backend": "Python", "storage": "txt"}`.
 - Success: **201** `{"username": "alice", "role": "ADMIN"}`.
 - Existing username → 400 `"Username already exists."`
 - Database save failure (Postgres mode only) → 500 `"Could not create the account. Please try again later."` (registration bug fix, 2026-11-09 — this used to be wrongly reported as "already exists"; the real database error is printed to the server console, never sent to the client).
+- User store cannot be read (dead database, or `users.txt` exists but is unreadable) → 500 `"Could not create the account. Please try again later."`, no account is created, and no `ADMIN` is granted (C1/C2 fix, 2026-11-10 — the store failure used to look like "no users yet", so the next registrant became `ADMIN`). A missing `users.txt` is genuinely empty: the first registrant is `ADMIN`.
 
 ### `POST /api/login`
 

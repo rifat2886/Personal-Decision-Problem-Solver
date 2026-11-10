@@ -207,6 +207,11 @@ def append_line(data_dir, name, line):
 
 # ---------------------------------------------------------------- data access
 
+# C1/C2 fix (2026-11-10): a missing users.txt means genuinely no
+# users yet ({} — the first registrant becomes ADMIN). An existing
+# but unreadable users.txt raises OSError instead of returning {};
+# callers must treat that as an error (register answers 500), never
+# as "no users yet" (which would grant ADMIN after a store failure).
 def load_users(data_dir):
     users = {}
     for line in read_lines(data_dir, "users.txt"):
@@ -533,7 +538,18 @@ class Handler(BaseHTTPRequestHandler):
             confirm = body.get("confirm_password") or ""
             if confirm and confirm != password:
                 return self.send_error_json(400, "Passwords do not match.")
-            users = load_users(data_dir)
+            # C1/C2 fix (2026-11-10): the user store could not be
+            # read (users.txt exists but is unreadable). Answer 500
+            # and create nothing — never treat the failure as "no
+            # users yet" and grant ADMIN. The real error goes to
+            # stderr only, never to the client.
+            try:
+                users = load_users(data_dir)
+            except OSError as exc:
+                print(f"[register] could not read user store: {exc}",
+                      file=sys.stderr)
+                return self.send_error_json(
+                    500, "Could not create the account. Please try again later.")
             if username in users:
                 return self.send_error_json(400, "Username already exists.")
             role = "ADMIN" if not users else "USER"

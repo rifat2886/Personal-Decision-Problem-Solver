@@ -821,20 +821,38 @@ struct Tx { string date, type, category, note, owner; double amount = 0; };
 struct Goal { string name, owner; double target = 0, saved = 0; };
 struct Task { string id, title, deadline, status, owner; int urgency = 0, importance = 0; int score() const { return urgency * 2 + importance * 3; } };
 
-static map<string, pair<string, string>> loadUsers() {  // username -> (password, role)
+static bool loadUsers(map<string, pair<string, string>>& users, string& err) {
+    // C1/C2 fix (2026-11-10): the user store can fail to load (dead
+    // database, unreadable users.txt). The old code returned an empty
+    // map on ANY failure, which is indistinguishable from "no users
+    // yet": registration then granted ADMIN to the first registrant
+    // after a store outage, and two reload sites rewrote users.txt
+    // from the empty map (wiping every account). loadUsers() now
+    // returns false (and sets err) when the store cannot be read;
+    // callers must handle the error in the safe direction —
+    // registration answers 500 and creates nothing, read paths
+    // fail closed. A missing users.txt is genuinely empty (first
+    // user); an existing-but-unreadable one is an error.
+    users.clear();
     if (pgMode()) {
-        map<string, pair<string, string>> users;
-        vector<pgstore::Row> rows; string err;
-        if (pgstore::pgQuery("SELECT username, password_hash, role FROM users ORDER BY username", {}, rows, err))
-            for (auto& r : rows) users[r[0].text] = {r[1].text, r[2].text};
-        return users;
+        vector<pgstore::Row> rows;
+        if (!pgstore::pgQuery("SELECT username, password_hash, role FROM users ORDER BY username", {}, rows, err))
+            return false;
+        for (auto& r : rows) users[r[0].text] = {r[1].text, r[2].text};
+        return true;
     }
-    map<string, pair<string, string>> users;
-    for (auto& line : readLines(joinPath(g_dataDir, "users.txt"))) {
+    string path = joinPath(g_dataDir, "users.txt");
+    if (!fileExists(path)) return true;
+    ifstream in(path);
+    if (!in) { err = "Could not read users.txt."; return false; }
+    string line;
+    while (getline(in, line)) {
+        if (trimStr(line).empty()) continue;
         istringstream is(line); string u, p, r;
         if (is >> u >> p >> r) users[u] = {p, r};
     }
-    return users;
+    if (in.bad()) { err = "Could not read users.txt."; return false; }
+    return true;
 }
 // Postgres helpers used by handlers that read raw lines in txt mode.
 // They return txt-format lines so handler logic stays identical.
@@ -853,7 +871,9 @@ static vector<string> pgErrorLines() {
 static bool ownerVisible(const string& owner, const string& user) {
     if (owner == user) return true;
     if (!owner.empty()) return false;
-    auto users = loadUsers();
+    // Store unreadable: deny legacy visibility (fail closed).
+    map<string, pair<string, string>> users; string err;
+    if (!loadUsers(users, err)) return false;
     return users.size() == 1 && users.count(user) == 1;
 }
 static vector<Decision> loadDecisions() {
@@ -1368,7 +1388,16 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         string confirm;
         if (jsonStringField(req.body, "confirm_password", confirm) && !confirm.empty() && confirm != password)
             return sendErr(fd, 400, "Passwords do not match.");
-        auto users = loadUsers();
+        // C1/C2 fix (2026-11-10): if the user store cannot be read,
+        // the user count is UNKNOWN — it must never be treated as
+        // "no users yet" (that granted ADMIN after a store outage).
+        // Answer 500, create nothing; the real error goes to the
+        // server console (stderr), never to the client.
+        map<string, pair<string, string>> users; string loadErr;
+        if (!loadUsers(users, loadErr)) {
+            cerr << "[register] could not read user store: " << loadErr << "\n";
+            return sendErr(fd, 500, "Could not create the account. Please try again later.");
+        }
         if (users.count(username)) return sendErr(fd, 400, "Username already exists.");
         string role = users.empty() ? "ADMIN" : "USER";
         if (pgMode()) {
@@ -1407,7 +1436,15 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
             if (f.windowStart == 0 || now - f.windowStart > 300) { f.count = 0; f.windowStart = now; }
             if (f.count >= 5) return sendErr(fd, 429, "Too many failed logins. Try again later.");
         }
-        auto users = loadUsers(); auto it = users.find(username);
+        // C1/C2 fix (2026-11-10): the store cannot be read, so the
+        // credentials cannot be verified. Answer 500 (not 401, which
+        // would wrongly count toward the login rate limit).
+        map<string, pair<string, string>> users; string loadErr;
+        if (!loadUsers(users, loadErr)) {
+            cerr << "[login] could not read user store: " << loadErr << "\n";
+            return sendErr(fd, 500, "Could not verify the account. Please try again later.");
+        }
+        auto it = users.find(username);
         if (it == users.end() || !pdps_hash::verifyPassword(password, it->second.first)) {
             lock_guard<mutex> lk(g_loginFailMutex);
             g_loginFails[username].count++;
@@ -1426,10 +1463,17 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
                                 {pdps_hash::hashPassword(password), username}, err);
             } else {
                 FileLock lock("users.txt");
-                auto fresh = loadUsers();
-                vector<string> lines;
-                for (auto& kv : fresh) lines.push_back(kv.first + " " + (kv.first == username ? pdps_hash::hashPassword(password) : kv.second.first) + " " + kv.second.second);
-                writeLines(joinPath(g_dataDir, "users.txt"), lines);
+                map<string, pair<string, string>> fresh; string freshErr;
+                if (!loadUsers(fresh, freshErr)) {
+                    // C2 fix (2026-11-10): the store cannot be re-read.
+                    // Skip the hash upgrade (login already succeeded);
+                    // never rewrite users.txt from a possibly-empty map.
+                    cerr << "[login] could not reload users for hash upgrade: " << freshErr << "\n";
+                } else {
+                    vector<string> lines;
+                    for (auto& kv : fresh) lines.push_back(kv.first + " " + (kv.first == username ? pdps_hash::hashPassword(password) : kv.second.first) + " " + kv.second.second);
+                    writeLines(joinPath(g_dataDir, "users.txt"), lines);
+                }
             }
         }
         string token = makeToken();
@@ -1448,7 +1492,11 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
     // ---- everything below needs a login ----
     string user = getSessionUser(req);
     if (user.empty()) return sendErr(fd, 401, "Please log in first.");
-    auto users = loadUsers(); string role = users.count(user) ? users[user].second : "USER";
+    // C1/C2 fix (2026-11-10): the store cannot be read, so the role
+    // is unknown — default to USER (fail closed), never ADMIN.
+    map<string, pair<string, string>> users; string loadErr;
+    if (!loadUsers(users, loadErr)) cerr << "[session] could not read user store: " << loadErr << "\n";
+    string role = users.count(user) ? users[user].second : "USER";
 
     if (path == "/api/me" && method == "GET")
         return sendJson(fd, 200, "{\"username\":" + jsonStr(user) + ",\"role\":" + jsonStr(role) + "}");
@@ -2264,7 +2312,11 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         if (pgMode()) {
             auto allDs = loadDecisions(); vector<Decision> visible;
             for (auto& d : allDs) if (ownerVisible(d.owner, user)) visible.push_back(d);
-            auto users = loadUsers();
+            // C1/C2 fix (2026-11-10): the store cannot be read, so
+            // sole-user status is unknown — treat as NOT sole user
+            // (legacy backup rows are then preserved, not deleted).
+            map<string, pair<string, string>> users; string loadErr;
+            if (!loadUsers(users, loadErr)) cerr << "[backup] could not read user store: " << loadErr << "\n";
             bool soleUser = users.size() == 1 && users.count(user) == 1;
             string err;
             pgstore::pgExec("BEGIN", {}, err);
@@ -2368,14 +2420,24 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
     if (path == "/api/users" && method == "GET") {
         // Mirrors admin.cpp: username and role only, never passwords.
         if (role != "ADMIN") return sendErr(fd, 403, "Only an ADMIN can list users.");
-        auto users = loadUsers(); string out = "[";
+        map<string, pair<string, string>> users; string loadErr;
+        if (!loadUsers(users, loadErr)) {
+            cerr << "[users] could not read user store: " << loadErr << "\n";
+            return sendErr(fd, 500, "Could not list users. Please try again later.");
+        }
+        string out = "[";
         bool first = true; for (auto& kv : users) { if (!first) out += ","; first = false; out += "{\"username\":" + jsonStr(kv.first) + ",\"role\":" + jsonStr(kv.second.second) + "}"; }
         return sendJson(fd, 200, out + "]");
     }
     if (path == "/api/change-password" && method == "POST") {
         string cur, nw;
         jsonStringField(req.body, "currentPassword", cur); jsonStringField(req.body, "newPassword", nw);
-        auto users = loadUsers(); auto it = users.find(user);
+        map<string, pair<string, string>> users; string loadErr;
+        if (!loadUsers(users, loadErr)) {
+            cerr << "[change-password] could not read user store: " << loadErr << "\n";
+            return sendErr(fd, 500, "Could not change the password. Please try again later.");
+        }
+        auto it = users.find(user);
         if (it == users.end() || !pdps_hash::verifyPassword(cur, it->second.first)) return sendErr(fd, 400, "Wrong current password.");
         bool letter = false, digit = false;
         for (char c : nw) { if (isalpha((unsigned char)c)) letter = true; if (isdigit((unsigned char)c)) digit = true; }
@@ -2387,7 +2449,15 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         }
         FileLock lock("users.txt");
         // Re-read under the lock so a concurrent register cannot be lost.
-        auto fresh = loadUsers(); if (fresh.count(user) && !pdps_hash::verifyPassword(cur, fresh[user].first)) return sendErr(fd, 400, "Wrong current password.");
+        // C2 fix (2026-11-10): if the re-read fails, answer 500 and
+        // write nothing — never rewrite users.txt from a
+        // possibly-empty map (that would wipe every account).
+        map<string, pair<string, string>> fresh; string freshErr;
+        if (!loadUsers(fresh, freshErr)) {
+            cerr << "[change-password] could not reload users: " << freshErr << "\n";
+            return sendErr(fd, 500, "Could not change the password. Please try again later.");
+        }
+        if (fresh.count(user) && !pdps_hash::verifyPassword(cur, fresh[user].first)) return sendErr(fd, 400, "Wrong current password.");
         vector<string> lines;
         for (auto& kv : fresh) lines.push_back(kv.first + " " + (kv.first == user ? pdps_hash::hashPassword(nw) : kv.second.first) + " " + kv.second.second);
         writeLines(joinPath(g_dataDir, "users.txt"), lines);
@@ -2483,7 +2553,12 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
     if (path == "/api/admin" && method == "GET") {
         // Mirrors admin.cpp: username and role only, never passwords.
         if (role != "ADMIN") return sendErr(fd, 403, "Only an ADMIN can view the admin panel.");
-        auto users = loadUsers(); int admins = 0; string out = "[";
+        map<string, pair<string, string>> users; string loadErr;
+        if (!loadUsers(users, loadErr)) {
+            cerr << "[admin] could not read user store: " << loadErr << "\n";
+            return sendErr(fd, 500, "Could not load the admin panel. Please try again later.");
+        }
+        int admins = 0; string out = "[";
         bool first = true; for (auto& kv : users) { if (kv.second.second == "ADMIN") admins++; if (!first) out += ","; first = false; out += "{\"username\":" + jsonStr(kv.first) + ",\"role\":" + jsonStr(kv.second.second) + "}"; }
         ostringstream os; os << "{\"total\":" << users.size() << ",\"admins\":" << admins << ",\"users\":" << (users.size() - admins) << ",\"list\":" << out << "]}";
         return sendJson(fd, 200, os.str());
