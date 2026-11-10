@@ -54,7 +54,7 @@ jobs:
         run: |
           python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8124 | tee py-api-test.log
           test "${PIPESTATUS[0]}" -eq 0
-          grep -q "api_test: 36 passed, 0 failed" py-api-test.log
+          grep -q "api_test: 38 passed, 0 failed" py-api-test.log
       - name: Upload Python API test log
         if: always()
         uses: actions/upload-artifact@v4
@@ -136,7 +136,7 @@ jobs:
         run: |
           python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8126 | tee py-api-test.log
           test "${PIPESTATUS[0]}" -eq 0
-          grep -q "api_test: 36 passed, 0 failed" py-api-test.log
+          grep -q "api_test: 38 passed, 0 failed" py-api-test.log
       - name: Upload Python API test log
         if: always()
         uses: actions/upload-artifact@v4
