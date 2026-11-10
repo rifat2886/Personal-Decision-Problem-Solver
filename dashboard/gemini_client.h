@@ -25,9 +25,13 @@
 //   builds and runs normally, and /api/ai/health reports
 //   available=false. This keeps Windows/MinGW builds working
 //   without a new dependency.
-// - PDPS_NO_CURL (compile-time, test-only) forces the stub path
-//   even when the headers exist, so tests can exercise the
-//   unavailable path without uninstalling libcurl.
+// - PDPS_NO_CURL (compile-time) forces the stub path even when the
+//   headers exist, so tests can exercise the unavailable path
+//   without uninstalling libcurl. The Makefile and the Windows
+//   .bat launchers also set it when curl-config is missing:
+//   otherwise the headers compile the real client in while -lcurl
+//   is never linked and the build fails with "undefined reference
+//   to curl_easy_init" (reported on Windows 2026-11-09).
 
 #ifndef PDPS_GEMINI_CLIENT_H
 #define PDPS_GEMINI_CLIENT_H

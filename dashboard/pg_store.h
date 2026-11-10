@@ -12,6 +12,12 @@
 //    is false, pgInit() fails with a clear message, and the server
 //    still builds and runs in its original txt mode. This keeps the
 //    Windows build working without a new dependency.
+//  - PDPS_NO_LIBPQ (set by the Makefile / .bat launchers when
+//    pg_config is missing) forces Postgres support OUT even when
+//    the headers exist: otherwise the headers compile the real code
+//    in but -lpq is never linked and the build fails with
+//    "undefined reference to PQconnectdb" (same mismatch as
+//    libcurl, fixed the same way 2026-11-09).
 //  - No connection string, password, or secret is in this file.
 //    The connection string comes only from the DATABASE_URL
 //    environment variable at runtime, and is never logged.
@@ -68,7 +74,7 @@ void pgShutdown();
 // build step beyond -lpq (see Dockerfile; txt builds link without
 // libpq because the libpq calls below are compiled out).
 // ------------------------------------------------------------------
-#if defined(__has_include)
+#if !defined(PDPS_NO_LIBPQ) && defined(__has_include)
 #if __has_include(<libpq-fe.h>)
 #define PDPS_HAS_LIBPQ 1
 #include <libpq-fe.h>

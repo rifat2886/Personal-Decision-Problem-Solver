@@ -42,6 +42,18 @@ bool registerUser()
             return false;
         }
 
+        // Auth fix (2026-11-09): ask twice — a typo at registration
+        // used to lock the account with no recovery.
+        std::cout << "Enter password again: ";
+        std::string confirm;
+        std::cin >> confirm;
+
+        if (confirm != password)
+        {
+            std::cout << "Passwords do not match!\n";
+            return false;
+        }
+
         bool firstUser = (console_pg::userCount() == 0);
 
         // New accounts store only a PBKDF2 hash, never plaintext.
@@ -91,6 +103,18 @@ bool registerUser()
     {
         std::cout << "Password must be 8+ characters "
                   << "with a letter and a digit.\n";
+        return false;
+    }
+
+    // Auth fix (2026-11-09): ask twice — a typo at registration
+    // used to lock the account with no recovery.
+    std::cout << "Enter password again: ";
+    std::string confirm;
+    std::cin >> confirm;
+
+    if (confirm != password)
+    {
+        std::cout << "Passwords do not match!\n";
         return false;
     }
 

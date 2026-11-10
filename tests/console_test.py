@@ -54,7 +54,7 @@ def main():
         # Menu numbers are taken from the console main menu; the exact
         # prompt text is not asserted, only the outcomes below.
         script1 = (
-            "1\ntestuser\nTestPass123\n\n\n"   # register
+            "1\ntestuser\nTestPass123\nTestPass123\n\n\n"   # register (password + confirm)
             "2\ntestuser\nTestPass123\n\n\n"  # login
             "11\n1\nConsoleTask\n8\n8\n2026-11-20\n\n\n"  # prioritise 1 task
             "0\n"

@@ -116,7 +116,7 @@ def main():
             check("no-login /api/ai/history 401", status == 401, str(status))
             # 2. Register + login (first user = ADMIN, Alice)
             page.click("button[data-section='auth']")
-            page.fill("#regUser", "alice"); page.fill("#regPass", "Alice1234"); page.click("#regBtn")
+            page.fill("#regUser", "alice"); page.fill("#regPass", "Alice1234"); page.fill("#regPassConfirm", "Alice1234"); page.click("#regBtn")
             page.wait_for_function("document.getElementById('regMsg').textContent.includes('Registered')", timeout=10000)
             page.fill("#loginUser", "alice"); page.fill("#loginPass", "Alice1234"); page.click("#loginBtn")
             page.wait_for_function("document.querySelector('section.active')?.id === 'overview'", timeout=10000)
@@ -195,7 +195,7 @@ def main():
             check("after-logout /api/ai/history 401", status == 401, str(status))
             # 6. Cross-user: Bob must not see Alice's task
             page.click("button[data-section='auth']")
-            page.fill("#regUser", "bob"); page.fill("#regPass", "Bob12345"); page.click("#regBtn")
+            page.fill("#regUser", "bob"); page.fill("#regPass", "Bob12345"); page.fill("#regPassConfirm", "Bob12345"); page.click("#regBtn")
             page.wait_for_function("document.getElementById('regMsg').textContent.includes('Registered')", timeout=10000)
             page.fill("#loginUser", "bob"); page.fill("#loginPass", "Bob12345"); page.click("#loginBtn")
             page.wait_for_function("document.querySelector('section.active')?.id === 'overview'", timeout=10000)

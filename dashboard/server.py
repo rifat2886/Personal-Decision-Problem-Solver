@@ -528,6 +528,11 @@ class Handler(BaseHTTPRequestHandler):
             if len(password) < 8 or not any(c.isalpha() for c in password) \
                     or not any(c.isdigit() for c in password):
                 return self.send_error_json(400, "Password must be 8+ characters with a letter and a digit.")
+            # Auth fix (2026-11-09): see dashboard/cpp_server.cpp — when
+            # confirm_password is supplied it must match the password.
+            confirm = body.get("confirm_password") or ""
+            if confirm and confirm != password:
+                return self.send_error_json(400, "Passwords do not match.")
             users = load_users(data_dir)
             if username in users:
                 return self.send_error_json(400, "Username already exists.")
@@ -645,7 +650,13 @@ class Handler(BaseHTTPRequestHandler):
                 kept.append(line)
             if not found:
                 return self.send_error_json(404, "Decision ID not found.")
-            write_lines(data_dir, "decisions.txt", kept)
+            # Never report a delete the store did not carry out
+            # (template-delete bug, 2026-11-10): a failed write must
+            # answer 500, not a false 200.
+            try:
+                write_lines(data_dir, "decisions.txt", kept)
+            except OSError:
+                return self.send_error_json(500, "Could not delete the decision. Please try again later.")
             return self.send_json(200, {"deleted": decision_id})
 
         if path == "/api/daily-decision" and method == "POST":
@@ -766,7 +777,12 @@ class Handler(BaseHTTPRequestHandler):
             if not found:
                 return self.send_error_json(404, "Task not found.")
             if method == "DELETE":
-                save_tasks(data_dir, [t for t in tasks if t["id"] != task_id])
+                # Never report a delete the store did not carry out
+                # (template-delete bug, 2026-11-10).
+                try:
+                    save_tasks(data_dir, [t for t in tasks if t["id"] != task_id])
+                except OSError:
+                    return self.send_error_json(500, "Could not delete the task. Please try again later.")
                 return self.send_json(200, {"deleted": task_id})
             body = self.read_json()
             if body is None:

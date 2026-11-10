@@ -137,6 +137,7 @@ def main():
             page.click("button[data-section='auth']")
             page.fill("#regUser", "browseruser")
             page.fill("#regPass", "Browser123")
+            page.fill("#regPassConfirm", "Browser123")
             page.click("#regBtn")
             # Do NOT use a fixed wait here: the C++ server's PBKDF2
             # (100k iterations, hand-written SHA-256) takes ~1.9s per

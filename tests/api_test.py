@@ -116,6 +116,17 @@ def main():
                            body={"username": "newuser", "password": "NewPass123"})
         check("newuser login", status == 200 and "token" in body, str(body))
         token_new = body.get("token", "")
+
+        # 2b. Confirm password (auth fix, 2026-11-09): matching confirm
+        # registers, mismatched confirm is rejected with 400.
+        status, body = req(port, "POST", "/api/register",
+                           body={"username": "confirmuser", "password": "Confirm123",
+                                 "confirm_password": "Confirm123"})
+        check("register with matching confirm", status == 201, str(body))
+        status, body = req(port, "POST", "/api/register",
+                           body={"username": "mismatchuser", "password": "Mismatch123",
+                                 "confirm_password": "Other1234"})
+        check("register with mismatched confirm 400", status == 400, str(body))
         status, body = req(port, "GET", "/api/admin", token=token_new)
         check("non-admin admin endpoint 403", status == 403, str(body))
         status, body = req(port, "GET", "/api/admin", token=token_old)

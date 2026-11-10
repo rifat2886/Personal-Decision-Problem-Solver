@@ -219,8 +219,16 @@ el("loginBtn").addEventListener("click", async () => {
 
 el("regBtn").addEventListener("click", async () => {
   try {
+    // Confirm password (auth fix, 2026-11-09): a typo at registration
+    // used to lock the account with no recovery, so the form asks
+    // twice and the server rejects a mismatch (400).
+    if (el("regPass").value !== el("regPassConfirm").value) {
+      showMsg("regMsg", "Passwords do not match.", false);
+      return;
+    }
     const data = await api("/api/register", { method: "POST", body: JSON.stringify({
-      username: el("regUser").value.trim(), password: el("regPass").value }) });
+      username: el("regUser").value.trim(), password: el("regPass").value,
+      confirm_password: el("regPassConfirm").value }) });
     showMsg("regMsg", "Registered as " + data.username + " (" + data.role + "). Please log in.", true);
   } catch (e) { showMsg("regMsg", e.message, false); }
 });
@@ -1068,15 +1076,16 @@ function renderAiHistory() {
 }
 async function deleteAiHistory(id) {
   if (!window.confirm("Delete this AI history entry?")) return;
+  let msg = null, ok = true;
   try {
     await api("/api/ai/history/" + id, { method: "DELETE" });
-    showMsg("aiHistoryMsg", "Entry deleted.", true);
+    msg = "Entry deleted.";
   } catch (e) {
     // 404 means the entry is already gone (another tab, or a
-    // second delete): drop it from the list anyway and say so
-    // plainly instead of leaving a stale error on screen.
+    // second delete). Any other error keeps the list as it is.
     if ((e.message || "") === "History entry not found.") {
-      showMsg("aiHistoryMsg", "That entry was already removed.", false);
+      msg = "That entry was already removed.";
+      ok = false;
     } else {
       // api() already forces a logout on 401; any other error
       // keeps the list as it is, with the server message shown.
@@ -1084,8 +1093,14 @@ async function deleteAiHistory(id) {
       return;
     }
   }
-  aiHistoryEntries = aiHistoryEntries.filter(e => e.id !== id);
-  renderAiHistory();
+  // Always re-read the list from the server (like the Decision and
+  // Task deletes do): what is on screen must be the server truth,
+  // never a locally-filtered copy that can silently come back on
+  // the next refresh. (Template-delete bug, 2026-11-10: the old
+  // code filtered the local list only, so a delete the server did
+  // not carry out still looked deleted until the next load.)
+  await loadAiHistory();
+  showMsg("aiHistoryMsg", msg, ok);
 }
 window.deleteAiHistory = deleteAiHistory;
 el("aiHistoryFilter").addEventListener("change", renderAiHistory);

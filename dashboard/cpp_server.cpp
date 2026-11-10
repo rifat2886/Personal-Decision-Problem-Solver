@@ -1084,25 +1084,30 @@ static vector<Task> loadTasks() {
         return a.id < b.id; });
     return out;
 }
-static void saveTasks(const vector<Task>& tasks) {
+// Returns false when the store could not be rewritten, so a
+// caller never reports success for a delete (or edit) that did not
+// persist (template-delete bug, 2026-11-10). In Postgres mode a
+// failed rebuild is rolled back, never half-committed.
+static bool saveTasks(const vector<Task>& tasks) {
     if (pgMode()) {
-        string err;
-        pgstore::pgExec("BEGIN", {}, err);
-        pgstore::pgExec("DELETE FROM tasks", {}, err);
+        string err; bool ok = true;
+        ok = pgstore::pgExec("BEGIN", {}, err) && ok;
+        ok = pgstore::pgExec("DELETE FROM tasks", {}, err) && ok;
         for (auto& t : tasks) {
-            if (t.owner.empty()) pgstore::pgExec("INSERT INTO tasks (id, title, urgency, importance, deadline, status, owner) VALUES ($1,$2,$3,$4,$5,$6,NULL)",
-                                                 {t.id, sanitize(t.title), to_string(t.urgency), to_string(t.importance), sanitize(t.deadline), sanitize(t.status)}, err);
-            else pgstore::pgExec("INSERT INTO tasks (id, title, urgency, importance, deadline, status, owner) VALUES ($1,$2,$3,$4,$5,$6,$7)",
-                                 {t.id, sanitize(t.title), to_string(t.urgency), to_string(t.importance), sanitize(t.deadline), sanitize(t.status), sanitize(t.owner)}, err);
+            if (t.owner.empty()) ok = pgstore::pgExec("INSERT INTO tasks (id, title, urgency, importance, deadline, status, owner) VALUES ($1,$2,$3,$4,$5,$6,NULL)",
+                                                 {t.id, sanitize(t.title), to_string(t.urgency), to_string(t.importance), sanitize(t.deadline), sanitize(t.status)}, err) && ok;
+            else ok = pgstore::pgExec("INSERT INTO tasks (id, title, urgency, importance, deadline, status, owner) VALUES ($1,$2,$3,$4,$5,$6,$7)",
+                                 {t.id, sanitize(t.title), to_string(t.urgency), to_string(t.importance), sanitize(t.deadline), sanitize(t.status), sanitize(t.owner)}, err) && ok;
         }
         // Keep the SERIAL sequence ahead of migrated ids.
-        pgstore::pgExec("SELECT setval('tasks_id_seq', COALESCE((SELECT MAX(id) FROM tasks), 1))", {}, err);
-        pgstore::pgExec("COMMIT", {}, err);
-        return;
+        ok = pgstore::pgExec("SELECT setval('tasks_id_seq', COALESCE((SELECT MAX(id) FROM tasks), 1))", {}, err) && ok;
+        if (ok) ok = pgstore::pgExec("COMMIT", {}, err) && ok;
+        else pgstore::pgExec("ROLLBACK", {}, err);
+        return ok;
     }
     vector<string> lines;
     for (auto& t : tasks) lines.push_back(sanitize(t.id) + "|" + sanitize(t.title) + "|" + to_string(t.urgency) + "|" + to_string(t.importance) + "|" + sanitize(t.deadline) + "|" + sanitize(t.status) + "|" + sanitize(t.owner));
-    writeLines(joinPath(g_dataDir, "tasks.txt"), lines);
+    return writeLines(joinPath(g_dataDir, "tasks.txt"), lines);
 }
 static string taskJson(const Task& t) {
     return "{\"id\":" + jsonStr(t.id) + ",\"title\":" + jsonStr(t.title) + ",\"urgency\":" + to_string(t.urgency) +
@@ -1355,14 +1360,36 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         for (char c : password) { if (isalpha((unsigned char)c)) letter = true; if (isdigit((unsigned char)c)) digit = true; }
         if (password.size() < 8 || !letter || !digit)
             return sendErr(fd, 400, "Password must be 8+ characters with a letter and a digit.");
+        // Auth fix (2026-11-09): a typo at registration used to lock the
+        // account with no recovery (the stored hash never matched the
+        // password the user meant to type, so register said "already
+        // exists" and login said "invalid"). The form now asks twice;
+        // when confirm_password is supplied it must match.
+        string confirm;
+        if (jsonStringField(req.body, "confirm_password", confirm) && !confirm.empty() && confirm != password)
+            return sendErr(fd, 400, "Passwords do not match.");
         auto users = loadUsers();
         if (users.count(username)) return sendErr(fd, 400, "Username already exists.");
         string role = users.empty() ? "ADMIN" : "USER";
         if (pgMode()) {
             string err;
             if (!pgstore::pgExec("INSERT INTO users (username, password_hash, role) VALUES ($1,$2,$3)",
-                                 {username, pdps_hash::hashPassword(password), role}, err))
-                return sendErr(fd, 400, "Username already exists.");
+                                 {username, pdps_hash::hashPassword(password), role}, err)) {
+                // Bug fix (2026-11-09): EVERY insert failure used to be
+                // reported as "Username already exists", which hid the
+                // real database error and made registration look broken
+                // for brand-new usernames (the user saw "already
+                // exists" for names that do not exist). Only a real
+                // duplicate key means the name is taken; any other
+                // failure is a server-side database problem, so say so
+                // and print the database error to the server console
+                // (stderr) for diagnosis. The database message is
+                // never sent to the client.
+                if (err.find("duplicate key") != string::npos)
+                    return sendErr(fd, 400, "Username already exists.");
+                cerr << "[register] could not save user '" << username << "': " << err << "\n";
+                return sendErr(fd, 500, "Could not create the account. Please try again later.");
+            }
         } else {
             FileLock lock("users.txt");
             appendLine(joinPath(g_dataDir, "users.txt"), username + " " + pdps_hash::hashPassword(password) + " " + role);
@@ -2011,14 +2038,20 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
             for (auto& d : allDs) if (d.id == id && ownerVisible(d.owner, user)) found = true;
             if (!found) return sendErr(fd, 404, "Decision ID not found.");
             string err;
-            pgstore::pgExec("DELETE FROM decisions WHERE id = $1", {id}, err);
+            // Never report a delete the store did not carry out: a
+            // failed write used to answer 200, so the row looked
+            // deleted until the next refresh brought it back
+            // (template-delete bug, 2026-11-10).
+            if (!pgstore::pgExec("DELETE FROM decisions WHERE id = $1", {id}, err))
+                return sendErr(fd, 500, "Could not delete the decision. Please try again later.");
             return sendJson(fd, 200, "{\"deleted\":" + jsonStr(id) + "}");
         }
         FileLock lock("decisions.txt");
         auto lines = readLines(joinPath(g_dataDir, "decisions.txt")); vector<string> kept; bool found = false;
         for (auto& line : lines) { auto p = splitPipe(line); string owner = p.size() >= 6 ? p[5] : ""; if (p.size() >= 1 && p[0] == id && ownerVisible(owner, user)) { found = true; continue; } kept.push_back(line); }
         if (!found) return sendErr(fd, 404, "Decision ID not found.");
-        writeLines(joinPath(g_dataDir, "decisions.txt"), kept);
+        if (!writeLines(joinPath(g_dataDir, "decisions.txt"), kept))
+            return sendErr(fd, 500, "Could not delete the decision. Please try again later.");
         return sendJson(fd, 200, "{\"deleted\":" + jsonStr(id) + "}");
     }
 
@@ -2102,7 +2135,10 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         if (found->owner.empty()) found->owner = user;
         if (method == "DELETE") {
             vector<Task> kept; for (auto& t : tasks) if (t.id != id) kept.push_back(t);
-            saveTasks(kept); return sendJson(fd, 200, "{\"deleted\":" + jsonStr(id) + "}");
+            // Never report a delete the store did not carry out
+            // (template-delete bug, 2026-11-10).
+            if (!saveTasks(kept)) return sendErr(fd, 500, "Could not delete the task. Please try again later.");
+            return sendJson(fd, 200, "{\"deleted\":" + jsonStr(id) + "}");
         }
         string status; if (!jsonStringField(req.body, "status", status) || (status != "Pending" && status != "In Progress" && status != "Completed"))
             return sendErr(fd, 400, "Status must be Pending, In Progress, or Completed.");

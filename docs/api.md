@@ -63,9 +63,11 @@ Python server: `{"ok": true, "backend": "Python", "storage": "txt"}`.
 
 - Username: non-empty, no whitespace, control characters, or `|`.
 - Password: at least 8 characters, with a letter and a digit.
+- Optional `confirm_password`: when supplied it must equal `password`, otherwise 400 `"Passwords do not match."` (auth fix, 2026-11-09 — the dashboard form always sends it).
 - **The first registered user becomes `ADMIN`; every later user is `USER`.**
 - Success: **201** `{"username": "alice", "role": "ADMIN"}`.
 - Existing username → 400 `"Username already exists."`
+- Database save failure (Postgres mode only) → 500 `"Could not create the account. Please try again later."` (registration bug fix, 2026-11-09 — this used to be wrongly reported as "already exists"; the real database error is printed to the server console, never sent to the client).
 
 ### `POST /api/login`
 
@@ -147,6 +149,9 @@ is required. Success: **201** with the created decision object.
 
 **`DELETE /api/decisions/{id}`** — success: 200 `{"deleted": "1"}`.
 Someone else's id or a missing id → 404 `"Decision ID not found."`
+If the store cannot be rewritten, the delete answers 500
+`"Could not delete the decision. Please try again later."` instead of a
+false 200 (template-delete fix, 2026-11-10).
 
 ### Daily decision, priority, multi-task
 
@@ -202,6 +207,9 @@ deadline must be a real `YYYY-MM-DD` date or blank. New tasks start as
 `"Task not found."`
 
 **`DELETE /api/tasks/{id}`** — 200 `{"deleted": "1"}`; someone else's id → 404.
+If the store cannot be rewritten, the delete answers 500
+`"Could not delete the task. Please try again later."` instead of a false
+200 (template-delete fix, 2026-11-10).
 
 ### Budget and transactions
 
@@ -398,7 +406,10 @@ Newest first, only the caller's own rows. `limit` is clamped to 1–100
 
 Deletes only the caller's own row. Success: 200 `{"deleted": true}`.
 Someone else's row, a missing id, or a non-numeric id → 404
-`{"error":"History entry not found."}`
+`{"error":"History entry not found."}` The dashboard re-reads the
+history list from the server after a delete (template-delete fix,
+2026-11-10): the list on screen is always the server truth, never a
+locally-filtered copy that could come back on refresh.
 
 ### `POST /api/ai/daily-decision` — AI Daily Decision Assistant
 

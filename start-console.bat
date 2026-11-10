@@ -8,13 +8,16 @@ REM Postgres build (see the g++ line below). Set before the build
 REM block so %PG_CFLAGS% / %PG_LIBS% expand to these values.
 set PG_CFLAGS=
 set PG_LIBS=
+set PG_STUB=-DPDPS_NO_LIBPQ
 where pg_config >nul 2>nul
 if not errorlevel 1 (
   for /f "delims=" %%I in ('pg_config --includedir') do set PG_CFLAGS=-I%%I
   set PG_LIBS=-lpq
+  set PG_STUB=
 )
 if not exist project.exe (
   echo Building the console app for the first time, please wait...
+  if not "%PG_STUB%"=="" echo WARNING: pg_config not found - building WITHOUT Postgres support. Install mingw-w64-ucrt-x86_64-postgresql in the MSYS2 UCRT64 terminal, delete project.exe, and double-click again for Neon database support.
   where g++ >nul 2>nul
   if errorlevel 1 (
     echo ERROR: g++ MinGW-w64 was not found.
@@ -28,8 +31,12 @@ if not exist project.exe (
   REM can use the shared PostgreSQL database when DATABASE_URL is
   REM set. The flags are set BEFORE this block, so %VAR% expands to
   REM the values set above. Without pg_config the console builds
-  REM txt-only, as before.
-  g++ -std=c++17 -Wall -Wextra %PG_CFLAGS% -o project.exe admin.cpp backup_restore.cpp budget.cpp compare_options.cpp control.cpp daily_decision.cpp deadline_alert.cpp decision_explanation.cpp delete_confirmation.cpp error_handler.cpp export_report.cpp filter_sort.cpp habit.cpp habit_streak.cpp history.cpp income_expense.cpp input_validation.cpp login.cpp logout.cpp main.cpp multi_task_decision.cpp password_change.cpp password_validation.cpp period_report.cpp priority_calculator.cpp problem.cpp profile.cpp registration.cpp report.cpp savings_goal.cpp search_history.cpp study_planner.cpp task_prioritization.cpp task_status.cpp time_allocation.cpp %PG_LIBS%
+  REM txt-only, as before. Build fix (2026-11-09): when pg_config
+  REM is missing the libpq headers may still be found, which used
+  REM to compile the real Postgres code in without -lpq
+  REM ("undefined reference to PQconnectdb"). Force Postgres
+  REM support out with -DPDPS_NO_LIBPQ instead (see PG_STUB).
+  g++ -std=c++17 -Wall -Wextra %PG_STUB% %PG_CFLAGS% -o project.exe admin.cpp backup_restore.cpp budget.cpp compare_options.cpp control.cpp daily_decision.cpp deadline_alert.cpp decision_explanation.cpp delete_confirmation.cpp error_handler.cpp export_report.cpp filter_sort.cpp habit.cpp habit_streak.cpp history.cpp income_expense.cpp input_validation.cpp login.cpp logout.cpp main.cpp multi_task_decision.cpp password_change.cpp password_validation.cpp period_report.cpp priority_calculator.cpp problem.cpp profile.cpp registration.cpp report.cpp savings_goal.cpp search_history.cpp study_planner.cpp task_prioritization.cpp task_status.cpp time_allocation.cpp %PG_LIBS%
   if errorlevel 1 (
     echo ERROR: the build failed. See the messages above, or RUN.md troubleshooting.
     pause
