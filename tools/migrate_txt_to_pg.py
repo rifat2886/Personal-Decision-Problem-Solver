@@ -25,10 +25,16 @@ control, for example a local Postgres):
     # dry run, no writes at all:
     python3 tools/migrate_txt_to_pg.py --data-dir /path/to/test-copy --dry-run
 
-Files migrated: users.txt, decisions.txt, tasks.txt,
+Files migrated: users.txt, google_links.txt, decisions.txt, tasks.txt,
 transactions.txt, savings_goals.txt, habit_log.txt,
 decisions_backup.txt, daily_report.txt, error_log.txt,
 ai_history.txt.
+Google-only accounts (Phase 3) are stored in users.txt as
+"username! ROLE" (two fields) or "username ! ROLE" (the "!"
+sentinel credential); their password_hash migrates as NULL and
+their Google link (sub/email/display name) comes from
+google_links.txt. A link line with an empty sub is an unlinked
+account that keeps its verified email.
 Legacy records (no owner field) are inserted with owner NULL,
 so the legacy visibility rule is preserved exactly.
 IDs from decisions.txt/tasks.txt are preserved, and the SERIAL
@@ -57,12 +63,39 @@ def read_lines(data_dir, name):
 
 
 def parse_users(lines):
+    # Returns a list of dicts. A "!" credential is the Google-only
+    # sentinel (Phase 3): the account has no password, so
+    # password_hash migrates as NULL. Google fields start empty
+    # and are filled from google_links.txt by the caller.
     users = []
     for ln in lines:
         parts = ln.split()
         if len(parts) >= 3:
-            users.append((parts[0], parts[1], parts[2]))
+            pw = None if parts[1] == "!" else parts[1]
+            users.append({"username": parts[0], "password_hash": pw,
+                          "role": parts[2], "email": None,
+                          "google_sub": None,
+                          "auth_provider": "google" if pw is None else "password",
+                          "display_name": None})
+        elif len(parts) == 2 and len(parts[0]) > 1 and parts[0].endswith("!"):
+            users.append({"username": parts[0][:-1], "password_hash": None,
+                          "role": parts[1], "email": None,
+                          "google_sub": None, "auth_provider": "google",
+                          "display_name": None})
     return users
+
+
+def parse_google_links(lines):
+    # google_links.txt: "username|google_sub|email|display_name".
+    # An empty sub is an unlinked account that keeps its email.
+    links = {}
+    for ln in lines:
+        p = ln.split("|")
+        if len(p) >= 4:
+            links[p[0]] = {"google_sub": p[1] or None,
+                           "email": p[2] or None,
+                           "display_name": p[3] or None}
+    return links
 
 
 def parse_decisions(lines):
@@ -216,6 +249,18 @@ def main():
         return 2
 
     users = parse_users(read_lines(data_dir, "users.txt"))
+    google_links = parse_google_links(read_lines(data_dir, "google_links.txt"))
+    for u in users:
+        link = google_links.get(u["username"])
+        if link:
+            u["google_sub"] = link["google_sub"]
+            u["email"] = link["email"]
+            u["display_name"] = link["display_name"]
+            # The provider follows the Google LINK (the sub), not
+            # the email: an unlinked account keeps its email but
+            # signs in with its password only.
+            if u["google_sub"]:
+                u["auth_provider"] = "both" if u["password_hash"] is not None else "google"
     decisions = parse_decisions(read_lines(data_dir, "decisions.txt"))
     tasks = parse_tasks(read_lines(data_dir, "tasks.txt"))
     txs = parse_txs(read_lines(data_dir, "transactions.txt"))
@@ -262,13 +307,14 @@ def main():
                 return 2
             if users:
                 cur.execute("SELECT username FROM users")
-                clash = {r[0] for r in cur.fetchall()} & {u[0] for u in users}
+                clash = {r[0] for r in cur.fetchall()} & {u["username"] for u in users}
                 if clash:
                     print(f"ERROR: username conflict in target database: {sorted(clash)}; refusing to merge.", file=sys.stderr)
                     conn.rollback()
                     return 2
-            for u, pw, role in users:
-                cur.execute("INSERT INTO users (username, password_hash, role) VALUES (%s,%s,%s) ON CONFLICT (username) DO NOTHING", (u, pw, role))
+            for u in users:
+                cur.execute("INSERT INTO users (username, password_hash, role, email, google_sub, auth_provider, display_name) VALUES (%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (username) DO NOTHING",
+                            (u["username"], u["password_hash"], u["role"], u["email"], u["google_sub"], u["auth_provider"], u["display_name"]))
             for d in decisions:
                 cur.execute("INSERT INTO decisions (id, record_date, type, priority, title, owner) VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO NOTHING", d)
             for t in tasks:

@@ -75,7 +75,32 @@ if not exist cpp_server.exe (
     )
   )
   if not "!CURL_STUB!"=="" echo WARNING: curl-config could not be run - building WITHOUT Gemini AI. Install mingw-w64-ucrt-x86_64-curl in the MSYS2 UCRT64 terminal, delete cpp_server.exe, and double-click again for AI features.
-  g++ -std=c++17 -Wall -Wextra -pthread !CURL_CFLAGS! !CURL_STUB! %PG_STUB% %PG_CFLAGS% -o cpp_server.exe dashboard\cpp_server.cpp dashboard\gemini_client.cpp -lws2_32 !CURL_LIBS! %PG_LIBS%
+  REM Google Sign-In (Phase 3): link libcrypto when the OpenSSL
+  REM dev files are really usable. google_auth.cpp must always be
+  REM compiled: without it the link fails (undefined google_auth::*
+  REM symbols). Same pattern as curl above: (1) try pkg-config;
+  REM (2) otherwise look next to g++ in the UCRT64 tree
+  REM (include\openssl\evp.h + lib\libcrypto.dll.a); (3) otherwise
+  REM build the stub (-DPDPS_NO_OPENSSL): the server still builds
+  REM and runs, Google sign-in answers 503, with a warning.
+  set "OPENSSL_CFLAGS="
+  set "OPENSSL_LIBS="
+  set "OPENSSL_STUB=-DPDPS_NO_OPENSSL"
+  for /f "delims=" %%C in ('pkg-config --cflags openssl 2^>nul') do set "OPENSSL_CFLAGS=%%C"
+  for /f "delims=" %%L in ('pkg-config --libs openssl 2^>nul') do set "OPENSSL_LIBS=%%L"
+  if not "!OPENSSL_LIBS!"=="" set "OPENSSL_STUB="
+  if not "!OPENSSL_STUB!"=="" (
+    set "OPENSSL_ROOT="
+    for /f "delims=" %%G in ('where g++ 2^>nul') do if not defined OPENSSL_ROOT set "OPENSSL_ROOT=%%~dpG.."
+    if defined OPENSSL_ROOT for %%R in ("!OPENSSL_ROOT!") do set "OPENSSL_ROOT=%%~fR"
+    if defined OPENSSL_ROOT if exist "!OPENSSL_ROOT!\include\openssl\evp.h" if exist "!OPENSSL_ROOT!\lib\libcrypto.dll.a" (
+      set "OPENSSL_CFLAGS=-I!OPENSSL_ROOT!\include"
+      set "OPENSSL_LIBS=-lcrypto"
+      set "OPENSSL_STUB="
+    )
+  )
+  if not "!OPENSSL_STUB!"=="" echo WARNING: OpenSSL dev files not found - building WITHOUT Google Sign-In. Install mingw-w64-ucrt-x86_64-openssl in the MSYS2 UCRT64 terminal, delete cpp_server.exe, and double-click again for Google sign-in.
+  g++ -std=c++17 -Wall -Wextra -pthread !CURL_CFLAGS! !CURL_STUB! !OPENSSL_CFLAGS! !OPENSSL_STUB! %PG_STUB% %PG_CFLAGS% -o cpp_server.exe dashboard\cpp_server.cpp dashboard\gemini_client.cpp dashboard\google_auth.cpp -lws2_32 !CURL_LIBS! !OPENSSL_LIBS! %PG_LIBS%
   if errorlevel 1 (
     echo ERROR: the build failed. See the messages above, or RUN.md troubleshooting.
     pause

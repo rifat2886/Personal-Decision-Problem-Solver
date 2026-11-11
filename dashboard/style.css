@@ -140,6 +140,15 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1
 .btn-primary:hover { background: var(--primary-hover); }
 .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+/* Google Sign-In (Phase 3): the "or" divider between the password
+   form and the Google button, and spacing for the button Google's
+   script renders into the .google-btn-wrap container. The containers
+   are hidden (display:none) by app.js when Google sign-in is not
+   configured or the Google script did not load. */
+.google-divider { display: flex; align-items: center; gap: 10px; margin: 14px 0; color: var(--muted); font-size: 13px; }
+.google-divider::before, .google-divider::after { content: ""; flex: 1; border-top: 1px solid var(--border); }
+.google-divider span { white-space: nowrap; }
+.google-btn-wrap { margin: 4px 0 8px; }
 .hidden { display: none !important; }
 
 /* ---- messages and states ---- */

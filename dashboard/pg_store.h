@@ -90,7 +90,9 @@ inline bool g_enabled = false;
 
 inline const char* schemaSql() {
     return
-        "CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password_hash TEXT NOT NULL, role TEXT NOT NULL CHECK (role IN ('ADMIN','USER')));"
+        "CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password_hash TEXT, role TEXT NOT NULL CHECK (role IN ('ADMIN','USER')), email TEXT, google_sub TEXT, auth_provider TEXT NOT NULL DEFAULT 'password' CHECK (auth_provider IN ('password','google','both')), display_name TEXT);"
+        "CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users (email) WHERE email IS NOT NULL;"
+        "CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_unique ON users (google_sub) WHERE google_sub IS NOT NULL;"
         "CREATE TABLE IF NOT EXISTS decisions (id SERIAL PRIMARY KEY, record_date TEXT NOT NULL, type TEXT NOT NULL, priority INTEGER NOT NULL, title TEXT NOT NULL, owner TEXT);"
         "CREATE TABLE IF NOT EXISTS decisions_backup (id INTEGER PRIMARY KEY, record_date TEXT NOT NULL, type TEXT NOT NULL, priority INTEGER NOT NULL, title TEXT NOT NULL, owner TEXT);"
         "CREATE TABLE IF NOT EXISTS tasks (id SERIAL PRIMARY KEY, title TEXT NOT NULL, urgency INTEGER NOT NULL, importance INTEGER NOT NULL, deadline TEXT NOT NULL DEFAULT '', status TEXT NOT NULL, owner TEXT);"
