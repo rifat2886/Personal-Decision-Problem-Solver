@@ -94,6 +94,38 @@ No body needed. Erases the Bearer token if one is sent.
 {"ok": true}
 ```
 
+### `GET /api/auth/google/config` (C++ server only)
+
+Google Sign-In configuration for the frontend (see
+`docs/google-auth.md`). Returns the public client ID, whether
+sign-in is enabled, and whether the server can verify tokens.
+
+```json
+{"clientId": "123456789-abc.apps.googleusercontent.com", "enabled": true, "available": true}
+```
+
+`clientId` is `""` and `enabled` is `false` when no
+`GOOGLE_CLIENT_ID` is set; `available` is `false` when the server
+was built without OpenSSL (stub build). Nothing secret is returned.
+
+### `POST /api/auth/google` (C++ server only)
+
+Google Sign-In: verify a Google ID token and sign the user in
+(creating the account on first use). See `docs/google-auth.md`.
+
+```json
+{"credential": "<Google ID token>"}
+```
+
+- Success: **200** `{"username": "alice", "role": "USER", "token": "<session token>"}` — the same session shape as `/api/login`.
+- Missing/empty credential → 400.
+- More than 20 attempts from one IP in 60 s → 429.
+- Sign-in not compiled in, or no client ID → 503 `"Google sign-in unavailable."`
+- JWKS cannot be fetched → 503 `"Google sign-in is temporarily unavailable."`
+- Bad token (wrong signature, expired, wrong audience/issuer, `email_verified` false, `alg` not RS256, unknown key) → 401 `"Invalid Google sign-in."`
+- First use creates the account from the verified email (username = email local part, lowercased and sanitized; on collision `"-"` + first 6 digits of the Google `sub`, then `"-2"`, `"-3"`, …). The first account ever created is `ADMIN`.
+- Another account already holds the token's email → **409** (email is never proof of ownership — no auto-link, ever). Sign in with the password and link Google instead.
+
 ## 3. Authenticated endpoints — session and overview
 
 Every endpoint in §§3–6 requires a valid session (401 otherwise).
@@ -103,6 +135,40 @@ Every endpoint in §§3–6 requires a valid session (401 otherwise).
 ```json
 {"username": "alice", "role": "ADMIN"}
 ```
+
+### `POST /api/auth/google/link` (C++ server only)
+
+Link the Google account in the verified token to the currently logged-in account. See `docs/google-auth.md`.
+
+```json
+{"credential": "<Google ID token>"}
+```
+
+- Success: **200** `{"linked": true}`. Linking the same Google account again is a no-op success.
+- Token's `sub` already linked to another account → 409. Token's email belongs to another account → 409. This account already linked to a different Google account → 409.
+- Bad token → 401; sign-in unavailable/not configured → 503. **No auto-link on email, ever.**
+
+### `POST /api/auth/google/unlink` (C++ server only)
+
+Remove the Google link from the logged-in account. No body needed.
+
+- Success: **200** `{"unlinked": true}`.
+- No Google account linked → 400.
+- **Last-method guard:** an account whose only sign-in method is Google cannot unlink it → **409** `"Cannot unlink Google sign-in: it is your only sign-in method. Set a password first."`
+- The verified email stays on the account, so it still blocks anyone else from creating an account with it.
+
+### `POST /api/auth/set-password` (C++ server only)
+
+Set a password on an account that signs in with Google. See `docs/google-auth.md`.
+
+```json
+{"password": "NewPass123", "confirm_password": "NewPass123"}
+```
+
+- Same password rule as registration (8+ characters, a letter and a digit); `confirm_password`, when supplied, must match.
+- Allowed only with a **Google session younger than 15 minutes**, or with a fresh ID token for the account's own linked Google sub (pass it as `credential` in the same body). Otherwise 401 `"Sign in with Google again to set a password."`
+- An account with no linked Google account gets 400 (password users use `/api/change-password` instead).
+- Success: **200** `{"ok": true}`. The account becomes `auth_provider = "both"`.
 
 ### `GET /api/overview`
 
@@ -604,6 +670,9 @@ Differences from the C++ server:
 
 - Any `/api/ai/*` request → **501** `{"error":"AI requires the C++ server"}`
   (after the 401 check without a login).
+- Any `/api/auth/google*` request, and `/api/auth/set-password` → **501**
+  `{"error":"Google sign-in requires the C++ server"}` (after the 401
+  check without a login).
 - `/api/health` reports `{"ok": true, "backend": "Python", "storage": "txt"}`.
 - Storage is always txt; there is no Postgres mode.
 - Sessions are in-memory per server and are **not shared** with the C++
@@ -620,6 +689,9 @@ Differences from the C++ server:
 | `GEMINI_MODEL` | Model name in the request URL | `gemini-3-flash-preview` |
 | `GEMINI_API_BASE_URL` | Gemini API base URL (test seam: point at a mock server) | `https://generativelanguage.googleapis.com/v1beta` |
 | `GEMINI_TIMEOUT_SECS` | Total Gemini request timeout, clamped 1–120 s | `30` |
+| `GOOGLE_CLIENT_ID` | Google OAuth Client ID (public). Required for Google sign-in; unset disables it. | unset (Google sign-in disabled → 503) |
+| `GOOGLE_JWKS_URL` | JWKS endpoint for Google's public keys (test seam: point at a mock JWKS server) | `https://www.googleapis.com/oauth2/v3/certs` |
+| `GOOGLE_SIGNIN_ENABLED` | Set to `0` to disable Google sign-in even when a client ID is set | enabled whenever `GOOGLE_CLIENT_ID` is set |
 
 C++ server CLI: `cpp_server [--port 8000] [--host 127.0.0.1] [--data-dir PATH]`
 (`--host 0.0.0.0` is required on Render).

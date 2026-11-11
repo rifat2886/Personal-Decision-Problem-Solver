@@ -118,6 +118,28 @@ else
 CURL_STUB :=
 endif
 
+# Google Sign-In (Phase 3): link libcrypto only when OpenSSL is
+# available (pkg-config openssl), which is the case when the
+# OpenSSL dev headers are installed. Without it, google_auth.cpp
+# compiles the stub (available() returns false, POST
+# /api/auth/google answers 503 "Google sign-in unavailable") and
+# the server still builds and runs — this keeps the Windows/MinGW
+# build working without a new dependency (Windows CI installs no
+# OpenSSL package). Same opt-in pattern as libcurl above. `make
+# project` is unaffected (the console app never links OpenSSL).
+OPENSSL_CFLAGS := $(shell if pkg-config --cflags openssl >/dev/null 2>&1; then pkg-config --cflags openssl; fi)
+OPENSSL_LIBS := $(shell if pkg-config --libs openssl >/dev/null 2>&1; then pkg-config --libs openssl; fi)
+# If pkg-config finds no openssl, the OpenSSL headers may still be
+# in the compiler's default include path, so google_auth.cpp would
+# compile the real verifier in while -lcrypto is never linked ->
+# "undefined reference to EVP_*". Force the stub instead (same
+# mismatch as libcurl, fixed the same way).
+ifeq ($(OPENSSL_LIBS),)
+OPENSSL_STUB := -DPDPS_NO_OPENSSL
+else
+OPENSSL_STUB :=
+endif
+
 # Windows (MinGW / mingw32-make): cpp_server.cpp uses Winsock, so the
 # server must link -lws2_32 on Windows. $(OS) is Windows_NT under
 # mingw32-make and MSYS2 make on Windows, and unset on Linux, so the
@@ -129,10 +151,11 @@ else
 WS2_32 :=
 endif
 
-cpp_server: dashboard/cpp_server.cpp dashboard/gemini_client.cpp dashboard/gemini_client.h dashboard/pg_store.h password_hash.h
+cpp_server: dashboard/cpp_server.cpp dashboard/gemini_client.cpp dashboard/google_auth.cpp dashboard/gemini_client.h dashboard/google_auth.h dashboard/pg_store.h password_hash.h
 	@if [ -z "$(PG_LIBS)" ]; then echo "WARNING: pg_config not found - building WITHOUT Postgres support (txt mode only). Install mingw-w64-ucrt-x86_64-postgresql in the MSYS2 UCRT64 terminal (or libpq-dev on Debian/Ubuntu), delete cpp_server.exe, and rebuild for Neon database support."; fi
 	@if [ -z "$(CURL_LIBS)" ]; then echo "WARNING: curl-config not found - building WITHOUT Gemini AI (libcurl not linked). Install mingw-w64-ucrt-x86_64-curl in the MSYS2 UCRT64 terminal (or libcurl4-openssl-dev on Debian/Ubuntu), delete cpp_server.exe, and rebuild for AI features."; fi
-	$(CXX) $(CXXFLAGS) $(PG_CFLAGS) $(CURL_CFLAGS) $(PG_STUB) $(CURL_STUB) -pthread -o cpp_server dashboard/cpp_server.cpp dashboard/gemini_client.cpp $(PG_LIBS) $(CURL_LIBS) $(WS2_32)
+	@if [ -z "$(OPENSSL_LIBS)" ]; then echo "WARNING: pkg-config openssl not found - building WITHOUT Google Sign-In (OpenSSL not linked). Install mingw-w64-ucrt-x86_64-openssl in the MSYS2 UCRT64 terminal (or libssl-dev on Debian/Ubuntu), delete cpp_server.exe, and rebuild for Google sign-in."; fi
+	$(CXX) $(CXXFLAGS) $(PG_CFLAGS) $(CURL_CFLAGS) $(OPENSSL_CFLAGS) $(PG_STUB) $(CURL_STUB) $(OPENSSL_STUB) -pthread -o cpp_server dashboard/cpp_server.cpp dashboard/gemini_client.cpp dashboard/google_auth.cpp $(PG_LIBS) $(CURL_LIBS) $(OPENSSL_LIBS) $(WS2_32)
 
 clean:
 	rm -f project project.exe cpp_server cpp_server.exe

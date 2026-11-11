@@ -79,6 +79,10 @@ def hash_password(password):
 
 
 def verify_password(password, stored):
+    # Google-only accounts (NULL password_hash) and the txt sentinel
+    # must never authenticate: refuse an empty or sentinel credential.
+    if not stored or stored == "!":
+        return False
     if not stored.startswith("pbkdf2$"):
         return password == stored
     try:
@@ -602,6 +606,14 @@ class Handler(BaseHTTPRequestHandler):
         # Gemini and never handles the key; AI needs the C++ server.
         if path.startswith("/api/ai/"):
             return self.send_error_json(501, "AI requires the C++ server")
+
+        # Google Sign-In (Phase 3): the Python server has no
+        # token verification (no OpenSSL/JWKS support) and no
+        # Google account storage; Google auth needs the C++
+        # server. This sits after require_auth(), like the AI
+        # 501 above, so an unauthenticated call still gets 401.
+        if path.startswith("/api/auth/google") or path == "/api/auth/set-password":
+            return self.send_error_json(501, "Google sign-in requires the C++ server")
 
         if path == "/api/me" and method == "GET":
             return self.send_json(200, {"username": user, "role": role})

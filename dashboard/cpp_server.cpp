@@ -110,6 +110,7 @@
 // which broke the Windows build. See Issue 1 in AUDIT.md.
 #include "../password_hash.h"
 #include "gemini_client.h"
+#include "google_auth.h"
 #include "pg_store.h"
 
 using namespace std;
@@ -129,7 +130,11 @@ static thread_local string g_corsOrigin;
 static mutex g_apiMutex;
 // Sessions: token -> (username, expiry). Tokens expire after 12h;
 // expired tokens are rejected and removed on next use.
-struct Session { string username; long long expiry = 0; };
+// `created` is the login time and `google` says whether this
+// session came from a Google sign-in: POST /api/auth/set-password
+// requires a Google session younger than 15 minutes (or a fresh
+// token), so the freshness check needs both fields.
+struct Session { string username; long long expiry = 0; long long created = 0; bool google = false; };
 static map<string, Session> g_sessions;
 static mutex g_sessionMutex;
 static const long long kSessionTTL = 12 * 60 * 60;
@@ -137,6 +142,13 @@ static const long long kSessionTTL = 12 * 60 * 60;
 struct FailInfo { int count = 0; long long windowStart = 0; };
 static map<string, FailInfo> g_loginFails;
 static mutex g_loginFailMutex;
+// Google sign-in rate limiting: per client IP, 20 attempts in 60s
+// -> 429. POST /api/auth/google is unauthenticated and does a
+// JWKS fetch plus an RS256 verification per call, so it is capped
+// per IP to keep a flood from stalling the server.
+struct RateInfo { int count = 0; long long windowStart = 0; };
+static map<string, RateInfo> g_googleFails;
+static mutex g_googleFailMutex;
 static atomic<unsigned long long> g_tokenCounter{0};
 
 static string joinPath(const string& dir, const string& name) {
@@ -850,9 +862,193 @@ static bool loadUsers(map<string, pair<string, string>>& users, string& err) {
         if (trimStr(line).empty()) continue;
         istringstream is(line); string u, p, r;
         if (is >> u >> p >> r) users[u] = {p, r};
+        else {
+            // Google-only account (Phase 3, txt mode): stored as
+            // "username! ROLE" (two fields). The credential is the
+            // "!" sentinel, which the section-5 guard in
+            // verifyPassword refuses for any password, so the
+            // account can never log in with a password. It MUST
+            // still be counted here: the first-user-is-ADMIN rule
+            // counts every account, and a Google-only first user
+            // must not let a later password registration also
+            // become ADMIN. A two-field line whose first token
+            // does not end in '!' is malformed and stays dropped.
+            istringstream is2(line); string u2, r2, extra;
+            if (is2 >> u2 >> r2 && !(is2 >> extra) && u2.size() > 1 && u2.back() == '!') {
+                string name = u2.substr(0, u2.size() - 1);
+                if (users.count(name) == 0) users[name] = {"!", r2};
+            }
+        }
     }
     if (in.bad()) { err = "Could not read users.txt."; return false; }
     return true;
+}
+
+// ---------------------------------------------------------------- Google auth
+// Google Sign-In (Phase 3). A Google user record carries the extra
+// fields password-only code never sees: the verified email, the
+// Google `sub` (the stable account ID — never the email, which a
+// user can change), which sign-in methods the account has, and
+// the display name from the token.
+// Postgres: all seven columns in one SELECT. A NULL password_hash
+// (Google-only account) arrives as "" (pg_store maps NULL to ""),
+// and the section-5 guard in verifyPassword refuses any password
+// against it.
+// Txt: users.txt holds "username password ROLE" for password users
+// and "username! ROLE" for Google-only users; google_links.txt
+// holds "username|google_sub|email|display_name" for linked users.
+// Both files are read together so a Google lookup never sees a
+// half-loaded account.
+struct GoogleUser {
+    string username, passwordHash, role;
+    string email, googleSub, authProvider, displayName;
+    bool hasPassword() const { return !passwordHash.empty() && passwordHash != "!"; }
+    bool hasGoogle() const { return !googleSub.empty(); }
+};
+static bool loadGoogleUsers(map<string, GoogleUser>& users, string& err) {
+    // Same tri-state contract as loadUsers (C1/C2): false + err
+    // when the store cannot be read, so callers fail closed
+    // instead of treating an outage as "no users yet".
+    users.clear();
+    if (pgMode()) {
+        vector<pgstore::Row> rows;
+        if (!pgstore::pgQuery("SELECT username, password_hash, role, email, google_sub, auth_provider, display_name FROM users ORDER BY username", {}, rows, err))
+            return false;
+        for (auto& r : rows) {
+            GoogleUser u;
+            u.username = r[0].text;
+            u.passwordHash = r[1].text;  // NULL -> "" (refused by the guard)
+            u.role = r[2].text;
+            u.email = r[3].isNull ? "" : r[3].text;
+            u.googleSub = r[4].isNull ? "" : r[4].text;
+            u.authProvider = r[5].isNull ? "password" : r[5].text;
+            u.displayName = r[6].isNull ? "" : r[6].text;
+            users[u.username] = u;
+        }
+        return true;
+    }
+    // Txt mode: users.txt first (same rules as loadUsers), then the
+    // Google links side file.
+    string path = joinPath(g_dataDir, "users.txt");
+    if (fileExists(path)) {
+        ifstream in(path);
+        if (!in) { err = "Could not read users.txt."; return false; }
+        string line;
+        while (getline(in, line)) {
+            if (trimStr(line).empty()) continue;
+            istringstream is(line); string u, p, r;
+            GoogleUser gu;
+            if (is >> u >> p >> r) {
+                gu.username = u; gu.passwordHash = p; gu.role = r;
+                gu.authProvider = (p == "!") ? "google" : "password";
+            } else {
+                istringstream is2(line); string u2, r2, extra;
+                if (is2 >> u2 >> r2 && !(is2 >> extra) && u2.size() > 1 && u2.back() == '!') {
+                    gu.username = u2.substr(0, u2.size() - 1);
+                    gu.passwordHash = "!"; gu.role = r2; gu.authProvider = "google";
+                } else continue;
+            }
+            users[gu.username] = gu;
+        }
+        if (in.bad()) { err = "Could not read users.txt."; return false; }
+    }
+    string linkPath = joinPath(g_dataDir, "google_links.txt");
+    if (fileExists(linkPath)) {
+        ifstream in(linkPath);
+        if (!in) { err = "Could not read google_links.txt."; return false; }
+        string line;
+        while (getline(in, line)) {
+            if (trimStr(line).empty()) continue;
+            auto parts = splitPipe(line);
+            if (parts.size() < 4) continue;
+            auto it = users.find(parts[0]);
+            if (it == users.end()) continue;  // orphan link: no such user
+            it->second.googleSub = parts[1];
+            it->second.email = parts[2];
+            it->second.displayName = parts[3];
+            // The provider follows the Google LINK (the sub), not
+            // the email: an unlinked account keeps its verified
+            // email on file but signs in with its password only.
+            it->second.authProvider = it->second.hasGoogle() ? (it->second.hasPassword() ? "both" : "google") : "password";
+        }
+        if (in.bad()) { err = "Could not read google_links.txt."; return false; }
+    }
+    return true;
+}
+
+// Derive a username from a verified Google email address: the
+// local part, lowercased, with anything outside [a-z0-9._-]
+// replaced by '-'. On collision, append "-" + the first 6 digits
+// of the Google sub, then "-2", "-3", ... (the plan's rule).
+// Returns "" only after an implausible number of collisions.
+static string deriveGoogleUsername(const string& email, const string& sub,
+                                   const map<string, GoogleUser>& users) {
+    string local = email.substr(0, email.find('@'));
+    string base;
+    for (char c : local) {
+        if (c >= 'A' && c <= 'Z') base += (char)(c - 'A' + 'a');
+        else if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-') base += c;
+        else base += '-';
+    }
+    while (!base.empty() && (base.front() == '.' || base.front() == '-')) base.erase(base.begin());
+    while (!base.empty() && (base.back() == '.' || base.back() == '-')) base.pop_back();
+    if (base.empty()) base = "user";
+    if (users.count(base) == 0) return base;
+    string digits;
+    for (char c : sub) {
+        if (c >= '0' && c <= '9') digits += c;
+        if (digits.size() == 6) break;
+    }
+    string stem = digits.empty() ? base : base + "-" + digits;
+    for (int i = 0; i < 10000; i++) {
+        string cand = (i == 0) ? stem : stem + "-" + to_string(i + 1);
+        if (users.count(cand) == 0) return cand;
+    }
+    return "";
+}
+
+// Rewrite the txt user files from a loaded map. Callers must hold
+// the users.txt lock FIRST, then the google_links.txt lock (that
+// order, always), and must only call these after a successful
+// loadGoogleUsers — never from a possibly-empty map (C2: a failed
+// load must never wipe the files). Each handler rewrites only the
+// file it changed. Password users are written as
+// "username hash ROLE"; Google-only users as "username! ROLE";
+// links as "username|google_sub|email|display_name".
+static bool saveUsersTxt(const map<string, GoogleUser>& users) {
+    vector<string> userLines;
+    for (auto& kv : users) {
+        const GoogleUser& u = kv.second;
+        if (u.hasPassword()) userLines.push_back(u.username + " " + u.passwordHash + " " + u.role);
+        else userLines.push_back(u.username + "! " + u.role);
+    }
+    return writeLines(joinPath(g_dataDir, "users.txt"), userLines);
+}
+static bool saveGoogleLinksTxt(const map<string, GoogleUser>& users) {
+    vector<string> linkLines;
+    for (auto& kv : users) {
+        const GoogleUser& u = kv.second;
+        // A line is kept for a linked account, and also for an
+        // unlinked account that still holds a verified email
+        // (unlink keeps the email, so nobody else can claim it).
+        if (u.hasGoogle() || !u.email.empty()) linkLines.push_back(u.username + "|" + u.googleSub + "|" + sanitize(u.email) + "|" + sanitize(u.displayName));
+    }
+    return writeLines(joinPath(g_dataDir, "google_links.txt"), linkLines);
+}
+
+// Per-IP rate limit for POST /api/auth/google: 20 attempts in
+// 60 seconds. Returns true when the caller must be refused.
+// The endpoint is unauthenticated and does a JWKS fetch plus an
+// RS256 verification per call, so a flood must not be able to
+// stall the server.
+static bool googleRateLimited(const string& ip) {
+    lock_guard<mutex> lk(g_googleFailMutex);
+    long long now = (long long)time(nullptr);
+    auto& r = g_googleFails[ip];
+    if (r.windowStart == 0 || now - r.windowStart > 60) { r.count = 0; r.windowStart = now; }
+    if (r.count >= 20) return true;
+    r.count++;
+    return false;
 }
 // Postgres helpers used by handlers that read raw lines in txt mode.
 // They return txt-format lines so handler logic stays identical.
@@ -1207,6 +1403,22 @@ static string getSessionUser(const Request& req) {
     return it->second.username;
 }
 
+// Full session lookup (username + login time + Google flag).
+// Returns false when there is no session or it expired (an
+// expired session is removed, like getSessionUser does). Used by
+// POST /api/auth/set-password, which needs the login time and
+// the Google flag for its freshness check.
+static bool getSession(const Request& req, Session& out) {
+    if (req.auth.rfind("Bearer ", 0) != 0) return false;
+    lock_guard<mutex> lk(g_sessionMutex);
+    auto it = g_sessions.find(req.auth.substr(7));
+    if (it == g_sessions.end()) return false;
+    long long now = (long long)time(nullptr);
+    if (it->second.expiry < now) { g_sessions.erase(it); return false; }
+    out = it->second;
+    return true;
+}
+
 // Multi-task input: parse the "tasks" array from the request body.
 struct MtTask { string name; int urgency = 0, energy = 0, minutes = 0; };
 static vector<MtTask> parseMtTasks(const string& body, bool& ok) {
@@ -1355,7 +1567,7 @@ static string aiHttpMessage(const string& err) {
     return "AI request failed";
 }
 
-static void handleApi(SocketFd fd, const Request& req, const string& path, const map<string, string>& query) {
+static void handleApi(SocketFd fd, const Request& req, const string& path, const map<string, string>& query, const string& peerIp) {
     string method = req.method;
     // ---- register / login / logout (no token needed) ----
     if (path == "/api/register" && method == "POST") {
@@ -1471,18 +1683,125 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
                     cerr << "[login] could not reload users for hash upgrade: " << freshErr << "\n";
                 } else {
                     vector<string> lines;
-                    for (auto& kv : fresh) lines.push_back(kv.first + " " + (kv.first == username ? pdps_hash::hashPassword(password) : kv.second.first) + " " + kv.second.second);
+                    for (auto& kv : fresh) {
+                        // Google-only accounts keep their two-field
+                        // "username! ROLE" form (their credential is
+                        // the "!" sentinel, refused by the guard).
+                        if (kv.second.first == "!") lines.push_back(kv.first + "! " + kv.second.second);
+                        else lines.push_back(kv.first + " " + (kv.first == username ? pdps_hash::hashPassword(password) : kv.second.first) + " " + kv.second.second);
+                    }
                     writeLines(joinPath(g_dataDir, "users.txt"), lines);
                 }
             }
         }
         string token = makeToken();
-        { lock_guard<mutex> lk(g_sessionMutex); Session sess; sess.username = username; sess.expiry = (long long)time(nullptr) + kSessionTTL; g_sessions[token] = sess; }
+        { lock_guard<mutex> lk(g_sessionMutex); Session sess; sess.username = username; sess.expiry = (long long)time(nullptr) + kSessionTTL; sess.created = (long long)time(nullptr); sess.google = false; g_sessions[token] = sess; }
         return sendJson(fd, 200, "{\"username\":" + jsonStr(username) + ",\"role\":" + jsonStr(it->second.second) + ",\"token\":" + jsonStr(token) + "}");
     }
     if (path == "/api/logout" && method == "POST") {
         if (req.auth.rfind("Bearer ", 0) == 0) { lock_guard<mutex> lk(g_sessionMutex); g_sessions.erase(req.auth.substr(7)); }
         return sendJson(fd, 200, "{\"ok\":true}");
+    }
+    // ---- Google Sign-In (Phase 3, public) ----
+    // GET /api/auth/google/config: what the frontend needs to
+    // render the "Continue with Google" button — the public
+    // client ID, whether sign-in is enabled, and whether the
+    // server can verify tokens at all (the OpenSSL stub answers
+    // available=false). Nothing secret is ever returned.
+    if (path == "/api/auth/google/config" && method == "GET") {
+        ostringstream os;
+        os << "{\"clientId\":" << jsonStr(google_auth::clientId())
+           << ",\"enabled\":" << (google_auth::enabled() ? "true" : "false")
+           << ",\"available\":" << (google_auth::available() ? "true" : "false") << "}";
+        return sendJson(fd, 200, os.str());
+    }
+    // POST /api/auth/google: verify a Google ID token and sign
+    // the user in (creating the account on first use). The token
+    // is verified by google_auth::verifyToken before anything
+    // else happens; identity comes only from the verified token.
+    // The token is never logged or returned in any response.
+    if (path == "/api/auth/google" && method == "POST") {
+        if (googleRateLimited(peerIp)) return sendErr(fd, 429, "Too many Google sign-in attempts. Try again later.");
+        string credential;
+        if (!jsonStringField(req.body, "credential", credential) || credential.empty())
+            return sendErr(fd, 400, "Google credential is required.");
+        if (!google_auth::available()) return sendErr(fd, 503, "Google sign-in unavailable.");
+        if (!google_auth::enabled()) return sendErr(fd, 503, "Google sign-in unavailable.");
+        google_auth::Result vr = google_auth::verifyToken(credential);
+        if (!vr.ok) {
+            cerr << "[google] token verification failed: " << vr.error << "\n";
+            if (vr.error == "fetch_failed") return sendErr(fd, 503, "Google sign-in is temporarily unavailable.");
+            if (vr.error == "unavailable" || vr.error == "not_configured") return sendErr(fd, 503, "Google sign-in unavailable.");
+            return sendErr(fd, 401, "Invalid Google sign-in.");
+        }
+        // The token is verified. Find the account by google_sub
+        // (the stable ID); never by email alone.
+        map<string, GoogleUser> users; string loadErr;
+        if (!loadGoogleUsers(users, loadErr)) {
+            cerr << "[google] could not read user store: " << loadErr << "\n";
+            return sendErr(fd, 500, "Could not verify the account. Please try again later.");
+        }
+        string username;
+        for (auto& kv : users) if (kv.second.googleSub == vr.claims.sub) { username = kv.first; break; }
+        if (username.empty()) {
+            // No account with this Google ID yet. A different
+            // account holding the same email blocks creation:
+            // email is not proof of ownership (password accounts
+            // never verified their email), so creating here would
+            // let a Google account take over that email's
+            // identity. The owner signs in with their password
+            // and links Google from their profile instead.
+            for (auto& kv : users) {
+                if (!kv.second.email.empty() && kv.second.email == vr.claims.email) {
+                    cerr << "[google] email already belongs to account '" << kv.first << "'\n";
+                    return sendErr(fd, 409, "An account with this email already exists. Sign in with your password, then link Google from your profile.");
+                }
+            }
+            username = deriveGoogleUsername(vr.claims.email, vr.claims.sub, users);
+            if (username.empty()) {
+                cerr << "[google] could not derive a username for this Google account\n";
+                return sendErr(fd, 500, "Could not create the account. Please try again later.");
+            }
+            string role = users.empty() ? "ADMIN" : "USER";
+            GoogleUser nu;
+            nu.username = username; nu.passwordHash = ""; nu.role = role;
+            nu.email = vr.claims.email; nu.googleSub = vr.claims.sub;
+            nu.authProvider = "google"; nu.displayName = sanitize(vr.claims.name);
+            if (pgMode()) {
+                string err;
+                // password_hash is a literal NULL (Google-only
+                // accounts store NULL, never a random password).
+                // pgQuery parameters are always strings, so NULL
+                // cannot be passed as a parameter.
+                if (!pgstore::pgExec("INSERT INTO users (username, password_hash, role, email, google_sub, auth_provider, display_name) VALUES ($1, NULL, $2, $3, $4, 'google', $5)",
+                                     {username, role, nu.email, nu.googleSub, nu.displayName}, err)) {
+                    if (err.find("duplicate key") != string::npos)
+                        return sendErr(fd, 409, "This Google account is already registered. Try signing in again.");
+                    cerr << "[google] could not save user '" << username << "': " << err << "\n";
+                    return sendErr(fd, 500, "Could not create the account. Please try again later.");
+                }
+            } else {
+                FileLock lockUsers("users.txt");
+                FileLock lockLinks("google_links.txt");
+                if (!appendLine(joinPath(g_dataDir, "users.txt"), username + "! " + role)) {
+                    cerr << "[google] could not save user '" << username << "' (txt mode)\n";
+                    return sendErr(fd, 500, "Could not create the account. Please try again later.");
+                }
+                if (!appendLine(joinPath(g_dataDir, "google_links.txt"), username + "|" + nu.googleSub + "|" + sanitize(nu.email) + "|" + sanitize(nu.displayName))) {
+                    // Roll back the users.txt line so a retry does
+                    // not find a half-created account (the map
+                    // does not contain the new user yet).
+                    saveUsersTxt(users);
+                    cerr << "[google] could not save Google link for '" << username << "' (txt mode)\n";
+                    return sendErr(fd, 500, "Could not create the account. Please try again later.");
+                }
+            }
+            users[username] = nu;
+        }
+        auto it = users.find(username);
+        string token = makeToken();
+        { lock_guard<mutex> lk(g_sessionMutex); Session sess; sess.username = username; sess.expiry = (long long)time(nullptr) + kSessionTTL; sess.created = (long long)time(nullptr); sess.google = true; g_sessions[token] = sess; }
+        return sendJson(fd, 200, "{\"username\":" + jsonStr(username) + ",\"role\":" + jsonStr(it->second.role) + ",\"token\":" + jsonStr(token) + "}");
     }
     // Health check (Route 2, Phase 1): public, no data, used by
     // Render's health check. It deliberately does NOT require a
@@ -1500,6 +1819,166 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
 
     if (path == "/api/me" && method == "GET")
         return sendJson(fd, 200, "{\"username\":" + jsonStr(user) + ",\"role\":" + jsonStr(role) + "}");
+
+    // ---- Google Sign-In (Phase 3, authenticated) ----
+    // POST /api/auth/google/link: link the Google account in the
+    // verified token to the currently logged-in account. NEVER
+    // links by email: the token's sub must not already belong to
+    // another account, the token's email must not belong to
+    // another account, and this account must not already be
+    // linked to a different Google account. Linking the same sub
+    // again is a no-op success.
+    if (path == "/api/auth/google/link" && method == "POST") {
+        string credential;
+        if (!jsonStringField(req.body, "credential", credential) || credential.empty())
+            return sendErr(fd, 400, "Google credential is required.");
+        if (!google_auth::available()) return sendErr(fd, 503, "Google sign-in unavailable.");
+        if (!google_auth::enabled()) return sendErr(fd, 503, "Google sign-in unavailable.");
+        google_auth::Result vr = google_auth::verifyToken(credential);
+        if (!vr.ok) {
+            cerr << "[google] link token verification failed: " << vr.error << "\n";
+            if (vr.error == "fetch_failed") return sendErr(fd, 503, "Google sign-in is temporarily unavailable.");
+            if (vr.error == "unavailable" || vr.error == "not_configured") return sendErr(fd, 503, "Google sign-in unavailable.");
+            return sendErr(fd, 401, "Invalid Google sign-in.");
+        }
+        map<string, GoogleUser> users; string loadErr;
+        if (!loadGoogleUsers(users, loadErr)) {
+            cerr << "[google] could not read user store: " << loadErr << "\n";
+            return sendErr(fd, 500, "Could not link the Google account. Please try again later.");
+        }
+        auto me = users.find(user);
+        if (me == users.end()) return sendErr(fd, 404, "Account not found.");
+        for (auto& kv : users) {
+            if (kv.first != user && kv.second.googleSub == vr.claims.sub)
+                return sendErr(fd, 409, "This Google account is already linked to another account.");
+            if (kv.first != user && !kv.second.email.empty() && kv.second.email == vr.claims.email)
+                return sendErr(fd, 409, "This email belongs to another account.");
+        }
+        if (me->second.hasGoogle()) {
+            if (me->second.googleSub == vr.claims.sub) return sendJson(fd, 200, "{\"linked\":true}");
+            return sendErr(fd, 409, "This account is already linked to a different Google account.");
+        }
+        me->second.googleSub = vr.claims.sub;
+        me->second.email = vr.claims.email;
+        me->second.displayName = sanitize(vr.claims.name);
+        me->second.authProvider = me->second.hasPassword() ? "both" : "google";
+        if (pgMode()) {
+            string err;
+            if (!pgstore::pgExec("UPDATE users SET email = $1, google_sub = $2, auth_provider = $3, display_name = $4 WHERE username = $5",
+                                 {me->second.email, me->second.googleSub, me->second.authProvider, me->second.displayName, user}, err)) {
+                if (err.find("duplicate key") != string::npos)
+                    return sendErr(fd, 409, "This Google account or email is already linked to another account.");
+                cerr << "[google] could not link user '" << user << "': " << err << "\n";
+                return sendErr(fd, 500, "Could not link the Google account. Please try again later.");
+            }
+        } else {
+            FileLock lockLinks("google_links.txt");
+            if (!saveGoogleLinksTxt(users)) {
+                cerr << "[google] could not save Google link for '" << user << "' (txt mode)\n";
+                return sendErr(fd, 500, "Could not link the Google account. Please try again later.");
+            }
+        }
+        return sendJson(fd, 200, "{\"linked\":true}");
+    }
+    // POST /api/auth/google/unlink: remove the Google link from
+    // the logged-in account. Last-method guard: an account whose
+    // only sign-in method is Google cannot unlink it (it would
+    // have no way back in) — set a password first. The verified
+    // email is kept on the account, so the email still blocks
+    // anyone else from creating an account with it, and the
+    // owner can re-link later by signing in with their password.
+    if (path == "/api/auth/google/unlink" && method == "POST") {
+        map<string, GoogleUser> users; string loadErr;
+        if (!loadGoogleUsers(users, loadErr)) {
+            cerr << "[google] could not read user store: " << loadErr << "\n";
+            return sendErr(fd, 500, "Could not unlink the Google account. Please try again later.");
+        }
+        auto me = users.find(user);
+        if (me == users.end()) return sendErr(fd, 404, "Account not found.");
+        if (!me->second.hasGoogle()) return sendErr(fd, 400, "No Google account is linked.");
+        if (!me->second.hasPassword())
+            return sendErr(fd, 409, "Cannot unlink Google sign-in: it is your only sign-in method. Set a password first.");
+        me->second.googleSub = "";
+        me->second.displayName = "";
+        me->second.authProvider = "password";
+        if (pgMode()) {
+            string err;
+            // google_sub and display_name are literal NULLs.
+            if (!pgstore::pgExec("UPDATE users SET google_sub = NULL, auth_provider = 'password', display_name = NULL WHERE username = $1",
+                                 {user}, err)) {
+                cerr << "[google] could not unlink user '" << user << "': " << err << "\n";
+                return sendErr(fd, 500, "Could not unlink the Google account. Please try again later.");
+            }
+        } else {
+            FileLock lockLinks("google_links.txt");
+            if (!saveGoogleLinksTxt(users)) {
+                cerr << "[google] could not save Google link removal for '" << user << "' (txt mode)\n";
+                return sendErr(fd, 500, "Could not unlink the Google account. Please try again later.");
+            }
+        }
+        return sendJson(fd, 200, "{\"unlinked\":true}");
+    }
+    // POST /api/auth/set-password: set a password on an account
+    // that signs in with Google. Allowed only with a Google
+    // session younger than 15 minutes, or with a fresh ID token
+    // for the account's own linked Google sub. A password-only
+    // account uses /api/change-password instead (it proves the
+    // current password there).
+    if (path == "/api/auth/set-password" && method == "POST") {
+        string password, confirm;
+        if (!jsonStringField(req.body, "password", password))
+            return sendErr(fd, 400, "Password is required.");
+        bool letter = false, digit = false;
+        for (char c : password) { if (isalpha((unsigned char)c)) letter = true; if (isdigit((unsigned char)c)) digit = true; }
+        if (password.size() < 8 || !letter || !digit)
+            return sendErr(fd, 400, "Password must be 8+ characters with a letter and a digit.");
+        if (jsonStringField(req.body, "confirm_password", confirm) && !confirm.empty() && confirm != password)
+            return sendErr(fd, 400, "Passwords do not match.");
+        // Freshness: a Google session under 15 minutes old, or a
+        // fresh token for this account's own Google sub.
+        Session sess;
+        bool freshSession = getSession(req, sess) && sess.google &&
+                            ((long long)time(nullptr) - sess.created) < 15 * 60;
+        string freshSub;
+        if (!freshSession) {
+            string credential;
+            if (jsonStringField(req.body, "credential", credential) && !credential.empty() &&
+                google_auth::available() && google_auth::enabled()) {
+                google_auth::Result vr = google_auth::verifyToken(credential);
+                if (vr.ok) freshSub = vr.claims.sub;
+                else cerr << "[google] set-password token verification failed: " << vr.error << "\n";
+            }
+        }
+        map<string, GoogleUser> users; string loadErr;
+        if (!loadGoogleUsers(users, loadErr)) {
+            cerr << "[google] could not read user store: " << loadErr << "\n";
+            return sendErr(fd, 500, "Could not set the password. Please try again later.");
+        }
+        auto me = users.find(user);
+        if (me == users.end()) return sendErr(fd, 404, "Account not found.");
+        if (!me->second.hasGoogle()) return sendErr(fd, 400, "This account has no linked Google account. Use change password instead.");
+        bool allowed = freshSession;
+        if (!allowed && !freshSub.empty() && freshSub == me->second.googleSub) allowed = true;
+        if (!allowed) return sendErr(fd, 401, "Sign in with Google again to set a password.");
+        string hash = pdps_hash::hashPassword(password);
+        me->second.passwordHash = hash;
+        me->second.authProvider = "both";
+        if (pgMode()) {
+            string err;
+            if (!pgstore::pgExec("UPDATE users SET password_hash = $1, auth_provider = 'both' WHERE username = $2",
+                                 {hash, user}, err)) {
+                cerr << "[google] could not set password for '" << user << "': " << err << "\n";
+                return sendErr(fd, 500, "Could not set the password. Please try again later.");
+            }
+        } else {
+            FileLock lockUsers("users.txt");
+            if (!saveUsersTxt(users)) {
+                cerr << "[google] could not save password for '" << user << "' (txt mode)\n";
+                return sendErr(fd, 500, "Could not set the password. Please try again later.");
+            }
+        }
+        return sendJson(fd, 200, "{\"ok\":true}");
+    }
 
     // Gemini AI health (Phase 1): login required, like /api/me.
     // Reports only whether the libcurl client was compiled in and
@@ -2699,7 +3178,7 @@ static void serveStatic(SocketFd fd, const string& path) {
     sendResponse(fd, 200, ctype, body);
 }
 
-static void handleConnection(SocketFd clientFd) {
+static void handleConnection(SocketFd clientFd, const string& peerIp) {
     // Read headers (cap: 64 KiB of headers).
     string raw; char buf[4096];
     while (raw.find("\r\n\r\n") == string::npos && raw.size() < 65536) {
@@ -2757,7 +3236,7 @@ static void handleConnection(SocketFd clientFd) {
             return;
         }
         lock_guard<mutex> lk(g_apiMutex);
-        handleApi(clientFd, req, req.path, parseQuery(req.query));
+        handleApi(clientFd, req, req.path, parseQuery(req.query), peerIp);
     } else if (method == "GET") {
         serveStatic(clientFd, req.path);
     } else {
@@ -2786,7 +3265,9 @@ int main(int argc, char** argv) {
                  << "and never port-forward it to the public internet.\n"
                  << "Env: DATABASE_URL (Postgres mode, mandatory when set),\n"
                  << "PORT (used when --port is not given), CORS_ORIGINS\n"
-                 << "(comma-separated exact origins, no wildcard).\n";
+                 << "(comma-separated exact origins, no wildcard),\n"
+                 << "GOOGLE_CLIENT_ID (Google sign-in; unset disables it),\n"
+                 << "GOOGLE_JWKS_URL, GOOGLE_SIGNIN_ENABLED.\n";
             return 0;
         }
     }
@@ -2847,13 +3328,29 @@ int main(int argc, char** argv) {
     signal(SIGPIPE, SIG_IGN);
 #endif
     while (true) {
-        SocketFd clientFd = accept(serverFd, nullptr, nullptr);
+        // Capture the peer address for the Google sign-in rate
+        // limit (POST /api/auth/google is capped per client IP).
+        // inet_ntoa is available on both Windows (winsock2.h)
+        // and POSIX (arpa/inet.h); the string is copied before
+        // the thread starts, so the static buffer is safe here.
+        sockaddr_in peer{};
+#ifdef _WIN32
+        int peerLen = (int)sizeof(peer);
+#else
+        socklen_t peerLen = sizeof(peer);
+#endif
+        SocketFd clientFd = accept(serverFd, (sockaddr*)&peer, &peerLen);
 #ifdef _WIN32
         if (clientFd == INVALID_SOCKET) continue;
 #else
         if (clientFd < 0) continue;
 #endif
-        thread(handleConnection, clientFd).detach();
+        string peerIp = "unknown";
+        if (peerLen > 0) {
+            const char* ipText = inet_ntoa(peer.sin_addr);
+            if (ipText != nullptr) peerIp = ipText;
+        }
+        thread(handleConnection, clientFd, peerIp).detach();
     }
     return 0;
 }
