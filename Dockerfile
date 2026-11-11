@@ -1,11 +1,12 @@
 # Personal Decision & Problem Solver — C++ backend for Render (Route 2, Phase 1)
 #
 # This image builds ONLY the C++ server (dashboard/cpp_server.cpp
-# + dashboard/gemini_client.cpp). It does not build or run the
-# console app, and it does not need any txt data files: in
-# production it runs in Postgres mode (DATABASE_URL is set by
-# Render from the Neon database, as an environment variable —
-# never baked into this image, never committed to the repo).
+# + dashboard/gemini_client.cpp + dashboard/google_auth.cpp). It
+# does not build or run the console app, and it does not need any
+# txt data files: in production it runs in Postgres mode
+# (DATABASE_URL is set by Render from the Neon database, as an
+# environment variable — never baked into this image, never
+# committed to the repo).
 #
 # Build locally (no account needed, for a smoke test only):
 #   docker build -t pdps-cpp-server .
@@ -22,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ \
         libpq-dev \
         libcurl4-openssl-dev \
+        libssl-dev \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -39,11 +41,16 @@ COPY password_hash.h ./
 # without libcurl the client compiles to the stub (available()
 # returns false) and every AI endpoint answers 503 in production.
 # curl-config is provided by libcurl4-openssl-dev above.
+# Google Sign-In (Phase 3): google_auth.cpp MUST be compiled and
+# linked with -lcrypto (libssl-dev above). Without the file the
+# link fails (undefined google_auth::* symbols); without libcrypto
+# it compiles to the stub (available() returns false) and every
+# Google endpoint answers 503 in production.
 RUN g++ -std=c++17 -Wall -Wextra -pthread \
         -I/usr/include/postgresql \
         $(curl-config --cflags) \
-        -o /app/cpp_server dashboard/cpp_server.cpp dashboard/gemini_client.cpp \
-        -lpq $(curl-config --libs)
+        -o /app/cpp_server dashboard/cpp_server.cpp dashboard/gemini_client.cpp dashboard/google_auth.cpp \
+        -lpq $(curl-config --libs) -lcrypto
 
 # Render sets PORT at runtime; EXPOSE is documentation only.
 EXPOSE 8000

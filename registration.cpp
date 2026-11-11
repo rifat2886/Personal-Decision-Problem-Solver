@@ -8,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <sys/stat.h>
 
 bool registerUser()
 {
@@ -54,7 +55,15 @@ bool registerUser()
             return false;
         }
 
-        bool firstUser = (console_pg::userCount() == 0);
+        // C1 fix (2026-11-10): the user count could not be read
+        // (database unreachable). Refuse registration instead of
+        // treating the failure as "no users yet" and granting ADMIN.
+        long userTotal = console_pg::userCount();
+        if (userTotal < 0) {
+            std::cout << "Cannot read user data. Please try again later.\n";
+            return false;
+        }
+        bool firstUser = (userTotal == 0);
 
         // New accounts store only a PBKDF2 hash, never plaintext.
         if (!console_pg::insertUser(username,
@@ -81,6 +90,23 @@ bool registerUser()
     {
         std::cout << "Invalid username!\n";
         return false;
+    }
+
+    // C2 fix (2026-11-10): if users.txt exists but cannot be read
+    // (not a regular file, or unreadable), refuse registration
+    // instead of treating the unreadable file as "no users yet"
+    // and granting ADMIN. A missing file is genuinely empty.
+    {
+        struct stat st;
+        if (stat("users.txt", &st) == 0)
+        {
+            std::ifstream probe("users.txt");
+            if (!S_ISREG(st.st_mode) || !probe)
+            {
+                std::cout << "Cannot read user data. Please try again later.\n";
+                return false;
+            }
+        }
     }
 
     std::ifstream input("users.txt");

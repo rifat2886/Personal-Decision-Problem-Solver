@@ -136,7 +136,7 @@ async function api(path, options) {
   if (!res.ok) {
     if (res.status === 404 && !API_BASE)
       throw new Error(BACKEND_UNAVAILABLE_MSG);
-    if (res.status === 401 && path !== "/api/login" && path !== "/api/register") {
+    if (res.status === 401 && path !== "/api/login" && path !== "/api/register" && path !== "/api/auth/google") {
       forceLogoutToLogin("Session expired. Please log in again.");
       throw new Error("Session expired. Please log in again.");
     }
@@ -247,6 +247,59 @@ el("regBtn").addEventListener("click", async () => {
     showMsg("regMsg", "Registered as " + data.username + " (" + data.role + "). Please log in.", true);
   } catch (e) { showMsg("regMsg", e.message, false); }
 });
+
+// -- Google Sign-In (Phase 3) -------------------------------------
+// The Google Identity Services script (loaded async in index.html)
+// renders a "Sign in with Google" button into both auth cards.
+// The button is shown only when the server says Google sign-in is
+// enabled AND can verify tokens (config endpoint). When the GIS
+// script never loads (offline, blocked, no network in tests) or
+// the server has no client ID, the buttons and dividers stay
+// hidden and the password forms keep working. Nothing here throws.
+// The credential (ID token) is POSTed to /api/auth/google; the
+// response is a normal app session, handled exactly like a
+// password login (same token storage, same setAuthState).
+let googleConfig = null;
+async function handleGoogleCredential(response) {
+  const credential = response && response.credential;
+  if (!credential) { showMsg("loginMsg", "Google sign-in did not return a credential.", false); return; }
+  try {
+    const data = await api("/api/auth/google", { method: "POST", body: JSON.stringify({ credential }) });
+    token = data.token;
+    sessionStorage.setItem("pdps_token", token);
+    sessionStorage.setItem("pdps_user", data.username);
+    setAuthState(true, data.username + " (" + data.role + ")");
+    showMsg("loginMsg", "Signed in with Google.", true);
+    showSection("overview");
+  } catch (e) { showMsg("loginMsg", e.message, false); }
+}
+async function initGoogleSignIn() {
+  const loginBox = el("googleSignInLogin"), regBox = el("googleSignInReg");
+  const dividers = document.querySelectorAll(".google-divider");
+  const hide = () => {
+    if (loginBox) loginBox.style.display = "none";
+    if (regBox) regBox.style.display = "none";
+    dividers.forEach(d => d.style.display = "none");
+  };
+  // Raw fetch (not api()): a 401/404/501 here must only hide the
+  // buttons, never trigger the session-expiry logout flow.
+  try {
+    const res = await fetch(API_BASE + "/api/auth/google/config");
+    if (!res.ok) { hide(); return; }
+    googleConfig = await res.json();
+  } catch (e) { hide(); return; }
+  if (!googleConfig || !googleConfig.enabled || !googleConfig.available || !googleConfig.clientId) { hide(); return; }
+  // The GIS script loads async from Google's CDN; wait up to 5 s
+  // for it before giving up (it never arrives offline or in tests).
+  const deadline = Date.now() + 5000;
+  while (typeof google === "undefined" && Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 100));
+  }
+  if (typeof google === "undefined" || !google.accounts || !google.accounts.id) { hide(); return; }
+  google.accounts.id.initialize({ client_id: googleConfig.clientId, callback: handleGoogleCredential });
+  if (loginBox) google.accounts.id.renderButton(loginBox, { theme: "outline", size: "large", width: 280 });
+  if (regBox) google.accounts.id.renderButton(regBox, { theme: "outline", size: "large", width: 280 });
+}
 
 // -- overview -------------------------------------------------------
 async function loadOverview() {
@@ -1498,6 +1551,7 @@ const storedToken = token, storedUser = username;
 setAuthState(false, "");
 showSection("landing");
 checkBackend();
+initGoogleSignIn();
 if (storedToken && storedUser) {
   api("/api/me").then(me => {
     username = me.username;
