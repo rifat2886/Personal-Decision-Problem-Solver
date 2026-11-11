@@ -740,6 +740,19 @@ def main():
                     if "Failed to load resource" in e and expected in e:
                         del remaining_console[i]
                         break
+            # Google Sign-In (Phase 3): the page loads the optional
+            # Google Identity Services script from
+            # accounts.google.com. In an offline or proxy-blocked
+            # environment the tunnel to Google fails and Chromium
+            # logs "Failed to load resource:
+            # net::ERR_TUNNEL_CONNECTION_FAILED" for that script.
+            # That is an expected, handled degradation — the page
+            # hides the Google buttons when the script never
+            # arrives — not a page error. Remove exactly that
+            # proxy-failure message (the local test server is
+            # localhost, so no other resource can produce it).
+            remaining_console = [e for e in remaining_console
+                                 if "ERR_TUNNEL_CONNECTION_FAILED" not in e]
             check("no JS page errors", len(remaining_console) == 0, str(remaining_console[:3]))
             # The intentionally-triggered AI error calls (the 503 UI
             # tests and direct 400 fetches above) are expected
