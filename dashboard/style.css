@@ -1,27 +1,33 @@
 /* Personal Decision & Problem Solver — dashboard theme.
-   No external fonts or CDNs: system font stack only, so the page
-   works offline on localhost. Light and dark themes are the same
-   variables, switched with [data-theme="dark"] on <html>. */
+   Panze habit-tracker style: light theme by default (pale lavender
+   background, deep navy text, pink-to-blue gradient accents, large
+   rounded cards, pill buttons). No external fonts or CDNs: system
+   font stack only, so the page works offline on localhost. Light
+   and dark themes are the same variables, switched with
+   [data-theme="dark"] on <html>. The dark theme keeps the earlier
+   dark-orange look as a toggleable fallback. */
 :root {
-  --bg: #eef2f7;
+  --bg: #e7e9f6;
   --surface: #ffffff;
-  --surface-2: #f4f7fb;
-  --text: #17233b;
-  --muted: #5b6b84;
-  --border: #d8e0ec;
-  --accent: #f97316;
-  --primary: #c2410c;
-  --primary-hover: #ea580c;
-  --primary-soft: #ffedd5;
-  --sidebar-bg: #e6ebf2;
+  --surface-2: #f4f6fd;
+  --text: #101736;
+  --muted: #6474b8;
+  --border: #d5daf0;
+  --accent: #b05ab9;
+  --primary: #215aca;
+  --primary-hover: #1f3eaa;
+  --primary-soft: #e7e9f6;
+  --gradient: linear-gradient(135deg, #b05ab9, #215aca);
+  --glow: rgba(33, 90, 202, 0.30);
+  --sidebar-bg: #ffffff;
   --success: #15803d;
   --success-soft: #dcfce7;
   --danger: #b91c1c;
   --danger-soft: #fee2e2;
   --warn: #92400e;
   --warn-soft: #fef3c7;
-  --radius: 14px;
-  --shadow: 0 1px 3px rgba(23, 35, 59, 0.08), 0 8px 24px rgba(23, 35, 59, 0.06);
+  --radius: 22px;
+  --shadow: 0 2px 8px rgba(9, 19, 92, 0.06), 0 12px 32px rgba(9, 19, 92, 0.08);
   --sidebar-w: 248px;
   --topbar-h: 64px;
 }
@@ -32,6 +38,9 @@
   --text: #f1f5f9;
   --muted: #94a3b8;
   --border: #2a3345;
+  --accent: #f97316;
+  --gradient: linear-gradient(135deg, #fb923c, #f97316 55%, #ea580c);
+  --glow: rgba(249, 115, 22, 0.28);
   --primary: #fb923c;
   --primary-hover: #fdba74;
   --primary-soft: #431407;
@@ -65,23 +74,29 @@ a { color: var(--primary); }
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
+/* Panze gradient accent strip under the top bar. */
+.topbar::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px;
+  height: 3px; background: var(--gradient);
+}
 .brand { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1 1 auto; }
 .brand > div { min-width: 0; flex: 1 1 auto; }
 .brand-mark {
   width: 40px; height: 40px; flex: 0 0 40px;
   display: grid; place-items: center;
-  background: linear-gradient(135deg, #fb923c, #f97316 55%, #ea580c);
-  color: #1c1005; border-radius: 10px;
+  background: var(--gradient);
+  color: #fff; border-radius: 50%;
   font-weight: 800; letter-spacing: 0.5px;
-  box-shadow: 0 0 24px rgba(249, 115, 22, 0.35);
+  box-shadow: 0 0 24px var(--glow);
 }
+[data-theme="dark"] .brand-mark { color: #1c1005; }
 .brand strong { display: block; font-size: 16px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand-sub { display: block; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .who { font-size: 14px; color: var(--muted); white-space: nowrap; }
 .iconbtn {
   width: 40px; height: 40px; border: 1px solid var(--border);
-  background: var(--surface); color: var(--text); border-radius: 10px; cursor: pointer;
+  background: var(--surface); color: var(--text); border-radius: 50%; cursor: pointer;
 }
 .iconbtn:hover { background: var(--surface-2); }
 #menuBtn { display: none; }
@@ -107,7 +122,7 @@ a { color: var(--primary); }
   background: transparent; color: var(--text); font-size: 15px;
 }
 .sidebar button:hover { background: var(--surface-2); }
-.sidebar button.active { background: var(--primary-soft); color: var(--primary); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent), 0 0 16px rgba(249, 115, 22, 0.18); }
+.sidebar button.active { background: var(--primary-soft); color: var(--primary); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent), 0 0 16px var(--glow); }
 main { flex: 1; min-width: 0; padding: 24px 28px 48px; }
 section { display: none; }
 section.active { display: block; animation: fade 0.15s ease-in; }
@@ -132,17 +147,17 @@ h3 { margin: 0 0 12px; font-size: 17px; }
 label { display: block; margin: 0 0 12px; font-weight: 600; font-size: 14.5px; }
 input, select {
   display: block; width: 100%; margin-top: 5px; padding: 10px 12px;
-  border: 1px solid var(--border); border-radius: 9px;
+  border: 1px solid var(--border); border-radius: 16px;
   background: var(--surface); color: var(--text);
 }
 input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: var(--primary); }
 .btn {
-  border: 1px solid var(--border); border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
   padding: 10px 16px; font-weight: 650; background: var(--surface); color: var(--text);
 }
 .btn:hover { background: var(--surface-2); }
-.btn-primary { background: var(--accent); border-color: var(--accent); color: #1c1005; box-shadow: 0 0 18px rgba(249, 115, 22, 0.28); }
-.btn-primary:hover { background: var(--primary-hover); }
+.btn-primary { background: var(--gradient); border-color: transparent; color: #fff; box-shadow: 0 0 18px var(--glow); }
+.btn-primary:hover { filter: brightness(1.07); }
 .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
 /* Dark theme: light red (#f87171) with white text is only 2.8:1, so
    danger buttons use a darker red here (white on #dc2626 is 4.8:1). */
@@ -164,11 +179,11 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.6; cursor: not-a
 .hidden { display: none !important; }
 
 /* ---- messages and states ---- */
-.msg, #globalMsg > div { border-radius: 9px; padding: 11px 14px; margin: 12px 0 0; font-size: 15px; }
+.msg, #globalMsg > div { border-radius: 16px; padding: 11px 14px; margin: 12px 0 0; font-size: 15px; }
 .msg-ok, #globalMsg > .ok { background: var(--success-soft); color: var(--success); border: 1px solid var(--success); }
 .msg-err, #globalMsg > .err { background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger); }
 .msg-warn { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn); }
-.empty { color: var(--muted); padding: 18px 4px; text-align: center; border: 1px dashed var(--border); border-radius: 9px; }
+.empty { color: var(--muted); padding: 18px 4px; text-align: center; border: 1px dashed var(--border); border-radius: 16px; }
 .loading { color: var(--muted); padding: 12px 4px; }
 .loading::after { content: ""; display: inline-block; width: 14px; height: 14px; margin-left: 8px; vertical-align: -2px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -185,7 +200,7 @@ tr:last-child td { border-bottom: 0; }
 .rowline { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
 .rowline:last-child { border-bottom: 0; }
 .progress { height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; margin: 6px 0; }
-.progress > div { height: 100%; background: var(--primary); }
+.progress > div { height: 100%; background: var(--gradient); }
 
 /* ---- responsive ---- */
 @media (max-width: 900px) {
@@ -227,7 +242,7 @@ tr:last-child td { border-bottom: 0; }
 .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 16px 0; }
 .chart-bar { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
 .chart-bar .label { width: 110px; flex-shrink: 0; }
-.chart-bar .bar { height: 22px; border-radius: 6px; background: linear-gradient(90deg, #fb923c, #f97316); min-width: 4px; }
+.chart-bar .bar { height: 22px; border-radius: 6px; background: var(--gradient); min-width: 4px; }
 .chart-bar .bar.expense { background: #dc2626; }
 .chart-bar .bar.savings { background: #059669; }
 .chart-bar .value { color: var(--muted); }
@@ -309,7 +324,7 @@ body.logged-out .sidebar .nav-group {
    input/select styling, which does not cover textarea. */
 textarea {
   display: block; width: 100%; margin-top: 5px; padding: 10px 12px;
-  border: 1px solid var(--border); border-radius: 9px;
+  border: 1px solid var(--border); border-radius: 16px;
   background: var(--surface); color: var(--text); font: inherit; resize: vertical;
 }
 textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: var(--primary); }
@@ -328,15 +343,24 @@ textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-
   .ai-opt-row { flex-wrap: wrap; }
 }
 
-/* ---- AI welcome card (Overview): Modao-style welcome card in the
-   Voltex orange gradient. Dark text on the gradient for contrast;
-   the buttons inside are near-black so they stay readable. */
+/* ---- AI welcome card (Overview): Panze-style welcome card in the
+   pink-to-blue gradient. White text on the gradient for contrast;
+   the buttons inside are white so they stay readable. In the dark
+   theme the card keeps the earlier orange gradient + dark text. */
 .ai-welcome {
-  background: linear-gradient(135deg, #fb923c, #f97316 55%, #ea580c);
-  border-color: transparent; color: #1c1005;
-  box-shadow: 0 8px 28px rgba(249, 115, 22, 0.35);
+  background: var(--gradient);
+  border-color: transparent; color: #fff;
+  box-shadow: 0 8px 28px var(--glow);
 }
-.ai-welcome h3 { color: #1c1005; font-size: 22px; margin: 0 0 4px; }
-.ai-welcome p { color: rgba(28, 16, 5, 0.78); margin: 0 0 14px; font-weight: 600; }
-.ai-welcome .btn { background: rgba(28, 16, 5, 0.92); border-color: transparent; color: #fff7ed; box-shadow: none; }
-.ai-welcome .btn:hover { background: #000; }
+.ai-welcome h3 { color: #fff; font-size: 22px; margin: 0 0 4px; }
+.ai-welcome p { color: rgba(255, 255, 255, 0.85); margin: 0 0 14px; font-weight: 600; }
+.ai-welcome .btn { background: rgba(255, 255, 255, 0.95); border-color: transparent; color: #09135c; box-shadow: none; }
+.ai-welcome .btn:hover { background: #fff; }
+[data-theme="dark"] .ai-welcome {
+  background: linear-gradient(135deg, #fb923c, #f97316 55%, #ea580c);
+  color: #1c1005; box-shadow: 0 8px 28px rgba(249, 115, 22, 0.35);
+}
+[data-theme="dark"] .ai-welcome h3 { color: #1c1005; }
+[data-theme="dark"] .ai-welcome p { color: rgba(28, 16, 5, 0.78); }
+[data-theme="dark"] .ai-welcome .btn { background: rgba(28, 16, 5, 0.92); color: #fff7ed; }
+[data-theme="dark"] .ai-welcome .btn:hover { background: #000; }

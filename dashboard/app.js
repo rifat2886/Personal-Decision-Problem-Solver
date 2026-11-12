@@ -46,7 +46,7 @@ function applyTheme(theme) {
   const btn = el("themeBtn"); if (btn) btn.textContent = theme === "dark" ? "\u2600" : "\u263D";
   const sel = el("setTheme"); if (sel) sel.value = theme;
 }
-applyTheme(localStorage.getItem("pdps_theme") || "dark");
+applyTheme(localStorage.getItem("pdps_theme") || "light");
 el("themeBtn").addEventListener("click", () => {
   applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 });
