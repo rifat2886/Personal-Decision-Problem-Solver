@@ -13,6 +13,10 @@ only (never a production database), then checks, over HTTP:
     disallowed origin gets no CORS header on API responses
   - 401 sweep: protected endpoints without a token return 401
   - fail-fast: a bad DATABASE_URL makes the server exit, not serve txt
+  - AI history save verification (2.1/2.2, Postgres): baseline
+    calls return a real history_id; after the ai_history table
+    is dropped mid-run both endpoints answer 502, never a
+    false 200
 
 The test database is created fresh by the caller: pass
 --database-url postgres://... (a test database you control).
@@ -27,10 +31,12 @@ Usage:
 """
 
 import argparse
+import http.server
 import json
 import os
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
 import urllib.error
@@ -58,6 +64,34 @@ def req(port, method, path, token=None, body=None, headers=None):
             return resp.status, resp.read().decode(), dict(resp.headers)
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode(), dict(e.headers)
+
+
+class MockGemini(http.server.BaseHTTPRequestHandler):
+    # Minimal mock Gemini: every generateContent call gets the same
+    # canned reply. No real Gemini API is ever called, and no real
+    # API key is used anywhere (the server gets "test-key").
+    def log_message(self, *args):
+        pass
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        if length:
+            self.rfile.read(length)
+        body = json.dumps({"candidates": [{"content": {"parts": [
+            {"text": "Mocked AI reply."}]}, "finishReason": "STOP"}]}).encode()
+        try:
+            if self.path.startswith("/v1beta/"):
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                self.send_response(404)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
 
 def main():
@@ -196,6 +230,119 @@ def main():
             cur.execute("SELECT COUNT(*) FROM ai_history WHERE id=%s", (bob_hist_id,))
             check("pg bob history row untouched", cur.fetchone()[0] == 1)
         conn_h.close()
+
+        # AI history save verification (Phase 2.1/2.2, Postgres):
+        # daily-decision and task-analyzer verify the saved row
+        # (read-back) before returning 200. Baseline calls return
+        # a real history_id and the entry is persisted; after the
+        # ai_history table is dropped mid-run, both endpoints
+        # answer 502 with no history_id instead of a false 200.
+        # The table is recreated after so the test database is
+        # left tidy. A second server instance (same DATABASE_URL,
+        # mock Gemini) is used because the main instance runs
+        # without a Gemini key.
+        mock = http.server.ThreadingHTTPServer(("127.0.0.1", 0), MockGemini)
+        mock_port = mock.server_address[1]
+        threading.Thread(target=mock.serve_forever, daemon=True).start()
+        ai_env = dict(os.environ)
+        ai_env["DATABASE_URL"] = args.database_url
+        ai_env["GEMINI_API_KEY"] = "test-key"
+        ai_env["GEMINI_API_BASE_URL"] = f"http://127.0.0.1:{mock_port}/v1beta"
+        ai_port = args.port + 2
+        ai_proc = subprocess.Popen([args.server_cmd, "--port", str(ai_port)],
+                                   env=ai_env, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, text=True)
+        try:
+            ai_up = False
+            for _ in range(100):
+                time.sleep(0.2)
+                try:
+                    s, _, _ = req(ai_port, "GET", "/api/health")
+                    if s == 200:
+                        ai_up = True
+                        break
+                except Exception:
+                    pass
+            check("pg ai server starts", ai_up)
+            if ai_up:
+                s, b, _ = req(ai_port, "POST", "/api/register",
+                              body={"username": "carol", "password": "Carol1234"})
+                check("pg ai register carol", s == 201, b)
+                s, b, _ = req(ai_port, "POST", "/api/login",
+                              body={"username": "carol", "password": "Carol1234"})
+                tok_c = json.loads(b).get("token") if s == 200 else None
+                check("pg ai login carol", s == 200 and bool(tok_c), b)
+                s, b, _ = req(ai_port, "POST", "/api/ai/daily-decision",
+                              token=tok_c, body={"input": "Should I study now?"})
+                dd = json.loads(b) if s == 200 else {}
+                dd_id = dd.get("history_id")
+                check("pg daily-decision baseline 200", s == 200, b)
+                check("pg daily-decision history_id is a real id",
+                      isinstance(dd_id, int) and dd_id > 0, b)
+                s, b, _ = req(ai_port, "GET", "/api/ai/history", token=tok_c)
+                hist = json.loads(b).get("history", []) if s == 200 else []
+                check("pg daily-decision entry persisted",
+                      any(h.get("id") == dd_id and h.get("feature") == "daily-decision"
+                          for h in hist), b)
+                s, b, _ = req(ai_port, "POST", "/api/ai/task-analyzer",
+                              token=tok_c, body={"description": "Finish the report"})
+                ta = json.loads(b) if s == 200 else {}
+                ta_id = ta.get("history_id")
+                check("pg task-analyzer baseline 200", s == 200, b)
+                check("pg task-analyzer history_id is a real id",
+                      isinstance(ta_id, int) and ta_id > 0 and ta_id != dd_id, b)
+                s, b, _ = req(ai_port, "GET", "/api/ai/history", token=tok_c)
+                hist = json.loads(b).get("history", []) if s == 200 else []
+                check("pg task-analyzer entry persisted",
+                      any(h.get("id") == ta_id and h.get("feature") == "task-analyzer"
+                          for h in hist), b)
+                conn_d = psycopg2.connect(args.database_url)
+                conn_d.autocommit = True
+                with conn_d.cursor() as cur:
+                    cur.execute("DROP TABLE ai_history CASCADE")
+                conn_d.close()
+                s, b, _ = req(ai_port, "POST", "/api/ai/daily-decision",
+                              token=tok_c, body={"input": "After the drop"})
+                check("pg daily-decision save-failure 502",
+                      s == 502 and json.loads(b).get("error") == "AI request failed", b)
+                check("pg daily-decision save-failure reply has no history_id",
+                      "history_id" not in json.loads(b), b)
+                s, b, _ = req(ai_port, "POST", "/api/ai/task-analyzer",
+                              token=tok_c, body={"description": "After the drop"})
+                check("pg task-analyzer save-failure 502",
+                      s == 502 and json.loads(b).get("error") == "AI request failed", b)
+                check("pg task-analyzer save-failure reply has no history_id",
+                      "history_id" not in json.loads(b), b)
+                s, b, _ = req(ai_port, "GET", "/api/ai/history", token=tok_c)
+                check("pg save-failure history is empty",
+                      s == 200 and json.loads(b).get("history") == [], b)
+                conn_r = psycopg2.connect(args.database_url)
+                conn_r.autocommit = True
+                with conn_r.cursor() as cur:
+                    cur.execute("""CREATE TABLE ai_history (
+                        id SERIAL PRIMARY KEY, owner TEXT NOT NULL,
+                        feature TEXT NOT NULL, prompt TEXT NOT NULL,
+                        response TEXT NOT NULL, created_at TEXT NOT NULL)""")
+                conn_r.close()
+                # Remove the extra user: the legacy-visibility
+                # check later in this file needs exactly the two
+                # users registered above (alice, bob).
+                conn_u = psycopg2.connect(args.database_url)
+                conn_u.autocommit = True
+                with conn_u.cursor() as cur:
+                    cur.execute("DELETE FROM users WHERE username='carol'")
+                conn_u.close()
+        finally:
+            ai_proc.terminate()
+            try:
+                ai_proc.wait(timeout=5)
+            except Exception:
+                ai_proc.kill()
+            try:
+                mock.shutdown()
+                mock.server_close()
+            except Exception:
+                pass
 
         # Backup / restore / export / daily-summary
         s, b, _ = req(args.port, "POST", "/api/backup", token=tok_a, body={})
