@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Personal Decision &amp; Problem Solver — Phase 4 Demo</title>
+<title>Personal Decision &amp; Problem Solver — Project Demo</title>
 <style>
   :root { --navy:#12355b; --teal:#0e7c7b; --amber:#d98e00; --ink:#1c2430;
          --muted:#5a6b7d; --line:#d7e0e8; --bg:#f4f7fa; --card:#ffffff;
@@ -79,9 +79,9 @@
 
 <!-- 1. TITLE -->
 <section class="slide title active">
-  <div class="kicker">Project Demonstration &mdash; 10 November 2026</div>
+  <div class="kicker">Project Demonstration</div>
   <h1>Personal Decision &amp;<br>Problem Solver</h1>
-  <h2>Phase 4: Backend Integration &amp; Complete System Testing</h2>
+  <h2>Backend, Security, Google Auth &amp; Complete System Testing</h2>
   <p>One shared online database for the C++ console app and the website,
      six Gemini AI features, and a full test suite &mdash; built, tested,
      and ready to demonstrate.</p>
@@ -89,7 +89,7 @@
      &middot; <b>Sweety Akter</b></p>
   <p class="small" style="color:#9db9cf;">Repository:
      github.com/rifat2886/Personal-Decision-Problem-Solver &middot;
-     Branch: phase4-backend-integration</p>
+     Branch: main</p>
 </section>
 
 <!-- 2. PROBLEM + TEAM -->
@@ -166,7 +166,7 @@
     <text x="785" y="60" fill="#12355b" text-anchor="middle" font-size="16" font-weight="bold">C++ backend server</text>
     <text x="785" y="82" fill="#5a6b7d" text-anchor="middle" font-size="13">dashboard/cpp_server.cpp</text>
     <text x="785" y="102" fill="#5a6b7d" text-anchor="middle" font-size="13">REST API + static files + Gemini client</text>
-    <text x="785" y="122" fill="#5a6b7d" text-anchor="middle" font-size="13">hosted on Render Free (Docker)</text>
+    <text x="785" y="122" fill="#5a6b7d" text-anchor="middle" font-size="13">runs on localhost (VPS planned)</text>
     <rect x="620" y="190" width="330" height="90" rx="8" fill="#e8f0f8" stroke="#12355b" stroke-width="2"/>
     <text x="785" y="220" fill="#12355b" text-anchor="middle" font-size="16" font-weight="bold">Neon PostgreSQL</text>
     <text x="785" y="242" fill="#5a6b7d" text-anchor="middle" font-size="13">shared database — 10 tables</text>
@@ -181,14 +181,14 @@
     <line x1="540" y1="185" x2="612" y2="225" stroke="#12355b" stroke-width="2" marker-end="url(#arr)"/>
     <line x1="785" y1="140" x2="785" y2="182" stroke="#12355b" stroke-width="2" marker-end="url(#arr)"/>
     <line x1="785" y1="280" x2="785" y2="312" stroke="#12355b" stroke-width="2" marker-end="url(#arr)"/>
-    <text x="490" y="440" text-anchor="middle" font-size="14" fill="#5a6b7d">Vercel hosts the frontend only (no /api proxy) — the demo URL is the Render service URL, which serves dashboard + API from one origin.</text>
+    <text x="490" y="440" text-anchor="middle" font-size="14" fill="#5a6b7d">Vercel hosts the frontend only (no /api proxy) — the demo runs on localhost, which serves dashboard + API from one origin.</text>
   </svg>
   <ul>
     <li><b>Shared database:</b> a decision saved in the console appears on the
         website, and vice versa.</li>
     <li><b>Fail fast:</b> if the database is unreachable, server and console
         stop with an error &mdash; they never silently fall back to local files.</li>
-    <li><b>Render Free:</b> sleeps after 15 minutes idle, about 1 minute to wake.</li>
+    <li><b>Hosting:</b> Render requires a card, so there is no Render service — the demo runs on localhost, and VPS hosting is planned.</li>
   </ul>
 </section>
 
@@ -216,7 +216,7 @@
         <li>All console features in the browser</li>
         <li>Login gate: only landing + auth are public</li>
         <li>Mobile responsive (drawer under 720 px)</li>
-        <li>Works from the Render URL or localhost</li>
+        <li>Works from localhost (VPS URL once hosting is live)</li>
       </ul>
     </div>
     <div class="card">
@@ -279,8 +279,9 @@
 <section class="slide">
   <div class="kicker">Testing evidence</div>
   <h1>Tested, not claimed</h1>
-  <p>Full local regression, all passing (verified 2026-11-09). Every number
-     below is a real test run &mdash; no test is reported as passed unless it ran.</p>
+  <p>Full local regression, all passing (verified 2026-11-12): 17 suites,
+     1367 checks, 0 failed. Every number below is a real test run &mdash; no test
+     is reported as passed unless it ran.</p>
   <table>
     <tr><th>Suite</th><th>Result</th></tr>
     <tr><td>Build (C++ server + console)</td><td>0 warnings</td></tr>
@@ -288,17 +289,19 @@
     <tr><td>AI endpoint tests (mock Gemini)</td><td>609 / 609</td></tr>
     <tr><td>Console tests</td><td>14 / 14</td></tr>
     <tr><td>Console + Postgres tests</td><td>58 / 58</td></tr>
-    <tr><td>API tests</td><td>36 / 36 (C++ server) + 36 / 36 (Python server)</td></tr>
+    <tr><td>API tests</td><td>44 / 44 (C++ server) + 44 / 44 (Python server)</td></tr>
     <tr><td>Per-user isolation tests</td><td>29 / 29 (C++ server) + 29 / 29 (Python server)</td></tr>
     <tr><td>Postgres tests</td><td>51 / 51</td></tr>
-    <tr><td>Browser (dashboard) tests</td><td>150 / 150</td></tr>
+    <tr><td>Database failure tests</td><td>36 / 36</td></tr>
+    <tr><td>Google Auth tests</td><td>85 / 85</td></tr>
+    <tr><td>Delete tests</td><td>77 / 77</td></tr>
+    <tr><td>Browser (dashboard) tests</td><td>158 / 158</td></tr>
     <tr><td>Auth-gate tests</td><td>58 / 58</td></tr>
     <tr><td>Mobile tests</td><td>48 / 48</td></tr>
-    <tr><td>Live end-to-end (server + real Gemini API)</td><td>11 / 11</td></tr>
+    <tr><td>Live end-to-end (server + real Gemini API)</td><td>23 / 23</td></tr>
   </table>
-  <p><span class="tag done">PASS</span> &nbsp;Linux + Windows CI run for the
-     Phase 4 branch &mdash; CI #24 SUCCESS (2026-11-09, 4m 37s; both jobs green,
-     pg_test 51/51 in CI).</p>
+  <p><span class="tag done">PASS</span> &nbsp;Linux + Windows CI green on
+     main &mdash; CI #36 SUCCESS (2026-11-12, 4m 55s; both jobs green).</p>
   <p><span class="tag tbd">TBD</span> &nbsp;Live verification of the console +
      dashboard against the real Neon database from the demo PC &mdash; the
      local cross-check passed (console &harr; API, both directions); the
@@ -317,7 +320,7 @@
     <li><b>Passwords</b> are stored as PBKDF2 hashes, never in plain text.
         Minimum 8 characters, with a letter and a digit.</li>
     <li><b>Sessions</b> are in-memory tokens, 12-hour expiry. A server
-        restart (or a Render sleep / wake) logs users out.</li>
+        restart logs users out.</li>
     <li><b>Login rate limit:</b> 5 failed attempts per username in 300
         seconds, then 429.</li>
     <li><b>AI history</b> is strictly per-user; the Gemini key is sent only
@@ -328,8 +331,10 @@
   </ul>
   <h2>Known limits (stated honestly)</h2>
   <ul>
-    <li>Render Free sleeps after 15 minutes idle (~1 minute to wake) and has
-        no persistent disk &mdash; that is why Postgres mode is mandatory.</li>
+    <li><b>No hosted backend yet.</b> The demo runs on localhost, so the
+        server must stay running on the demo PC; VPS hosting is planned.
+        Postgres mode is mandatory so the console and the website share one
+        database.</li>
     <li>The default Gemini model is <code>gemini-3-flash-preview</code>;
         <code>gemini-2.0-flash</code> and <code>gemini-2.5-flash</code> are
         retired, and <code>gemini-3.8-flash</code> (production target) was
@@ -344,26 +349,26 @@
   <h1>What comes next</h1>
   <table>
     <tr><th>Item</th><th>Status</th></tr>
-    <tr><td>Render Free web service live + verified (health, database, auth, API, website)</td><td><span class="tag tbd">Blocked &mdash; Render requires a card</span></td></tr>
-    <tr><td>Linux + Windows CI green on the Phase 4 branch</td><td><span class="tag done">Done &mdash; CI #24 SUCCESS</span></td></tr>
+    <tr><td>VPS hosting live + verified (health, database, auth, API, website)</td><td><span class="tag tbd">Planned &mdash; Saturday 14 Nov</span></td></tr>
+    <tr><td>Linux + Windows CI green on main</td><td><span class="tag done">Done &mdash; CI #36 SUCCESS (2026-11-12)</span></td></tr>
     <tr><td>Re-test <code>gemini-3.8-flash</code> as the production model</td><td><span class="tag tbd">TBD</span></td></tr>
     <tr><td>Full-database backup / restore rehearsal on the live database</td><td><span class="tag tbd">TBD</span></td></tr>
-    <tr><td>Merge to <code>main</code> (needs separate permission)</td><td><span class="tag tbd">TBD</span></td></tr>
+    <tr><td>Merge to <code>main</code></td><td><span class="tag done">Done &mdash; PR #71 merged 2026-11-12</span></td></tr>
     <tr><td>Vercel <code>/api</code> proxy so the Vercel site can call the backend</td><td><span class="tag tbd">TBD</span></td></tr>
   </table>
   <h2>Deliberately not built</h2>
   <ul>
     <li>No promote / demote / password-reset endpoint (admin recovery is a
         database-owner-only offline operation).</li>
-    <li>No paid service, no card, no billing &mdash; the whole deployment is
-        free-tier only.</li>
+    <li>No card on file &mdash; Render was blocked for requiring one; the
+        only planned paid service is VPS hosting (BDT 399&ndash;499/month).</li>
     <li>No public launch, domain, or DNS change in this phase.</li>
   </ul>
   <h1 style="margin-top:40px;">Thank you — questions?</h1>
   <p>Repository: github.com/rifat2886/Personal-Decision-Problem-Solver</p>
-  <p class="small">Full documentation: architecture.md and api.md (Phase 4 docs).
+  <p class="small">Full documentation: architecture.md, api.md, and google-auth.md.
      Test numbers on the testing slide are the verified local regression of
-     2026-11-09; anything marked TBD is not yet verified and is not claimed as done.</p>
+     2026-11-12; anything marked TBD is not yet verified and is not claimed as done.</p>
 </section>
 
 </div>
