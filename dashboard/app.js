@@ -46,7 +46,7 @@ function applyTheme(theme) {
   const btn = el("themeBtn"); if (btn) btn.textContent = theme === "dark" ? "\u2600" : "\u263D";
   const sel = el("setTheme"); if (sel) sel.value = theme;
 }
-applyTheme(localStorage.getItem("pdps_theme") || "light");
+applyTheme(localStorage.getItem("pdps_theme") || "dark");
 el("themeBtn").addEventListener("click", () => {
   applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 });
@@ -174,7 +174,7 @@ function showSection(name) {
   document.querySelectorAll("section").forEach(s => s.classList.toggle("active", s.id === name));
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.section === name));
   setNav(false);
-  if (name === "overview") loadOverview();
+  if (name === "overview") { loadOverview(); updateAiWelcome(); }
   if (name === "history") loadHistory();
   if (name === "tasks") loadTasks();
   if (name === "taskstatus") loadStatusList();
@@ -190,6 +190,21 @@ function showSection(name) {
 }
 
 document.querySelectorAll("nav button").forEach(b => {
+  b.addEventListener("click", () => showSection(b.dataset.section));
+});
+
+// AI welcome card (Overview): fills in the logged-in username from
+// the session (the same source as #who / sessionStorage pdps_user)
+// and links to the 6 AI sections via the existing showSection
+// navigation. Overview is a protected section, so this card is
+// only ever shown logged in; the auth gate is unchanged.
+function updateAiWelcome() {
+  const nameEl = el("aiWelcomeName");
+  if (!nameEl) return;
+  const stored = sessionStorage.getItem("pdps_user") || "";
+  nameEl.textContent = stored.replace(/\s*\([^)]*\)$/, "");
+}
+document.querySelectorAll(".ai-welcome [data-section]").forEach(b => {
   b.addEventListener("click", () => showSection(b.dataset.section));
 });
 

@@ -696,17 +696,23 @@ def main():
             page.wait_for_function("document.getElementById('aiHistoryList').textContent.includes('No AI history yet')", timeout=15000)
             check("ai-history empty state", "No AI history yet" in page.evaluate("document.getElementById('aiHistoryList').textContent"))
 
-            # Reports section screenshot, then dark mode.
+            # Reports section screenshot, then theme toggle.
+            # The redesign (Modao layout + Voltex orange style) makes
+            # dark the default theme, so a fresh context starts dark:
+            # one toggle click goes to light, a second click back to dark.
             page.click("button[data-section='reports']")
             page.wait_for_timeout(800)
             page.screenshot(path=os.path.join(outdir, "04-reports.png"))
+            check("default theme is dark", page.evaluate("document.documentElement.getAttribute('data-theme')") == "dark", str(page.evaluate("document.documentElement.getAttribute('data-theme')")))
             page.click("#themeBtn")
             page.wait_for_timeout(500)
             theme = page.evaluate("document.documentElement.getAttribute('data-theme')")
-            check("dark mode toggle", theme == "dark", str(theme))
-            page.screenshot(path=os.path.join(outdir, "05-dark-mode.png"))
+            check("theme toggle to light", theme == "light", str(theme))
+            page.screenshot(path=os.path.join(outdir, "05-theme-toggle.png"))
             page.click("#themeBtn")
             page.wait_for_timeout(300)
+            theme = page.evaluate("document.documentElement.getAttribute('data-theme')")
+            check("theme toggle back to dark", theme == "dark", str(theme))
 
             # Mobile viewport: sidebar hamburger, no horizontal overflow.
             mpage = browser.new_page(viewport={"width": 375, "height": 667})
