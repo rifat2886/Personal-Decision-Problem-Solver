@@ -697,22 +697,22 @@ def main():
             check("ai-history empty state", "No AI history yet" in page.evaluate("document.getElementById('aiHistoryList').textContent"))
 
             # Reports section screenshot, then theme toggle.
-            # The redesign (Modao layout + Voltex orange style) makes
-            # dark the default theme, so a fresh context starts dark:
-            # one toggle click goes to light, a second click back to dark.
+            # The Panze redesign makes light the default theme, so
+            # a fresh context starts light: one toggle click goes
+            # to dark, a second click back to light.
             page.click("button[data-section='reports']")
             page.wait_for_timeout(800)
             page.screenshot(path=os.path.join(outdir, "04-reports.png"))
-            check("default theme is dark", page.evaluate("document.documentElement.getAttribute('data-theme')") == "dark", str(page.evaluate("document.documentElement.getAttribute('data-theme')")))
+            check("default theme is light", page.evaluate("document.documentElement.getAttribute('data-theme')") == "light", str(page.evaluate("document.documentElement.getAttribute('data-theme')")))
             page.click("#themeBtn")
             page.wait_for_timeout(500)
             theme = page.evaluate("document.documentElement.getAttribute('data-theme')")
-            check("theme toggle to light", theme == "light", str(theme))
+            check("theme toggle to dark", theme == "dark", str(theme))
             page.screenshot(path=os.path.join(outdir, "05-theme-toggle.png"))
             page.click("#themeBtn")
             page.wait_for_timeout(300)
             theme = page.evaluate("document.documentElement.getAttribute('data-theme')")
-            check("theme toggle back to dark", theme == "dark", str(theme))
+            check("theme toggle back to light", theme == "light", str(theme))
 
             # Mobile viewport: sidebar hamburger, no horizontal overflow.
             mpage = browser.new_page(viewport={"width": 375, "height": 667})

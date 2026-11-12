@@ -339,6 +339,21 @@ def section_console_txt():
     u1, u2 = TAG + "i", TAG + "j"
     saved = {}
     def break_store():
+        # Wait until the console has flushed u1's registration to
+        # users.txt before snapshotting it: the fixed 3.5s sleep in
+        # run_console_blocks is not enough on a loaded machine, and
+        # reading the file early saves content without u1 (flaky
+        # 2-check failure seen 2026-11-13). Poll up to 15s; on
+        # timeout proceed anyway and let the checks fail honestly.
+        path = os.path.join(tmp, "users.txt")
+        deadline = time.time() + 15
+        while time.time() < deadline:
+            try:
+                if u1.encode() in open(path, "rb").read():
+                    break
+            except OSError:
+                pass
+            time.sleep(0.2)
         saved["content"] = users_txt_as_dir(tmp)
     code, out = run_console_blocks(binary, tmp, [
         (reg_block(u1), 3.5, None),
