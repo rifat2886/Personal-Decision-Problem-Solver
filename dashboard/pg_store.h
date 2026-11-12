@@ -12,6 +12,12 @@
 //    is false, pgInit() fails with a clear message, and the server
 //    still builds and runs in its original txt mode. This keeps the
 //    Windows build working without a new dependency.
+//  - PDPS_NO_LIBPQ (set by the Makefile / .bat launchers when
+//    pg_config is missing) forces Postgres support OUT even when
+//    the headers exist: otherwise the headers compile the real code
+//    in but -lpq is never linked and the build fails with
+//    "undefined reference to PQconnectdb" (same mismatch as
+//    libcurl, fixed the same way 2026-11-09).
 //  - No connection string, password, or secret is in this file.
 //    The connection string comes only from the DATABASE_URL
 //    environment variable at runtime, and is never logged.
@@ -68,7 +74,7 @@ void pgShutdown();
 // build step beyond -lpq (see Dockerfile; txt builds link without
 // libpq because the libpq calls below are compiled out).
 // ------------------------------------------------------------------
-#if defined(__has_include)
+#if !defined(PDPS_NO_LIBPQ) && defined(__has_include)
 #if __has_include(<libpq-fe.h>)
 #define PDPS_HAS_LIBPQ 1
 #include <libpq-fe.h>
@@ -84,7 +90,9 @@ inline bool g_enabled = false;
 
 inline const char* schemaSql() {
     return
-        "CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password_hash TEXT NOT NULL, role TEXT NOT NULL CHECK (role IN ('ADMIN','USER')));"
+        "CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password_hash TEXT, role TEXT NOT NULL CHECK (role IN ('ADMIN','USER')), email TEXT, google_sub TEXT, auth_provider TEXT NOT NULL DEFAULT 'password' CHECK (auth_provider IN ('password','google','both')), display_name TEXT);"
+        "CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users (email) WHERE email IS NOT NULL;"
+        "CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_unique ON users (google_sub) WHERE google_sub IS NOT NULL;"
         "CREATE TABLE IF NOT EXISTS decisions (id SERIAL PRIMARY KEY, record_date TEXT NOT NULL, type TEXT NOT NULL, priority INTEGER NOT NULL, title TEXT NOT NULL, owner TEXT);"
         "CREATE TABLE IF NOT EXISTS decisions_backup (id INTEGER PRIMARY KEY, record_date TEXT NOT NULL, type TEXT NOT NULL, priority INTEGER NOT NULL, title TEXT NOT NULL, owner TEXT);"
         "CREATE TABLE IF NOT EXISTS tasks (id SERIAL PRIMARY KEY, title TEXT NOT NULL, urgency INTEGER NOT NULL, importance INTEGER NOT NULL, deadline TEXT NOT NULL DEFAULT '', status TEXT NOT NULL, owner TEXT);"

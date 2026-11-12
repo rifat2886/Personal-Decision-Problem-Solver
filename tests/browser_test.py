@@ -137,6 +137,7 @@ def main():
             page.click("button[data-section='auth']")
             page.fill("#regUser", "browseruser")
             page.fill("#regPass", "Browser123")
+            page.fill("#regPassConfirm", "Browser123")
             page.click("#regBtn")
             # Do NOT use a fixed wait here: the C++ server's PBKDF2
             # (100k iterations, hand-written SHA-256) takes ~1.9s per
@@ -695,17 +696,23 @@ def main():
             page.wait_for_function("document.getElementById('aiHistoryList').textContent.includes('No AI history yet')", timeout=15000)
             check("ai-history empty state", "No AI history yet" in page.evaluate("document.getElementById('aiHistoryList').textContent"))
 
-            # Reports section screenshot, then dark mode.
+            # Reports section screenshot, then theme toggle.
+            # The redesign (Modao layout + Voltex orange style) makes
+            # dark the default theme, so a fresh context starts dark:
+            # one toggle click goes to light, a second click back to dark.
             page.click("button[data-section='reports']")
             page.wait_for_timeout(800)
             page.screenshot(path=os.path.join(outdir, "04-reports.png"))
+            check("default theme is dark", page.evaluate("document.documentElement.getAttribute('data-theme')") == "dark", str(page.evaluate("document.documentElement.getAttribute('data-theme')")))
             page.click("#themeBtn")
             page.wait_for_timeout(500)
             theme = page.evaluate("document.documentElement.getAttribute('data-theme')")
-            check("dark mode toggle", theme == "dark", str(theme))
-            page.screenshot(path=os.path.join(outdir, "05-dark-mode.png"))
+            check("theme toggle to light", theme == "light", str(theme))
+            page.screenshot(path=os.path.join(outdir, "05-theme-toggle.png"))
             page.click("#themeBtn")
             page.wait_for_timeout(300)
+            theme = page.evaluate("document.documentElement.getAttribute('data-theme')")
+            check("theme toggle back to dark", theme == "dark", str(theme))
 
             # Mobile viewport: sidebar hamburger, no horizontal overflow.
             mpage = browser.new_page(viewport={"width": 375, "height": 667})
@@ -739,6 +746,19 @@ def main():
                     if "Failed to load resource" in e and expected in e:
                         del remaining_console[i]
                         break
+            # Google Sign-In (Phase 3): the page loads the optional
+            # Google Identity Services script from
+            # accounts.google.com. In an offline or proxy-blocked
+            # environment the tunnel to Google fails and Chromium
+            # logs "Failed to load resource:
+            # net::ERR_TUNNEL_CONNECTION_FAILED" for that script.
+            # That is an expected, handled degradation — the page
+            # hides the Google buttons when the script never
+            # arrives — not a page error. Remove exactly that
+            # proxy-failure message (the local test server is
+            # localhost, so no other resource can produce it).
+            remaining_console = [e for e in remaining_console
+                                 if "ERR_TUNNEL_CONNECTION_FAILED" not in e]
             check("no JS page errors", len(remaining_console) == 0, str(remaining_console[:3]))
             # The intentionally-triggered AI error calls (the 503 UI
             # tests and direct 400 fetches above) are expected

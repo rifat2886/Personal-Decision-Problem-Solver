@@ -116,6 +116,17 @@ def main():
                            body={"username": "newuser", "password": "NewPass123"})
         check("newuser login", status == 200 and "token" in body, str(body))
         token_new = body.get("token", "")
+
+        # 2b. Confirm password (auth fix, 2026-11-09): matching confirm
+        # registers, mismatched confirm is rejected with 400.
+        status, body = req(port, "POST", "/api/register",
+                           body={"username": "confirmuser", "password": "Confirm123",
+                                 "confirm_password": "Confirm123"})
+        check("register with matching confirm", status == 201, str(body))
+        status, body = req(port, "POST", "/api/register",
+                           body={"username": "mismatchuser", "password": "Mismatch123",
+                                 "confirm_password": "Other1234"})
+        check("register with mismatched confirm 400", status == 400, str(body))
         status, body = req(port, "GET", "/api/admin", token=token_new)
         check("non-admin admin endpoint 403", status == 403, str(body))
         status, body = req(port, "GET", "/api/admin", token=token_old)
@@ -217,6 +228,47 @@ def main():
         check("static /users.txt 404", status == 404, str(status))
         status, body = req(port, "GET", "/")
         check("landing page 200", status == 200, str(status))
+        # 5. Google Sign-In (Phase 3): separate clearly-delimited
+        # block, 6 checks on EACH server (total becomes 44).
+        # No GOOGLE_CLIENT_ID is set here, so the C++ server
+        # reports sign-in disabled (config enabled=false, sign-in
+        # 503) and the Python server answers 501 for Google auth
+        # (after login) while unauthenticated calls still get 401.
+        if "server.py" in args.server_cmd:
+            status, body = req(port, "GET", "/api/auth/google/config", token=t)
+            check("google config 501 (python)", status == 501, str(body))
+            status, body = req(port, "POST", "/api/auth/google", token=t,
+                               body={"credential": "x.y.z"})
+            check("google sign-in 501 (python)", status == 501, str(body))
+            status, body = req(port, "POST", "/api/auth/google/link", token=t,
+                               body={"credential": "x.y.z"})
+            check("google link 501 (python)", status == 501, str(body))
+            status, body = req(port, "POST", "/api/auth/google/unlink", token=t, body={})
+            check("google unlink 501 (python)", status == 501, str(body))
+            status, body = req(port, "POST", "/api/auth/set-password", token=t,
+                               body={"password": "NewPass123", "confirm_password": "NewPass123"})
+            check("google set-password 501 (python)", status == 501, str(body))
+            status, body = req(port, "POST", "/api/auth/google",
+                               body={"credential": "x.y.z"})
+            check("google sign-in without token 401 (python)", status == 401, str(status))
+        else:
+            status, body = req(port, "GET", "/api/auth/google/config")
+            check("google config disabled", status == 200
+                  and body.get("enabled") is False
+                  and body.get("clientId") == "", str(body))
+            status, body = req(port, "POST", "/api/auth/google",
+                               body={"credential": "x.y.z"})
+            check("google sign-in 503 (no client id)", status == 503, str(body))
+            status, body = req(port, "POST", "/api/auth/google/link",
+                               body={"credential": "x.y.z"})
+            check("google link without token 401", status == 401, str(status))
+            status, body = req(port, "POST", "/api/auth/google/unlink", body={})
+            check("google unlink without token 401", status == 401, str(status))
+            status, body = req(port, "POST", "/api/auth/set-password",
+                               body={"password": "NewPass123", "confirm_password": "NewPass123"})
+            check("google set-password without token 401", status == 401, str(status))
+            status, body = req(port, "POST", "/api/auth/google", body={})
+            check("google sign-in missing credential 400", status == 400, str(body))
         status, body = req(port, "POST", "/api/logout", token=t)
         check("logout", status == 200, str(body))
         status, body = req(port, "GET", "/api/overview", token=t)

@@ -9,9 +9,11 @@
   --text: #17233b;
   --muted: #5b6b84;
   --border: #d8e0ec;
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-soft: #dbeafe;
+  --accent: #f97316;
+  --primary: #c2410c;
+  --primary-hover: #ea580c;
+  --primary-soft: #ffedd5;
+  --sidebar-bg: #e6ebf2;
   --success: #15803d;
   --success-soft: #dcfce7;
   --danger: #b91c1c;
@@ -24,15 +26,16 @@
   --topbar-h: 64px;
 }
 [data-theme="dark"] {
-  --bg: #0f172a;
-  --surface: #1e293b;
-  --surface-2: #16213a;
-  --text: #e2e8f0;
+  --bg: #0b0e14;
+  --surface: #12161f;
+  --surface-2: #1a2030;
+  --text: #f1f5f9;
   --muted: #94a3b8;
-  --border: #334155;
-  --primary: #60a5fa;
-  --primary-hover: #93c5fd;
-  --primary-soft: #1e3a5f;
+  --border: #2a3345;
+  --primary: #fb923c;
+  --primary-hover: #fdba74;
+  --primary-soft: #431407;
+  --sidebar-bg: #0a0d13;
   --success: #4ade80;
   --success-soft: #14532d;
   --danger: #f87171;
@@ -67,8 +70,10 @@ a { color: var(--primary); }
 .brand-mark {
   width: 40px; height: 40px; flex: 0 0 40px;
   display: grid; place-items: center;
-  background: var(--primary); color: #fff; border-radius: 10px;
+  background: linear-gradient(135deg, #fb923c, #f97316 55%, #ea580c);
+  color: #1c1005; border-radius: 10px;
   font-weight: 800; letter-spacing: 0.5px;
+  box-shadow: 0 0 24px rgba(249, 115, 22, 0.35);
 }
 .brand strong { display: block; font-size: 16px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand-sub { display: block; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -88,7 +93,7 @@ a { color: var(--primary); }
   width: var(--sidebar-w); flex: 0 0 var(--sidebar-w);
   height: calc(100vh - var(--topbar-h)); overflow-y: auto;
   padding: 14px 12px 24px;
-  background: var(--surface);
+  background: var(--sidebar-bg);
   border-right: 1px solid var(--border);
 }
 .nav-group {
@@ -102,7 +107,7 @@ a { color: var(--primary); }
   background: transparent; color: var(--text); font-size: 15px;
 }
 .sidebar button:hover { background: var(--surface-2); }
-.sidebar button.active { background: var(--primary-soft); color: var(--primary); font-weight: 700; }
+.sidebar button.active { background: var(--primary-soft); color: var(--primary); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent), 0 0 16px rgba(249, 115, 22, 0.18); }
 main { flex: 1; min-width: 0; padding: 24px 28px 48px; }
 section { display: none; }
 section.active { display: block; animation: fade 0.15s ease-in; }
@@ -122,7 +127,7 @@ h3 { margin: 0 0 12px; font-size: 17px; }
 .grid-2 .card { margin-bottom: 0; }
 .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
 .stat .label { color: var(--muted); font-size: 13.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-.stat .value { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; margin: 2px 0; }
+.stat .value { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; margin: 2px 0; color: var(--primary); }
 .stat .sub { color: var(--muted); font-size: 13.5px; }
 label { display: block; margin: 0 0 12px; font-weight: 600; font-size: 14.5px; }
 input, select {
@@ -136,10 +141,26 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1
   padding: 10px 16px; font-weight: 650; background: var(--surface); color: var(--text);
 }
 .btn:hover { background: var(--surface-2); }
-.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #1c1005; box-shadow: 0 0 18px rgba(249, 115, 22, 0.28); }
 .btn-primary:hover { background: var(--primary-hover); }
 .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+/* Dark theme: light red (#f87171) with white text is only 2.8:1, so
+   danger buttons use a darker red here (white on #dc2626 is 4.8:1). */
+[data-theme="dark"] .btn-danger { background: #dc2626; border-color: #dc2626; }
+/* Disabled controls have a visual state (audit finding): greyed out,
+   no pointer, no glow. */
+.btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+input:disabled, select:disabled, textarea:disabled { opacity: 0.6; cursor: not-allowed; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+/* Google Sign-In (Phase 3): the "or" divider between the password
+   form and the Google button, and spacing for the button Google's
+   script renders into the .google-btn-wrap container. The containers
+   are hidden (display:none) by app.js when Google sign-in is not
+   configured or the Google script did not load. */
+.google-divider { display: flex; align-items: center; gap: 10px; margin: 14px 0; color: var(--muted); font-size: 13px; }
+.google-divider::before, .google-divider::after { content: ""; flex: 1; border-top: 1px solid var(--border); }
+.google-divider span { white-space: nowrap; }
+.google-btn-wrap { margin: 4px 0 8px; }
 .hidden { display: none !important; }
 
 /* ---- messages and states ---- */
@@ -197,13 +218,16 @@ tr:last-child td { border-bottom: 0; }
 
 /* Landing hero + charts (Phase 5, own design) */
 .hero { padding: 24px 4px 8px; }
-.hero .eyebrow { letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; font-size: 13px; margin: 0 0 8px; }
-.hero h1 { font-size: 42px; line-height: 1.1; margin: 0 0 12px; }
+.hero .eyebrow { letter-spacing: .12em; text-transform: uppercase; color: var(--primary); font-weight: 700; font-size: 13px; margin: 0 0 8px; }
+[data-theme="dark"] .hero .eyebrow { color: var(--accent); }
+.hero h1 { font-size: 54px; line-height: 1.08; letter-spacing: -0.5px; margin: 0 0 12px; }
+.hero-accent { color: var(--primary); }
+[data-theme="dark"] .hero-accent { color: var(--accent); text-shadow: 0 0 24px rgba(249, 115, 22, 0.45); }
 .hero-sub { font-size: 17px; color: var(--muted); max-width: 720px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 16px 0; }
 .chart-bar { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
 .chart-bar .label { width: 110px; flex-shrink: 0; }
-.chart-bar .bar { height: 22px; border-radius: 6px; background: var(--accent); min-width: 4px; }
+.chart-bar .bar { height: 22px; border-radius: 6px; background: linear-gradient(90deg, #fb923c, #f97316); min-width: 4px; }
 .chart-bar .bar.expense { background: #dc2626; }
 .chart-bar .bar.savings { background: #059669; }
 .chart-bar .value { color: var(--muted); }
@@ -303,3 +327,16 @@ textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-
   textarea { min-height: 44px; padding: 12px; font-size: 16px; }
   .ai-opt-row { flex-wrap: wrap; }
 }
+
+/* ---- AI welcome card (Overview): Modao-style welcome card in the
+   Voltex orange gradient. Dark text on the gradient for contrast;
+   the buttons inside are near-black so they stay readable. */
+.ai-welcome {
+  background: linear-gradient(135deg, #fb923c, #f97316 55%, #ea580c);
+  border-color: transparent; color: #1c1005;
+  box-shadow: 0 8px 28px rgba(249, 115, 22, 0.35);
+}
+.ai-welcome h3 { color: #1c1005; font-size: 22px; margin: 0 0 4px; }
+.ai-welcome p { color: rgba(28, 16, 5, 0.78); margin: 0 0 14px; font-weight: 600; }
+.ai-welcome .btn { background: rgba(28, 16, 5, 0.92); border-color: transparent; color: #fff7ed; box-shadow: none; }
+.ai-welcome .btn:hover { background: #000; }

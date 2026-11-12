@@ -6,6 +6,11 @@
 <meta name="description" content="Personal Decision & Problem Solver — dashboard connected to the same data files as the C++ app.">
 <title>Personal Decision &amp; Problem Solver — Dashboard</title>
 <link rel="stylesheet" href="style.css">
+<!-- Google Identity Services (Phase 3): loaded async from Google's
+     CDN for the "Sign in with Google" button. If it fails to load
+     (offline, blocked), app.js hides the Google buttons and the
+     password forms keep working; the page never throws. -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="logged-out">
 <header class="topbar">
@@ -72,13 +77,13 @@
   <section id="landing">
     <div class="hero">
       <p class="eyebrow">Personal Decision &amp; Problem Solver</p>
-      <h1>Decide better, every day.</h1>
+      <h1><span class="hero-accent">Decide better</span>, every day.</h1>
       <p class="hero-sub">One app for your decisions, tasks, money, habits and study — built by a three-person team in C++, with a web dashboard that reads and writes the exact same data files as the console app. No fake data, no demo numbers: what you see is what you saved.</p>
       <div class="actions">
         <button class="btn btn-primary" id="heroLoginBtn">Log in</button>
         <button class="btn btn-secondary" id="heroRegBtn">Create an account</button>
       </div>
-      <p class="muted">No Google or GitHub sign-in, no invitation needed — register here with a username and password, in this app's own login system. Your tasks, budget, habits and history are private to your account: one user cannot see another user's data. First registered user becomes ADMIN.</p>
+      <p class="muted">Sign in with Google, or register here with a username and password — no invitation needed. Your tasks, budget, habits and history are private to your account: one user cannot see another user's data. First registered user becomes ADMIN.</p>
     </div>
     <div class="grid3">
       <div class="card"><h3>&#129504; Decide</h3><p>Daily decisions, priority scores, task prioritization, compare options, multi-task planning, deadline alerts and plain-language explanations.</p></div>
@@ -97,13 +102,13 @@
     <div class="card">
       <h3>Team</h3>
       <p><b>Rifat</b> — system core, authentication, profile, admin, password, time allocation, study planner, dashboard and C++ backend. <b>Nuriya</b> — daily decision, priority, tasks, compare, status, deadlines, explanations, multi-task. <b>Sweety</b> — budget, income/expense, savings, habits, streak, reports, export.</p>
-      <p class="muted">Design note: this landing page is our own design, inspired only by the general modern pattern of a hero + feature cards + how-it-works seen on reference sites. No content, text or images were copied from any reference site.</p>
+      <p class="muted">Design note: the dark-orange theme is inspired by the Modao dashboard layout and the Voltex orange colour style — no content, text or images were copied from any reference site.</p>
     </div>
   </section>
 
   <section id="auth" class="active">
     <h2>Welcome back</h2>
-    <p class="muted">Log in or register with this app's own account system — no Google or GitHub account, no invitation, no team membership needed. The first user becomes ADMIN, later users are USER. Usernames cannot contain spaces. Passwords need 8+ characters, a letter and a digit, and are stored as hashes (never as plain text for new accounts).</p>
+    <p class="muted">Log in with Google, or with this app's own account system — no invitation, no team membership needed. The first user becomes ADMIN, later users are USER. Usernames cannot contain spaces. Passwords need 8+ characters, a letter and a digit, and are stored as hashes (never as plain text for new accounts).</p>
     <div id="backendMsg"></div>
     <div class="grid-2">
       <div class="card">
@@ -111,13 +116,18 @@
         <label>Username <input id="loginUser" autocomplete="username"></label>
         <label>Password <input id="loginPass" type="password" autocomplete="current-password"></label>
         <button class="btn btn-primary" id="loginBtn">Login</button>
+        <div class="google-divider"><span>or</span></div>
+        <div class="google-btn-wrap" id="googleSignInLogin"></div>
         <div id="loginMsg"></div>
       </div>
       <div class="card">
         <h3>Register</h3>
         <label>Username <input id="regUser" autocomplete="username"></label>
         <label>Password <input id="regPass" type="password" autocomplete="new-password"></label>
+        <label>Confirm password <input id="regPassConfirm" type="password" autocomplete="new-password"></label>
         <button class="btn btn-primary" id="regBtn">Register</button>
+        <div class="google-divider"><span>or</span></div>
+        <div class="google-btn-wrap" id="googleSignInReg"></div>
         <div id="regMsg"></div>
       </div>
     </div>
@@ -126,6 +136,18 @@
   <section id="overview">
     <h2>Overview</h2>
     <p class="muted">A live summary of your decisions, tasks, money and habits.</p>
+    <div class="card ai-welcome" id="aiWelcomeCard">
+      <h3>Welcome back, <span id="aiWelcomeName"></span>!</h3>
+      <p>Ask me anything.</p>
+      <div class="actions">
+        <button class="btn btn-primary" data-section="ai-daily">AI Daily Decision</button>
+        <button class="btn btn-primary" data-section="ai-task">AI Task Analyzer</button>
+        <button class="btn btn-primary" data-section="ai-study">AI Study Planner</button>
+        <button class="btn btn-primary" data-section="ai-problem">AI Problem Solver</button>
+        <button class="btn btn-primary" data-section="ai-budget">AI Budget Assistant</button>
+        <button class="btn btn-primary" data-section="ai-habit">AI Habit Assistant</button>
+      </div>
+    </div>
     <div class="grid cards" id="overviewCards"></div>
     <div class="card">
       <h3>Finance chart (real totals)</h3>

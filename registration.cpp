@@ -8,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <sys/stat.h>
 
 bool registerUser()
 {
@@ -42,7 +43,27 @@ bool registerUser()
             return false;
         }
 
-        bool firstUser = (console_pg::userCount() == 0);
+        // Auth fix (2026-11-09): ask twice — a typo at registration
+        // used to lock the account with no recovery.
+        std::cout << "Enter password again: ";
+        std::string confirm;
+        std::cin >> confirm;
+
+        if (confirm != password)
+        {
+            std::cout << "Passwords do not match!\n";
+            return false;
+        }
+
+        // C1 fix (2026-11-10): the user count could not be read
+        // (database unreachable). Refuse registration instead of
+        // treating the failure as "no users yet" and granting ADMIN.
+        long userTotal = console_pg::userCount();
+        if (userTotal < 0) {
+            std::cout << "Cannot read user data. Please try again later.\n";
+            return false;
+        }
+        bool firstUser = (userTotal == 0);
 
         // New accounts store only a PBKDF2 hash, never plaintext.
         if (!console_pg::insertUser(username,
@@ -71,6 +92,23 @@ bool registerUser()
         return false;
     }
 
+    // C2 fix (2026-11-10): if users.txt exists but cannot be read
+    // (not a regular file, or unreadable), refuse registration
+    // instead of treating the unreadable file as "no users yet"
+    // and granting ADMIN. A missing file is genuinely empty.
+    {
+        struct stat st;
+        if (stat("users.txt", &st) == 0)
+        {
+            std::ifstream probe("users.txt");
+            if (!S_ISREG(st.st_mode) || !probe)
+            {
+                std::cout << "Cannot read user data. Please try again later.\n";
+                return false;
+            }
+        }
+    }
+
     std::ifstream input("users.txt");
     std::string u, p, role;
 
@@ -91,6 +129,18 @@ bool registerUser()
     {
         std::cout << "Password must be 8+ characters "
                   << "with a letter and a digit.\n";
+        return false;
+    }
+
+    // Auth fix (2026-11-09): ask twice — a typo at registration
+    // used to lock the account with no recovery.
+    std::cout << "Enter password again: ";
+    std::string confirm;
+    std::cin >> confirm;
+
+    if (confirm != password)
+    {
+        std::cout << "Passwords do not match!\n";
         return false;
     }
 

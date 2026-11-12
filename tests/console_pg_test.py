@@ -130,8 +130,8 @@ def main():
     try:
         # S1: register alice (first = ADMIN) + bob (USER).
         script1 = (
-            "1\nalice\nAlice1234\n\n\n"
-            "1\nbob\nBob12345\n\n\n"
+            "1\nalice\nAlice1234\nAlice1234\n\n\n"
+            "1\nbob\nBob12345\nBob12345\n\n\n"
             "0\n"
         )
         code, out = run_console(args.binary, tmp, script1, args.database_url)

@@ -6,7 +6,7 @@ step er "jodi na hoy" ongsho ta porben.
 
 ## Age theke ja lagbe
 
-- ZIP file: `Personal-Decision-Problem-Solver-Phase4-de6c1b3.zip` (Muse dibe)
+- ZIP file: `Personal-Decision-Problem-Solver-Phase4-182e74e-demo-ready.zip` (Muse dibe)
 - Apnar PC te MSYS2 + g++ age thekei ache (6 November e test kora hoyeche)
 - Gemini API key (Google AI Studio theke) — sudhu apnar PC te lagbe, chat e na
 - Neon database er connection string (Neon console theke) — sudhu apnar PC te lagbe
@@ -14,7 +14,7 @@ step er "jodi na hoy" ongsho ta porben.
 ## Step 0 — ZIP khulun
 
 1. ZIP file ta `Downloads` theke khulun (Extract). Folder er nam hobe
-   `Personal-Decision-Problem-Solver-Phase4-de6c1b3`.
+   `Personal-Decision-Problem-Solver-Phase4-182e74e`.
 2. Oi folder ta khule PowerShell khulun (folder er khali jaygay right-click
    → "Open in Terminal" ba address bar e `powershell` likhe Enter).
 
@@ -23,8 +23,11 @@ step er "jodi na hoy" ongsho ta porben.
 PowerShell e ei command ta chalaben:
 
 ```powershell
-pacman -S --noconfirm mingw-w64-x86_64-curl mingw-w64-x86_64-postgresql
+pacman -S --noconfirm mingw-w64-ucrt-x86_64-curl mingw-w64-ucrt-x86_64-postgresql
 ```
+
+Ei command ta MSYS2 UCRT64 terminal e chalaben (Start menu → MSYS2 UCRT64).
+MINGW64 terminal e chalale package er nam milbe na.
 
 Eta MSYS2 te libcurl (Gemini AI er jonno) ar libpq (Neon database er jonno)
 install korbe. Seshe `g++ --version` chaliye dekhben version dekhay kina.
@@ -32,6 +35,12 @@ install korbe. Seshe `g++ --version` chaliye dekhben version dekhay kina.
 - Jodi install na hoy: AI ar Neon database chara demo dite hobe (Step 3 er
   "TXT mode" onusare). AI feature tokhon "not configured" dekhabe — eta
   age thekei bole rakhben.
+
+- Build e jodi `undefined reference to curl_easy_...` ba `PQconnectdb`
+  lekha ashe: notun `.bat` nijei g++ er pashe curl khuje ney, tai ei
+  error ar ashar kotha na. Tobuo ele: UCRT64 terminal e oi folder e
+  giye `mingw32-make` chalaben, othoba uporer pacman command ta abar
+  chaliye `cpp_server.exe` muche abar build korben.
 
 ## Step 2 — key ar database address boshano (apnar PC te, sudhu ei session er jonno)
 
@@ -67,6 +76,8 @@ Seshe browser e khulben: `http://127.0.0.1:8000/`
 
 - Dashboard khullei prothome **Register** korben — prothom account tai ADMIN
   hobe. Onno keu age register korle se ADMIN hoye jabe, tai apni age korben.
+- Register form e password duibar likhte hobe (Password + Confirm password) —
+  duibar eki password likhben; na mille "Passwords do not match" dekhabe.
 - Jodi `GEMINI_API_KEY` boshano thake, AI section gulo kaj korbe. Na thakle
   AI te "not configured" dekhabe.
 

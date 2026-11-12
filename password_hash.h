@@ -192,6 +192,9 @@ inline std::string hashPassword(const std::string& password) {
 
 inline bool verifyPassword(const std::string& password,
                            const std::string& stored) {
+    // Google-only accounts (NULL password_hash) and the txt sentinel
+    // must never authenticate: refuse an empty or sentinel credential.
+    if (stored.empty() || stored == "!") return false;
     if (!isHashed(stored)) return password == stored;
     // pbkdf2$iterations$saltHex$hashHex
     std::vector<std::string> parts;

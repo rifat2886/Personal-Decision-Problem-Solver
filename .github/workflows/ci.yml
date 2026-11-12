@@ -41,11 +41,11 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install libcurl/libpq development headers and psycopg2
-        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libpq-dev python3-psycopg2
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libpq-dev libssl-dev python3-psycopg2
       - name: Build console and C++ server (strict warnings)
         run: |
           g++ -std=c++17 -Wall -Wextra -Wpedantic -o project admin.cpp backup_restore.cpp budget.cpp compare_options.cpp control.cpp daily_decision.cpp deadline_alert.cpp decision_explanation.cpp delete_confirmation.cpp error_handler.cpp export_report.cpp filter_sort.cpp habit.cpp habit_streak.cpp history.cpp income_expense.cpp input_validation.cpp login.cpp logout.cpp main.cpp multi_task_decision.cpp password_change.cpp password_validation.cpp period_report.cpp priority_calculator.cpp problem.cpp profile.cpp registration.cpp report.cpp savings_goal.cpp search_history.cpp study_planner.cpp task_prioritization.cpp task_status.cpp time_allocation.cpp
-          g++ -std=c++17 -Wall -Wextra -Wpedantic -pthread -I/usr/include/postgresql -o cpp_server dashboard/cpp_server.cpp dashboard/gemini_client.cpp $(curl-config --cflags) $(curl-config --libs) -lpq
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -pthread -I/usr/include/postgresql -o cpp_server dashboard/cpp_server.cpp dashboard/gemini_client.cpp dashboard/google_auth.cpp $(curl-config --cflags) $(curl-config --libs) $(pkg-config --libs openssl) -lpq
       - name: Console regression test
         run: python3 tests/console_test.py --binary ./project
       - name: API test against C++ server
@@ -54,7 +54,7 @@ jobs:
         run: |
           python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8124 | tee py-api-test.log
           test "${PIPESTATUS[0]}" -eq 0
-          grep -q "api_test: 36 passed, 0 failed" py-api-test.log
+          grep -q "api_test: 44 passed, 0 failed" py-api-test.log
       - name: Upload Python API test log
         if: always()
         uses: actions/upload-artifact@v4
@@ -123,7 +123,7 @@ jobs:
         shell: msys2 {0}
         run: |
           g++ -std=c++17 -Wall -Wextra -Wpedantic -o project.exe admin.cpp backup_restore.cpp budget.cpp compare_options.cpp control.cpp daily_decision.cpp deadline_alert.cpp decision_explanation.cpp delete_confirmation.cpp error_handler.cpp export_report.cpp filter_sort.cpp habit.cpp habit_streak.cpp history.cpp income_expense.cpp input_validation.cpp login.cpp logout.cpp main.cpp multi_task_decision.cpp password_change.cpp password_validation.cpp period_report.cpp priority_calculator.cpp problem.cpp profile.cpp registration.cpp report.cpp savings_goal.cpp search_history.cpp study_planner.cpp task_prioritization.cpp task_status.cpp time_allocation.cpp
-          g++ -std=c++17 -Wall -Wextra -Wpedantic -pthread -o cpp_server.exe dashboard/cpp_server.cpp dashboard/gemini_client.cpp $(curl-config --cflags) $(curl-config --libs) -lws2_32
+          g++ -std=c++17 -Wall -Wextra -Wpedantic -pthread -o cpp_server.exe dashboard/cpp_server.cpp dashboard/gemini_client.cpp dashboard/google_auth.cpp -DPDPS_NO_OPENSSL $(curl-config --cflags) $(curl-config --libs) -lws2_32
           ls -lh project.exe cpp_server.exe
       - name: Console regression test
         shell: msys2 {0}
@@ -136,7 +136,7 @@ jobs:
         run: |
           python3 tests/api_test.py --server-cmd "python3 dashboard/server.py" --port 8126 | tee py-api-test.log
           test "${PIPESTATUS[0]}" -eq 0
-          grep -q "api_test: 36 passed, 0 failed" py-api-test.log
+          grep -q "api_test: 44 passed, 0 failed" py-api-test.log
       - name: Upload Python API test log
         if: always()
         uses: actions/upload-artifact@v4

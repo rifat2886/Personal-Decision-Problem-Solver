@@ -79,6 +79,10 @@ def hash_password(password):
 
 
 def verify_password(password, stored):
+    # Google-only accounts (NULL password_hash) and the txt sentinel
+    # must never authenticate: refuse an empty or sentinel credential.
+    if not stored or stored == "!":
+        return False
     if not stored.startswith("pbkdf2$"):
         return password == stored
     try:
@@ -207,6 +211,11 @@ def append_line(data_dir, name, line):
 
 # ---------------------------------------------------------------- data access
 
+# C1/C2 fix (2026-11-10): a missing users.txt means genuinely no
+# users yet ({} — the first registrant becomes ADMIN). An existing
+# but unreadable users.txt raises OSError instead of returning {};
+# callers must treat that as an error (register answers 500), never
+# as "no users yet" (which would grant ADMIN after a store failure).
 def load_users(data_dir):
     users = {}
     for line in read_lines(data_dir, "users.txt"):
@@ -528,7 +537,23 @@ class Handler(BaseHTTPRequestHandler):
             if len(password) < 8 or not any(c.isalpha() for c in password) \
                     or not any(c.isdigit() for c in password):
                 return self.send_error_json(400, "Password must be 8+ characters with a letter and a digit.")
-            users = load_users(data_dir)
+            # Auth fix (2026-11-09): see dashboard/cpp_server.cpp — when
+            # confirm_password is supplied it must match the password.
+            confirm = body.get("confirm_password") or ""
+            if confirm and confirm != password:
+                return self.send_error_json(400, "Passwords do not match.")
+            # C1/C2 fix (2026-11-10): the user store could not be
+            # read (users.txt exists but is unreadable). Answer 500
+            # and create nothing — never treat the failure as "no
+            # users yet" and grant ADMIN. The real error goes to
+            # stderr only, never to the client.
+            try:
+                users = load_users(data_dir)
+            except OSError as exc:
+                print(f"[register] could not read user store: {exc}",
+                      file=sys.stderr)
+                return self.send_error_json(
+                    500, "Could not create the account. Please try again later.")
             if username in users:
                 return self.send_error_json(400, "Username already exists.")
             role = "ADMIN" if not users else "USER"
@@ -581,6 +606,14 @@ class Handler(BaseHTTPRequestHandler):
         # Gemini and never handles the key; AI needs the C++ server.
         if path.startswith("/api/ai/"):
             return self.send_error_json(501, "AI requires the C++ server")
+
+        # Google Sign-In (Phase 3): the Python server has no
+        # token verification (no OpenSSL/JWKS support) and no
+        # Google account storage; Google auth needs the C++
+        # server. This sits after require_auth(), like the AI
+        # 501 above, so an unauthenticated call still gets 401.
+        if path.startswith("/api/auth/google") or path == "/api/auth/set-password":
+            return self.send_error_json(501, "Google sign-in requires the C++ server")
 
         if path == "/api/me" and method == "GET":
             return self.send_json(200, {"username": user, "role": role})
@@ -645,7 +678,13 @@ class Handler(BaseHTTPRequestHandler):
                 kept.append(line)
             if not found:
                 return self.send_error_json(404, "Decision ID not found.")
-            write_lines(data_dir, "decisions.txt", kept)
+            # Never report a delete the store did not carry out
+            # (template-delete bug, 2026-11-10): a failed write must
+            # answer 500, not a false 200.
+            try:
+                write_lines(data_dir, "decisions.txt", kept)
+            except OSError:
+                return self.send_error_json(500, "Could not delete the decision. Please try again later.")
             return self.send_json(200, {"deleted": decision_id})
 
         if path == "/api/daily-decision" and method == "POST":
@@ -766,7 +805,12 @@ class Handler(BaseHTTPRequestHandler):
             if not found:
                 return self.send_error_json(404, "Task not found.")
             if method == "DELETE":
-                save_tasks(data_dir, [t for t in tasks if t["id"] != task_id])
+                # Never report a delete the store did not carry out
+                # (template-delete bug, 2026-11-10).
+                try:
+                    save_tasks(data_dir, [t for t in tasks if t["id"] != task_id])
+                except OSError:
+                    return self.send_error_json(500, "Could not delete the task. Please try again later.")
                 return self.send_json(200, {"deleted": task_id})
             body = self.read_json()
             if body is None:

@@ -9,7 +9,7 @@
 
 ## যা যা লাগবে
 
-- ZIP ফাইল: `Personal-Decision-Problem-Solver-Phase4-<sha>.zip` (Muse দেবে)
+- ZIP ফাইল: `Personal-Decision-Problem-Solver-Phase4-182e74e-demo-ready.zip` (Muse দেবে)
 - PC-তে MSYS2 + g++ (আগে থেকেই আছে)
 - Gemini API key (Google AI Studio থেকে) — শুধু আপনার PC-তে লাগবে, চ্যাটে নয়
 - Neon ডেটাবেসের connection string (Neon console থেকে) — শুধু আপনার PC-তে লাগবে
@@ -28,8 +28,11 @@
 PowerShell-এ এই কমান্ডটি চালান:
 
 ```powershell
-pacman -S --noconfirm mingw-w64-x86_64-curl mingw-w64-x86_64-postgresql
+pacman -S --noconfirm mingw-w64-ucrt-x86_64-curl mingw-w64-ucrt-x86_64-postgresql
 ```
+
+এই কমান্ডটি MSYS2 UCRT64 টার্মিনালে চালাবেন (Start menu → MSYS2 UCRT64)।
+MINGW64 টার্মিনালে চালালে প্যাকেজের নাম মিলবে না।
 
 এটি MSYS2-এ `libcurl` (Gemini AI-এর জন্য) এবং `libpq` (Neon ডেটাবেসের জন্য)
 ইনস্টল করবে। শেষে `g++ --version` চালিয়ে দেখুন — version দেখালে ঠিক আছে।
@@ -70,6 +73,8 @@ pooled connection string "Copy snippet" দিয়ে কপি করে এ�
 
 - Dashboard খুললেই প্রথমে **Register** করবেন — প্রথম অ্যাকাউন্টটিই ADMIN হবে।
   অন্য কেউ আগে register করলে সে ADMIN হয়ে যাবে, তাই আপনি আগে করবেন।
+- Register ফর্মে password দুইবার লিখতে হবে (Password + Confirm password) —
+  দুইবার একই password লিখবেন; না মিললে "Passwords do not match" দেখাবে।
 - `GEMINI_API_KEY` বসানো থাকলে AI সেকশনগুলো কাজ করবে। না থাকলে AI-তে
   "not configured" দেখাবে।
 
@@ -119,7 +124,7 @@ pooled connection string "Copy snippet" দিয়ে কপি করে এ�
 | AI-তে "not configured" / "AI unavailable" দেখায় | Key বসানো হয়নি, অথবা server key বসানোর আগে চালু হয়েছে | ধাপ ৩-এ key বসিয়েছেন কি না দেখুন। তারপর server বন্ধ করে (Ctrl+C) আবার চালান — key বসালে server restart লাগে। |
 | AI-তে 503 / 502 error | Gemini সার্ভার ব্যস্ত, অথবা মডেলের সমস্যা | কয়েক সেকেন্ড পরে আবার চেষ্টা করুন। না হলে `$env:GEMINI_MODEL = "gemini-3-flash-preview"` বসিয়ে server restart করুন। |
 | `DATABASE_URL` দিলে server সাথে সাথে বন্ধ হয়ে যায় | ডেটাবেসে সংযোগ হচ্ছে না (ভুল ঠিকানা / ইন্টারনেট নেই) | ঠিকানাটি ঠিকমতো paste হয়েছে কি না দেখুন। না হলে `DATABASE_URL` ছাড়াই চালান (TXT মোড) — ডেমো চলবে। |
-| `libpq` / `libcurl` নেই বলে build fail | ধাপ ২-এর প্যাকেজ ইনস্টল হয়নি | ধাপ ২-এর `pacman` কমান্ডটি আবার চালান। |
+| build-এ `undefined reference to curl_easy_...` / `PQconnectdb` | প্যাকেজ ইনস্টল আছে কিন্তু build তা খুঁজে পায়নি (ভুল terminal / PATH) | নতুন `.bat` নিজেই g++-এর পাশে curl খুঁজে নেয়, তাই এই error আর আসার কথা নয়। তবুও এলে: **MSYS2 UCRT64** terminal-এ ওই folder-এ গিয়ে `mingw32-make` চালান, অথবা ধাপ ২-এর `pacman` কমান্ড আবার চালিয়ে `cpp_server.exe` মুছে আবার build করুন। |
 | Login হচ্ছে না / "Invalid credentials" | ভুল username/password, অথবা অন্য ডেটাবেসে অ্যাকাউন্ট | যে ডেটাবেসে (Neon বা TXT) register করেছিলেন, সেই একই মোডে login করুন। Neon ও TXT-এর অ্যাকাউন্ট আলাদা। |
 | Console-এ "Please login first" দেখায় | Console-এ login করা হয়নি | Console-এ Menu 2 (Login) দিয়ে আগে login করুন, তারপর Menu 9–43 ব্যবহার করুন। |
 | Console ও dashboard-এর balance মিলছে না | দুটি আলাদা ডেটাবেসে চলছে (একটি Neon, একটি TXT) | দুই জায়গায় একই `DATABASE_URL` বসানো আছে কি না দেখুন। দুটোতেই একই মোডে চালাতে হবে। |

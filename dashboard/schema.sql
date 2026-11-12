@@ -18,9 +18,19 @@
 
 CREATE TABLE IF NOT EXISTS users (
     username      TEXT PRIMARY KEY,
-    password_hash TEXT NOT NULL,
-    role          TEXT NOT NULL CHECK (role IN ('ADMIN', 'USER'))
+    password_hash TEXT,
+    role          TEXT NOT NULL CHECK (role IN ('ADMIN', 'USER')),
+    email         TEXT,
+    google_sub    TEXT,
+    auth_provider TEXT NOT NULL DEFAULT 'password' CHECK (auth_provider IN ('password', 'google', 'both')),
+    display_name  TEXT
 );
+
+-- Google Sign-In (Phase 3): partial unique indexes — uniqueness is
+-- enforced only for accounts that actually have an email / Google
+-- link; existing users with NULL email/google_sub are unaffected.
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users (email) WHERE email IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_unique ON users (google_sub) WHERE google_sub IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS decisions (
     id           SERIAL PRIMARY KEY,

@@ -46,7 +46,7 @@ function applyTheme(theme) {
   const btn = el("themeBtn"); if (btn) btn.textContent = theme === "dark" ? "\u2600" : "\u263D";
   const sel = el("setTheme"); if (sel) sel.value = theme;
 }
-applyTheme(localStorage.getItem("pdps_theme") || "light");
+applyTheme(localStorage.getItem("pdps_theme") || "dark");
 el("themeBtn").addEventListener("click", () => {
   applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 });
@@ -136,7 +136,7 @@ async function api(path, options) {
   if (!res.ok) {
     if (res.status === 404 && !API_BASE)
       throw new Error(BACKEND_UNAVAILABLE_MSG);
-    if (res.status === 401 && path !== "/api/login" && path !== "/api/register") {
+    if (res.status === 401 && path !== "/api/login" && path !== "/api/register" && path !== "/api/auth/google") {
       forceLogoutToLogin("Session expired. Please log in again.");
       throw new Error("Session expired. Please log in again.");
     }
@@ -174,7 +174,7 @@ function showSection(name) {
   document.querySelectorAll("section").forEach(s => s.classList.toggle("active", s.id === name));
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.section === name));
   setNav(false);
-  if (name === "overview") loadOverview();
+  if (name === "overview") { loadOverview(); updateAiWelcome(); }
   if (name === "history") loadHistory();
   if (name === "tasks") loadTasks();
   if (name === "taskstatus") loadStatusList();
@@ -190,6 +190,21 @@ function showSection(name) {
 }
 
 document.querySelectorAll("nav button").forEach(b => {
+  b.addEventListener("click", () => showSection(b.dataset.section));
+});
+
+// AI welcome card (Overview): fills in the logged-in username from
+// the session (the same source as #who / sessionStorage pdps_user)
+// and links to the 6 AI sections via the existing showSection
+// navigation. Overview is a protected section, so this card is
+// only ever shown logged in; the auth gate is unchanged.
+function updateAiWelcome() {
+  const nameEl = el("aiWelcomeName");
+  if (!nameEl) return;
+  const stored = sessionStorage.getItem("pdps_user") || "";
+  nameEl.textContent = stored.replace(/\s*\([^)]*\)$/, "");
+}
+document.querySelectorAll(".ai-welcome [data-section]").forEach(b => {
   b.addEventListener("click", () => showSection(b.dataset.section));
 });
 
@@ -219,11 +234,72 @@ el("loginBtn").addEventListener("click", async () => {
 
 el("regBtn").addEventListener("click", async () => {
   try {
+    // Confirm password (auth fix, 2026-11-09): a typo at registration
+    // used to lock the account with no recovery, so the form asks
+    // twice and the server rejects a mismatch (400).
+    if (el("regPass").value !== el("regPassConfirm").value) {
+      showMsg("regMsg", "Passwords do not match.", false);
+      return;
+    }
     const data = await api("/api/register", { method: "POST", body: JSON.stringify({
-      username: el("regUser").value.trim(), password: el("regPass").value }) });
+      username: el("regUser").value.trim(), password: el("regPass").value,
+      confirm_password: el("regPassConfirm").value }) });
     showMsg("regMsg", "Registered as " + data.username + " (" + data.role + "). Please log in.", true);
   } catch (e) { showMsg("regMsg", e.message, false); }
 });
+
+// -- Google Sign-In (Phase 3) -------------------------------------
+// The Google Identity Services script (loaded async in index.html)
+// renders a "Sign in with Google" button into both auth cards.
+// The button is shown only when the server says Google sign-in is
+// enabled AND can verify tokens (config endpoint). When the GIS
+// script never loads (offline, blocked, no network in tests) or
+// the server has no client ID, the buttons and dividers stay
+// hidden and the password forms keep working. Nothing here throws.
+// The credential (ID token) is POSTed to /api/auth/google; the
+// response is a normal app session, handled exactly like a
+// password login (same token storage, same setAuthState).
+let googleConfig = null;
+async function handleGoogleCredential(response) {
+  const credential = response && response.credential;
+  if (!credential) { showMsg("loginMsg", "Google sign-in did not return a credential.", false); return; }
+  try {
+    const data = await api("/api/auth/google", { method: "POST", body: JSON.stringify({ credential }) });
+    token = data.token;
+    sessionStorage.setItem("pdps_token", token);
+    sessionStorage.setItem("pdps_user", data.username);
+    setAuthState(true, data.username + " (" + data.role + ")");
+    showMsg("loginMsg", "Signed in with Google.", true);
+    showSection("overview");
+  } catch (e) { showMsg("loginMsg", e.message, false); }
+}
+async function initGoogleSignIn() {
+  const loginBox = el("googleSignInLogin"), regBox = el("googleSignInReg");
+  const dividers = document.querySelectorAll(".google-divider");
+  const hide = () => {
+    if (loginBox) loginBox.style.display = "none";
+    if (regBox) regBox.style.display = "none";
+    dividers.forEach(d => d.style.display = "none");
+  };
+  // Raw fetch (not api()): a 401/404/501 here must only hide the
+  // buttons, never trigger the session-expiry logout flow.
+  try {
+    const res = await fetch(API_BASE + "/api/auth/google/config");
+    if (!res.ok) { hide(); return; }
+    googleConfig = await res.json();
+  } catch (e) { hide(); return; }
+  if (!googleConfig || !googleConfig.enabled || !googleConfig.available || !googleConfig.clientId) { hide(); return; }
+  // The GIS script loads async from Google's CDN; wait up to 5 s
+  // for it before giving up (it never arrives offline or in tests).
+  const deadline = Date.now() + 5000;
+  while (typeof google === "undefined" && Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 100));
+  }
+  if (typeof google === "undefined" || !google.accounts || !google.accounts.id) { hide(); return; }
+  google.accounts.id.initialize({ client_id: googleConfig.clientId, callback: handleGoogleCredential });
+  if (loginBox) google.accounts.id.renderButton(loginBox, { theme: "outline", size: "large", width: 280 });
+  if (regBox) google.accounts.id.renderButton(regBox, { theme: "outline", size: "large", width: 280 });
+}
 
 // -- overview -------------------------------------------------------
 async function loadOverview() {
@@ -1068,15 +1144,16 @@ function renderAiHistory() {
 }
 async function deleteAiHistory(id) {
   if (!window.confirm("Delete this AI history entry?")) return;
+  let msg = null, ok = true;
   try {
     await api("/api/ai/history/" + id, { method: "DELETE" });
-    showMsg("aiHistoryMsg", "Entry deleted.", true);
+    msg = "Entry deleted.";
   } catch (e) {
     // 404 means the entry is already gone (another tab, or a
-    // second delete): drop it from the list anyway and say so
-    // plainly instead of leaving a stale error on screen.
+    // second delete). Any other error keeps the list as it is.
     if ((e.message || "") === "History entry not found.") {
-      showMsg("aiHistoryMsg", "That entry was already removed.", false);
+      msg = "That entry was already removed.";
+      ok = false;
     } else {
       // api() already forces a logout on 401; any other error
       // keeps the list as it is, with the server message shown.
@@ -1084,8 +1161,14 @@ async function deleteAiHistory(id) {
       return;
     }
   }
-  aiHistoryEntries = aiHistoryEntries.filter(e => e.id !== id);
-  renderAiHistory();
+  // Always re-read the list from the server (like the Decision and
+  // Task deletes do): what is on screen must be the server truth,
+  // never a locally-filtered copy that can silently come back on
+  // the next refresh. (Template-delete bug, 2026-11-10: the old
+  // code filtered the local list only, so a delete the server did
+  // not carry out still looked deleted until the next load.)
+  await loadAiHistory();
+  showMsg("aiHistoryMsg", msg, ok);
 }
 window.deleteAiHistory = deleteAiHistory;
 el("aiHistoryFilter").addEventListener("change", renderAiHistory);
@@ -1468,6 +1551,7 @@ const storedToken = token, storedUser = username;
 setAuthState(false, "");
 showSection("landing");
 checkBackend();
+initGoogleSignIn();
 if (storedToken && storedUser) {
   api("/api/me").then(me => {
     username = me.username;

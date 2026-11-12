@@ -137,16 +137,21 @@ inline std::vector<std::pair<std::string, std::string>> listUsers() {
     return out;
 }
 
-inline std::size_t userCount() {
+// C1 fix (2026-11-10): the old code returned 0 on ANY query
+// failure, so registration treated a database outage as "no users
+// yet" and granted ADMIN to the next registrant. userCount() now
+// returns -1 when the count cannot be read; callers must refuse
+// registration on -1 instead of treating it as "first user".
+inline long userCount() {
     std::vector<pgstore::Row> rows;
     std::string err;
     if (!pgstore::pgQuery("SELECT COUNT(*) FROM users", {}, rows, err) ||
         rows.empty())
-        return 0;
+        return -1;
     try {
-        return static_cast<std::size_t>(std::stoull(rows[0][0].text));
+        return static_cast<long>(std::stoull(rows[0][0].text));
     } catch (...) {
-        return 0;
+        return -1;
     }
 }
 
