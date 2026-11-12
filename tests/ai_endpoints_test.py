@@ -14,12 +14,16 @@ What is covered (txt mode, C++ server):
   - Daily Decision: 401 without login; 400 on missing / empty /
     over-long input and bad options; 200 with the mock reply and
     a history_id; history afterwards contains the entry.
+    Removing the data dir mid-run makes the endpoint answer
+    502 (history save failed), never a false 200.
   - Task Analyzer: 401 without login; 400 on missing / empty /
     over-long description and bad urgency/importance/title/
     deadline/status; 200 with the mock reply and a history_id;
     history afterwards contains the entry with feature
     "task-analyzer"; "description" is the canonical key
     ("input" accepted too), status aliases are normalised.
+    Removing the data dir mid-run makes the endpoint answer
+    502 (history save failed), never a false 200.
   - Study Planner: 401 without login; 400 on missing / empty
     subjects, bad subjects (not an array, non-string / empty /
     too-long item, more than 10), missing or bad hours_per_day
@@ -2395,6 +2399,66 @@ def main():
               status == 200 and body.get("history") == [], str(body))
         stop_server(p6)
         procs.remove(p6)
+
+        # 6c. Daily Decision history-save failure (txt mode, Phase 2.1):
+        # same pattern as section 6, with /api/ai/daily-decision.
+        data7 = os.path.join(tmp, "data7")
+        os.makedirs(data7)
+        p7 = start_cpp(free_port(), data7, {
+            "GEMINI_API_KEY": FAKE_KEY, "GEMINI_API_BASE_URL": mock_base})
+        procs.append(p7)
+        port7 = int(p7.args[p7.args.index("--port") + 1])
+        check("daily-decision save-failure server starts", wait_for_server(port7))
+        tok7, err = register_login(port7, "heidi", "HeidiPass1")
+        check("daily-decision save-failure login", tok7 is not None, err)
+        status, body = req(port7, "POST", "/api/ai/daily-decision",
+                           token=tok7, body={"input": "before the failure"})[:2]
+        check("daily-decision save-failure baseline 200", status == 200, f"{status} {body}")
+        check("daily-decision save-failure baseline history_id is 1",
+              body.get("history_id") == 1, str(body))
+        shutil.rmtree(data7, ignore_errors=True)
+        status, body = req(port7, "POST", "/api/ai/daily-decision",
+                           token=tok7, body={"input": "after the failure"})[:2]
+        check("daily-decision save-failure 502",
+              status == 502 and body.get("error") == "AI request failed",
+              f"{status} {body}")
+        check("daily-decision save-failure reply has no history_id",
+              "history_id" not in body, str(body))
+        status, body = req(port7, "GET", "/api/ai/history", token=tok7)[:2]
+        check("daily-decision save-failure history is empty",
+              status == 200 and body.get("history") == [], str(body))
+        stop_server(p7)
+        procs.remove(p7)
+
+        # 6d. Task Analyzer history-save failure (txt mode, Phase 2.2):
+        # same pattern as section 6, with /api/ai/task-analyzer.
+        data8 = os.path.join(tmp, "data8")
+        os.makedirs(data8)
+        p8 = start_cpp(free_port(), data8, {
+            "GEMINI_API_KEY": FAKE_KEY, "GEMINI_API_BASE_URL": mock_base})
+        procs.append(p8)
+        port8 = int(p8.args[p8.args.index("--port") + 1])
+        check("task-analyzer save-failure server starts", wait_for_server(port8))
+        tok8, err = register_login(port8, "heidi", "HeidiPass1")
+        check("task-analyzer save-failure login", tok8 is not None, err)
+        status, body = req(port8, "POST", "/api/ai/task-analyzer",
+                           token=tok8, body={"description": "before the failure"})[:2]
+        check("task-analyzer save-failure baseline 200", status == 200, f"{status} {body}")
+        check("task-analyzer save-failure baseline history_id is 1",
+              body.get("history_id") == 1, str(body))
+        shutil.rmtree(data8, ignore_errors=True)
+        status, body = req(port8, "POST", "/api/ai/task-analyzer",
+                           token=tok8, body={"description": "after the failure"})[:2]
+        check("task-analyzer save-failure 502",
+              status == 502 and body.get("error") == "AI request failed",
+              f"{status} {body}")
+        check("task-analyzer save-failure reply has no history_id",
+              "history_id" not in body, str(body))
+        status, body = req(port8, "GET", "/api/ai/history", token=tok8)[:2]
+        check("task-analyzer save-failure history is empty",
+              status == 200 and body.get("history") == [], str(body))
+        stop_server(p8)
+        procs.remove(p8)
     finally:
         for p in procs:
             try:

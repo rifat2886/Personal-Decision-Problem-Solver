@@ -2028,6 +2028,9 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
     // Gemini AI: Daily Decision (Phase 2.1). The instruction below
     // is a server-side constant; the user's input is DATA only,
     // inserted as quoted text. History is saved only on success.
+    // A failed history save is a 502, never a 200 claiming
+    // success: the saved row is verified to have landed
+    // (read-back) before the reply is sent.
     if (path == "/api/ai/daily-decision" && method == "POST") {
         string input; vector<string> options; bool hasOptions = false;
         if (!jsonStringField(req.body, "input", input)) return sendErr(fd, 400, "invalid input");
@@ -2056,13 +2059,22 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
             storedPrompt += "]";
         }
         AiHistory rec = appendAiHistory("daily-decision", storedPrompt, r.text, user);
+        bool saved = !rec.id.empty();
+        if (saved) {
+            saved = false;
+            for (auto& h : loadAiHistory()) if (h.id == rec.id && h.owner == user) { saved = true; break; }
+        }
+        if (!saved) return sendErr(fd, 502, "AI request failed");
         long long hid = 0; try { hid = stoll(rec.id); } catch (...) {}
         return sendJson(fd, 200, "{\"reply\":" + jsonStr(r.text) + ",\"history_id\":" + to_string(hid) + "}");
     }
 
     // Gemini AI: Task Analyzer (Phase 2.2). Same shape as
     // Daily Decision: fixed server-side instruction, user fields
-    // are DATA only, history saved only on success.
+    // are DATA only, history saved only on success. A failed
+    // history save is a 502, never a 200 claiming success: the
+    // saved row is verified to have landed (read-back) before
+    // the reply is sent.
     // Description comes from "description" (canonical) or
     // "input" (accepted for compatibility); when both are
     // present, "description" wins.
@@ -2127,6 +2139,12 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         if (hasDeadline) storedPrompt += " [deadline: " + deadline + "]";
         if (hasStatus) storedPrompt += " [status: " + status + "]";
         AiHistory rec = appendAiHistory("task-analyzer", storedPrompt, r.text, user);
+        bool saved = !rec.id.empty();
+        if (saved) {
+            saved = false;
+            for (auto& h : loadAiHistory()) if (h.id == rec.id && h.owner == user) { saved = true; break; }
+        }
+        if (!saved) return sendErr(fd, 502, "AI request failed");
         long long hid = 0; try { hid = stoll(rec.id); } catch (...) {}
         return sendJson(fd, 200, "{\"reply\":" + jsonStr(r.text) + ",\"history_id\":" + to_string(hid) + "}");
     }
@@ -2144,8 +2162,8 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
     // success: appendAiHistory reports a store failure with
     // an empty id in Postgres mode, but the txt path ignores
     // the append result, so the row is verified to have
-    // landed before the reply is sent. (This check lives
-    // only in this route; the other endpoints are untouched.)
+    // landed before the reply is sent. (All six AI endpoints
+    // verify the save this way.)
     if (path == "/api/ai/study-planner" && method == "POST") {
         string input, examDate;
         vector<string> subjects;

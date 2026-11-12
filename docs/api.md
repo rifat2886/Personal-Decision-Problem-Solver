@@ -38,7 +38,7 @@ exists, no card was added). The demo base URL is the local server
 | 413 | Request body over 1 MiB |
 | 429 | Login rate limit (5 failed logins per username in 300 s) |
 | 501 | Python server only: AI endpoints are not implemented there |
-| 502 | AI request failed (incl. AI history save failure in 2.3–2.6) |
+| 502 | AI request failed (incl. AI history save failure in 2.1–2.6) |
 | 503 | AI unavailable / misconfigured / rate-limited (see §7) |
 | 504 | AI request timed out |
 
@@ -445,8 +445,9 @@ Success shape (all six feature endpoints):
 {"reply": "<Gemini reply text>", "history_id": 12}
 ```
 
-`history_id` is the `ai_history` row id. In Postgres mode a failed save is a
-502 (2.3–2.6) or `history_id: 0` (2.1/2.2 — see quirks in §7).
+`history_id` is the `ai_history` row id. A failed history save is a
+502 on every AI endpoint (2.1–2.6); on success `history_id` is always
+a real persisted row id.
 
 ### `GET /api/ai/health`
 
@@ -491,7 +492,7 @@ locally-filtered copy that could come back on refresh.
 - Gemini is asked for one clear recommendation with short reasons.
 - Feature name in history: `daily-decision`. Stored prompt: input, plus
   `" [options: maths; physics]"` when options are given.
-- **No history read-back verification** (see §7).
+- **History-save read-back verification: yes.** A failed save → 502.
 
 ### `POST /api/ai/task-analyzer` — AI Task Analyzer
 
@@ -512,7 +513,7 @@ locally-filtered copy that could come back on refresh.
 - Gemini is asked for five sections: Task Analysis, Priority Recommendation,
   Urgency Assessment, Suggested Next Action, Explanation.
 - Feature name in history: `task-analyzer`.
-- **No history read-back verification** (see §7).
+- **History-save read-back verification: yes.** A failed save → 502.
 
 ### `POST /api/ai/study-planner` — AI Study Planner
 
@@ -616,7 +617,7 @@ locally-filtered copy that could come back on refresh.
 | `auth_error` (bad key / 401 from Google) | 503 | `"AI configuration error"` |
 | `rate_limited` (HTTP 429 from Google) | 503 | `"AI request limit reached"` |
 | `timeout` | 504 | `"AI request timed out"` |
-| anything else (incl. invalid response, history-save failure in 2.3–2.6) | 502 | `"AI request failed"` |
+| anything else (incl. invalid response, history-save failure in 2.1–2.6) | 502 | `"AI request failed"` |
 | validation failure (any endpoint) | 400 | `"invalid input"` (value never echoed) |
 | no session | 401 | `"Please log in first."` |
 
@@ -645,13 +646,12 @@ locally-filtered copy that could come back on refresh.
    and `\uXXXX` stays literal. Only budget and habit decode escapes
    properly. Clients should replace newlines/tabs/control characters with
    spaces before sending text to 2.1–2.4.
-3. **History-save verification differs.** Study-planner, problem-solver,
-   budget, and habit verify the saved row (read-back) before returning 200;
-   a failed save is a 502. Daily-decision and task-analyzer do **not**
-   verify: in Postgres mode a failed save still returns 200 with
-   `history_id: 0`, and in txt mode a failed save can return a success id
-   with nothing persisted (pre-existing Phase 2.1 behaviour). Clients must
-   treat `history_id: 0` as "reply OK, history may not contain it".
+3. **History-save verification.** All six AI endpoints verify the saved
+   row (read-back) before returning 200; a failed save is a 502 and the
+   reply carries no `history_id`. (Before this fix, daily-decision and
+   task-analyzer did not verify: in Postgres mode a failed save still
+   returned 200 with `history_id: 0`, and in txt mode a failed save
+   could return a success id with nothing persisted.)
 4. **Task `deadline` has no date validation** (any string ≤ 100 bytes).
    The non-AI `POST /api/tasks` deadline *is* validated — do not confuse them.
 5. **Budget edges.** Income `0` counts as a meaningful field;
