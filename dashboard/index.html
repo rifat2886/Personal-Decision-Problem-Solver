@@ -359,6 +359,23 @@
   <section id="habits">
     <h2>Habit Tracker</h2>
     <p class="muted">Completions go to habit_log.txt as habit|date. The streak is the true consecutive-day streak from the Phase 1 backend fix, not just a total count.</p>
+    <div class="card ring-card">
+      <h3>Last 30 days</h3>
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 120 120" role="img" aria-label="Habit completion ring for the last 30 days">
+          <defs>
+            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" class="ring-stop-a" />
+              <stop offset="100%" class="ring-stop-b" />
+            </linearGradient>
+          </defs>
+          <circle class="ring-track" cx="60" cy="60" r="52" />
+          <circle class="ring-fill" id="hbRingFill" cx="60" cy="60" r="52" />
+        </svg>
+        <div class="ring-center"><span id="hbRingPct">0%</span></div>
+      </div>
+      <p class="muted ring-caption" id="hbRingCaption">No habit records yet.</p>
+    </div>
     <div class="card">
       <label>Habit name <input id="hbName"></label>
       <label>Date <input id="hbDate" type="date"></label>

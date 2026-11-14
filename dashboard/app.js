@@ -1275,6 +1275,27 @@ async function loadHabits() {
     el("hbList").innerHTML = habits.length ? "<table><tr><th>Habit</th><th>Recorded dates</th></tr>" +
       habits.map(h => `<tr><td>${esc(h.habit)}</td><td>${esc(h.dates.join(", "))}</td></tr>`).join("") + "</table>"
       : "<div class='empty'>No habit records yet.</div>";
+    // Habit ring (Panze style): overall completion over the last 30
+    // days, from the SAME data as the table above — distinct dates
+    // with at least one completion across all of this user's habits,
+    // in the window [today-29, today]. Same window definition as
+    // the server's AI habit 30-day rate (cpp_server.cpp
+    // habitAiStats), aggregated over all habits instead of one. No
+    // fake data: an empty log is 0%.
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const start = new Date(today); start.setDate(start.getDate() - 29);
+    const active = new Set();
+    habits.forEach(h => h.dates.forEach(d => {
+      const dt = new Date(d + "T00:00:00");
+      if (!isNaN(dt) && dt >= start && dt <= today) active.add(d);
+    }));
+    const pct = Math.round(active.size * 100 / 30);
+    const fill = el("hbRingFill");
+    if (fill) fill.style.strokeDashoffset = String(2 * Math.PI * 52 * (1 - pct / 100));
+    el("hbRingPct").textContent = pct + "%";
+    el("hbRingCaption").textContent = habits.length
+      ? active.size + " active day" + (active.size === 1 ? "" : "s") + " in the last 30 days"
+      : "No habit records yet — mark a habit done to start your ring.";
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
 el("hbBtn").addEventListener("click", async () => {
