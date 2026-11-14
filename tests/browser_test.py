@@ -135,6 +135,10 @@ def main():
 
             # Register: first user becomes ADMIN.
             page.click("button[data-section='auth']")
+            check("register hint explains username and password rules",
+                  page.is_visible("#regHint")
+                  and "no spaces" in page.evaluate("document.getElementById('regHint').textContent")
+                  and "8 characters" in page.evaluate("document.getElementById('regHint').textContent"))
             page.fill("#regUser", "browseruser")
             page.fill("#regPass", "Browser123")
             page.fill("#regPassConfirm", "Browser123")

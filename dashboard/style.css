@@ -130,6 +130,7 @@ section.active { display: block; animation: fade 0.15s ease-in; }
 h2 { margin: 4px 0 6px; font-size: 26px; letter-spacing: -0.3px; }
 h3 { margin: 0 0 12px; font-size: 17px; }
 .muted { color: var(--muted); margin: 0 0 16px; max-width: 760px; }
+.reg-hint { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin: 0 0 14px; font-size: 14px; line-height: 1.5; }
 
 /* ---- cards, grids, forms ---- */
 .card {
