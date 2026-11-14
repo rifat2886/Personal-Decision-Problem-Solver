@@ -293,20 +293,37 @@ expenses."`; > 0 → `"Save money for the future."` This endpoint only
 calculates; it does not save anything.
 
 **`GET /api/transactions`** — array of
-`{"date": "2026-11-09", "type": "income", "category": "Salary",
-"amount": 10000.00, "note": ""}`.
+`{"id": 1, "date": "2026-11-09", "type": "income", "category": "Salary",
+"amount": 10000.00, "note": ""}`. The id is the Postgres SERIAL id, or the
+1-based line index in `transactions.txt` in txt mode.
 
 **`POST /api/transactions`** — `{"date": "2026-11-09", "type": "income",
 "category": "Salary", "amount": 10000, "note": ""}`. Date must be a real
 `YYYY-MM-DD`; type `income` or `expense`; category non-empty; amount ≥ 0.
 Success: **201** with the transaction object.
 
+**`PATCH /api/transactions/<id>`** — partial update: only the fields present
+in the body change (date, type, category, amount, note), each validated
+exactly like POST. Unknown id or another user's row → **404**; bad input →
+**400**. Success: **200** with the updated object.
+
+**`DELETE /api/transactions/<id>`** — unknown id or another user's row →
+**404**. Success: **200** with the deleted object.
+
 ### Savings goals
 
-**`GET /api/savings`** — `[{"name": "laptop", "target": 10000.00, "saved": 1000.00}]`.
+**`GET /api/savings`** — `[{"id": 1, "name": "laptop", "target": 10000.00, "saved": 1000.00}]`.
+The id is the Postgres SERIAL id, or the 1-based line index in
+`savings_goals.txt` in txt mode.
 
 **`POST /api/savings`** — `{"name": "laptop", "target": 10000}`. Target must
-be > 0; a goal with the same name for this user → 400. Success: **201**.
+be > 0; a goal with the same name for this user → 400. Success: **201** with
+the goal object (including its id).
+
+**`PATCH /api/savings/<id>`** — partial update of `target` and/or `saved`
+(both numbers ≥ 0). The name is the goal's unique key and cannot be changed.
+Unknown id or another user's goal → **404**; bad input → **400**. Success:
+**200** with the updated goal.
 
 **`POST /api/savings/add`** — `{"name": "laptop", "amount": 1000}`. Amount
 must be > 0. Unknown goal → 404 `"Goal not found."`

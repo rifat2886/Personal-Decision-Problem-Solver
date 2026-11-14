@@ -300,12 +300,14 @@ def load_transactions(data_dir):
 
 def load_savings(data_dir):
     out = []
-    for line in read_lines(data_dir, "savings_goals.txt"):
+    # Txt mode has no id column in savings_goals.txt, so the id is the
+    # 1-based line index in the FILE (same scheme as transactions.txt).
+    for idx, line in enumerate(read_lines(data_dir, "savings_goals.txt"), start=1):
         parts = line.split("|")
         if len(parts) < 3:
             continue
         try:
-            out.append({"name": parts[0], "target": float(parts[1]),
+            out.append({"id": idx, "name": parts[0], "target": float(parts[1]),
                         "saved": float(parts[2]),
                         "owner": parts[3] if len(parts) >= 4 else ""})
         except ValueError:
@@ -896,6 +898,63 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_error_json(500, "Could not delete the transaction. Please try again later.")
             return self.send_json(200, gone)
 
+        if path.startswith("/api/transactions/") and method == "PATCH":
+            try:
+                tx_id = int(path.rsplit("/", 1)[-1])
+            except ValueError:
+                return self.send_error_json(404, "Transaction not found.")
+            if tx_id < 1:
+                return self.send_error_json(404, "Transaction not found.")
+            body = self.read_json()
+            if body is None:
+                return self.send_error_json(400, "Invalid JSON.")
+            # Partial updates: only fields present in the body change.
+            # Provided fields are validated exactly like POST.
+            bad = "Need a real date, type income/expense, a category, and an amount >= 0."
+            if "date" in body and not valid_date(body.get("date") or ""):
+                return self.send_error_json(400, bad)
+            if "type" in body and body.get("type") not in ("income", "expense"):
+                return self.send_error_json(400, bad)
+            if "category" in body and not (body.get("category") or "").strip():
+                return self.send_error_json(400, bad)
+            amount = None
+            if "amount" in body:
+                amount = number(body.get("amount"))
+                if amount is None or amount < 0:
+                    return self.send_error_json(400, bad)
+            lines = read_lines(data_dir, "transactions.txt")
+            if tx_id > len(lines):
+                return self.send_error_json(404, "Transaction not found.")
+            parts = lines[tx_id - 1].split("|")
+            if len(parts) < 5:
+                return self.send_error_json(404, "Transaction not found.")
+            owner = parts[5] if len(parts) >= 6 else ""
+            if not owner_visible(owner, user, data_dir):
+                return self.send_error_json(404, "Transaction not found.")
+            try:
+                old_amount = float(parts[3])
+            except ValueError:
+                return self.send_error_json(404, "Transaction not found.")
+            upd = {"id": tx_id, "date": parts[0], "type": parts[1],
+                   "category": parts[2], "amount": old_amount, "note": parts[4]}
+            if "date" in body:
+                upd["date"] = body["date"]
+            if "type" in body:
+                upd["type"] = body["type"]
+            if "category" in body:
+                upd["category"] = (body["category"] or "").strip()
+            if amount is not None:
+                upd["amount"] = amount
+            if "note" in body:
+                upd["note"] = body.get("note") or ""
+            lines[tx_id - 1] = "|".join([upd["date"], upd["type"], sanitize(upd["category"]),
+                                        str(upd["amount"]), sanitize(upd["note"]), owner])
+            try:
+                write_lines(data_dir, "transactions.txt", lines)
+            except OSError:
+                return self.send_error_json(500, "Could not update the transaction. Please try again later.")
+            return self.send_json(200, upd)
+
         if path == "/api/savings" and method == "GET":
             return self.send_json(200, [g for g in load_savings(data_dir) if owner_visible(g.get("owner", ""), user, data_dir)])
 
@@ -912,7 +971,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_error_json(400, "A goal with that name already exists.")
             goals.append({"name": name, "target": target, "saved": 0, "owner": user})
             save_savings(data_dir, goals)
-            return self.send_json(201, {"name": name, "target": target, "saved": 0})
+            # save_savings rewrites the file with one line per goal,
+            # so the appended goal is the last line.
+            return self.send_json(201, {"id": len(goals), "name": name,
+                                        "target": target, "saved": 0})
 
         if path == "/api/savings/add" and method == "POST":
             body = self.read_json()
@@ -931,6 +993,46 @@ class Handler(BaseHTTPRequestHandler):
                     save_savings(data_dir, goals)
                     return self.send_json(200, goal)
             return self.send_error_json(404, "Goal not found.")
+
+        if path.startswith("/api/savings/") and method == "PATCH":
+            try:
+                goal_id = int(path.rsplit("/", 1)[-1])
+            except ValueError:
+                return self.send_error_json(404, "Goal not found.")
+            if goal_id < 1:
+                return self.send_error_json(404, "Goal not found.")
+            body = self.read_json()
+            if body is None:
+                return self.send_error_json(400, "Invalid JSON.")
+            # Only target and saved are editable; the name is the
+            # unique key and is never changed.
+            target = saved = None
+            if "target" in body:
+                target = number(body.get("target"))
+                if target is None or target < 0:
+                    return self.send_error_json(400, "Target and saved must be numbers >= 0.")
+            if "saved" in body:
+                saved = number(body.get("saved"))
+                if saved is None or saved < 0:
+                    return self.send_error_json(400, "Target and saved must be numbers >= 0.")
+            goals = load_savings(data_dir)
+            found = None
+            for goal in goals:
+                if goal["id"] == goal_id and owner_visible(goal.get("owner", ""), user, data_dir):
+                    found = goal
+                    break
+            if not found:
+                return self.send_error_json(404, "Goal not found.")
+            if target is not None:
+                found["target"] = target
+            if saved is not None:
+                found["saved"] = saved
+            try:
+                save_savings(data_dir, goals)
+            except OSError:
+                return self.send_error_json(500, "Could not update the goal. Please try again later.")
+            return self.send_json(200, {"id": found["id"], "name": found["name"],
+                                        "target": found["target"], "saved": found["saved"]})
 
         if path == "/api/habits" and method == "GET":
             habits = {}

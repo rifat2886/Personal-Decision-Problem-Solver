@@ -299,6 +299,7 @@
       <label>Amount <input id="txAmount" type="number" min="0" step="0.01"></label>
       <label>Note <input id="txNote"></label>
       <button class="btn btn-primary" id="txBtn">Add transaction</button>
+      <button class="btn btn-secondary" id="txCancelBtn" style="display:none">Cancel</button>
       <div id="txMsg"></div>
     </div>
     <div class="card"><div id="txList"></div></div>
@@ -310,7 +311,9 @@
     <div class="card">
       <label>Goal name <input id="svName"></label>
       <label>Target amount <input id="svTarget" type="number" min="0" step="0.01"></label>
+      <label id="svSavedLabel" style="display:none">Saved amount <input id="svSaved" type="number" min="0" step="0.01"></label>
       <button class="btn btn-primary" id="svBtn">Add goal</button>
+      <button class="btn btn-secondary" id="svCancelBtn" style="display:none">Cancel</button>
       <div id="svMsg"></div>
     </div>
     <div class="card">

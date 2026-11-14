@@ -203,6 +203,17 @@ def main():
             page.wait_for_timeout(1500)
             check("transaction Delete button present",
                   page.locator("#txList button.btn-danger").count() > 0)
+            check("transaction Edit button present",
+                  page.locator("#txList button.btn-secondary").count() > 0)
+
+            # Savings form: add a goal, the Edit button appears.
+            page.click("button[data-section='savings']")
+            page.fill("#svName", "BrowserGoal")
+            page.fill("#svTarget", "1000")
+            page.click("#svBtn")
+            page.wait_for_timeout(1500)
+            check("savings Edit button present",
+                  page.locator("#svList button.btn-secondary").count() > 0)
 
             # Habit ring (Panze style): 0% on an empty log, then 3%
             # after marking one habit done today (1 of 30 days).
