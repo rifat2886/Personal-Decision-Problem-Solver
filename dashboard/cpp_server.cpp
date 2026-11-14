@@ -829,7 +829,7 @@ struct FileLock {
 // from every regular user and preserved verbatim on disk. ADMIN does
 // NOT get access to other users' records.
 struct Decision { string id, date, type, title, owner; int priority = 0; };
-struct Tx { string date, type, category, note, owner; double amount = 0; };
+struct Tx { long long id = 0; string date, type, category, note, owner; double amount = 0; };
 struct Goal { string name, owner; double target = 0, saved = 0; };
 struct Task { string id, title, deadline, status, owner; int urgency = 0, importance = 0; int score() const { return urgency * 2 + importance * 3; } };
 
@@ -1236,16 +1236,26 @@ static string aiHistoryJson(const AiHistory& h) {
 static vector<Tx> loadTxs() {
     if (pgMode()) {
         vector<Tx> out; vector<pgstore::Row> rows; string err;
-        if (!pgstore::pgQuery("SELECT tx_date, type, category, amount, note, owner FROM transactions ORDER BY id", {}, rows, err)) return out;
-        for (auto& r : rows) { Tx t; t.date = r[0].text; t.type = r[1].text; t.category = r[2].text; try { t.amount = stod(r[3].text); } catch (...) { continue; } t.note = r[4].text; t.owner = r[5].isNull ? "" : r[5].text; out.push_back(t); }
+        if (!pgstore::pgQuery("SELECT id, tx_date, type, category, amount, note, owner FROM transactions ORDER BY id", {}, rows, err)) return out;
+        for (auto& r : rows) { Tx t; try { t.id = stoll(r[0].text); } catch (...) { continue; } t.date = r[1].text; t.type = r[2].text; t.category = r[3].text; try { t.amount = stod(r[4].text); } catch (...) { continue; } t.note = r[5].text; t.owner = r[6].isNull ? "" : r[6].text; out.push_back(t); }
         return out;
     }
     vector<Tx> out;
-    for (auto& line : readLines(joinPath(g_dataDir, "transactions.txt"))) {
-        auto parts = splitPipe(line); if (parts.size() < 5) continue;
-        try { Tx t; t.date = parts[0]; t.type = parts[1]; t.category = parts[2]; t.amount = stod(parts[3]); t.note = parts[4]; t.owner = parts.size() >= 6 ? parts[5] : ""; out.push_back(t); } catch (...) {}
+    // Txt mode has no id column in transactions.txt, so the id is the
+    // 1-based line index in the FILE (all owners' lines, as readLines
+    // sees them — blank lines are skipped by readLines, and malformed
+    // lines consume an index but produce no row). The DELETE handler
+    // uses the same readLines view, so id <-> line is unambiguous.
+    auto lines = readLines(joinPath(g_dataDir, "transactions.txt"));
+    for (size_t i = 0; i < lines.size(); i++) {
+        auto parts = splitPipe(lines[i]); if (parts.size() < 5) continue;
+        try { Tx t; t.id = (long long)i + 1; t.date = parts[0]; t.type = parts[1]; t.category = parts[2]; t.amount = stod(parts[3]); t.note = parts[4]; t.owner = parts.size() >= 6 ? parts[5] : ""; out.push_back(t); } catch (...) {}
     }
     return out;
+}
+static string txJson(const Tx& t) {
+    return "{\"id\":" + to_string(t.id) + ",\"date\":" + jsonStr(t.date) + ",\"type\":" + jsonStr(t.type) +
+           ",\"category\":" + jsonStr(t.category) + ",\"amount\":" + fmtNum(t.amount) + ",\"note\":" + jsonStr(t.note) + "}";
 }
 static vector<Goal> loadGoals() {
     if (pgMode()) {
@@ -2705,8 +2715,7 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
     if (path == "/api/transactions" && method == "GET") {
         auto allTxs = loadTxs(); vector<Tx> txs; for (auto& t : allTxs) if (ownerVisible(t.owner, user)) txs.push_back(t);
         string out = "["; bool first = true;
-        for (auto& t : txs) { if (!first) out += ","; first = false;
-            out += "{\"date\":" + jsonStr(t.date) + ",\"type\":" + jsonStr(t.type) + ",\"category\":" + jsonStr(t.category) + ",\"amount\":" + fmtNum(t.amount) + ",\"note\":" + jsonStr(t.note) + "}"; }
+        for (auto& t : txs) { if (!first) out += ","; first = false; out += txJson(t); }
         return sendJson(fd, 200, out + "]");
     }
     if (path == "/api/transactions" && method == "POST") {
@@ -2715,15 +2724,54 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         jsonNumberField(req.body, "amount", amount);
         if (!validDate(date) || (type != "income" && type != "expense") || trimStr(category).empty() || amount < 0)
             return sendErr(fd, 400, "Need a real date, type income/expense, a category, and an amount >= 0.");
+        Tx created; created.date = date; created.type = type; created.category = category; created.amount = amount; created.note = note; created.owner = user;
         if (pgMode()) {
-            string err;
-            pgstore::pgExec("INSERT INTO transactions (tx_date, type, category, amount, note, owner) VALUES ($1,$2,$3,$4,$5,$6)",
-                            {date, type, sanitize(category), fmtNumRaw(amount), sanitize(note), user}, err);
+            string err; vector<pgstore::Row> rows;
+            if (pgstore::pgQuery("INSERT INTO transactions (tx_date, type, category, amount, note, owner) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id",
+                                 {date, type, sanitize(category), fmtNumRaw(amount), sanitize(note), user}, rows, err) && !rows.empty())
+                try { created.id = stoll(rows[0][0].text); } catch (...) {}
         } else {
             FileLock lock("transactions.txt");
+            auto lines = readLines(joinPath(g_dataDir, "transactions.txt"));
+            created.id = (long long)lines.size() + 1;
             appendLine(joinPath(g_dataDir, "transactions.txt"), date + "|" + type + "|" + sanitize(category) + "|" + fmtNumRaw(amount) + "|" + sanitize(note) + "|" + user);
         }
-        return sendJson(fd, 201, "{\"date\":" + jsonStr(date) + ",\"type\":" + jsonStr(type) + ",\"category\":" + jsonStr(category) + ",\"amount\":" + fmtNum(amount) + ",\"note\":" + jsonStr(note) + "}");
+        return sendJson(fd, 201, txJson(created));
+    }
+    if (path.rfind("/api/transactions/", 0) == 0 && method == "DELETE") {
+        string idStr = path.substr(string("/api/transactions/").size());
+        long long id = 0; bool numeric = !idStr.empty();
+        for (char c : idStr) if (!isdigit((unsigned char)c)) numeric = false;
+        if (numeric) { try { id = stoll(idStr); } catch (...) { numeric = false; } }
+        if (!numeric || id < 1) return sendErr(fd, 404, "Transaction not found.");
+        if (pgMode()) {
+            auto allTxs = loadTxs(); const Tx* found = nullptr;
+            for (auto& t : allTxs) if (t.id == id && ownerVisible(t.owner, user)) found = &t;
+            if (!found) return sendErr(fd, 404, "Transaction not found.");
+            Tx gone = *found; string err;
+            // Ownership is checked again in the WHERE clause (defence in
+            // depth; COALESCE covers legacy NULL-owner rows, which
+            // loadTxs reports as ""). Never report a delete the store
+            // did not carry out (template-delete bug, 2026-11-10).
+            if (!pgstore::pgExec("DELETE FROM transactions WHERE id = $1 AND COALESCE(owner, '') = $2",
+                                 {to_string(id), gone.owner}, err))
+                return sendErr(fd, 500, "Could not delete the transaction. Please try again later.");
+            return sendJson(fd, 200, txJson(gone));
+        }
+        FileLock lock("transactions.txt");
+        auto lines = readLines(joinPath(g_dataDir, "transactions.txt"));
+        if (id > (long long)lines.size()) return sendErr(fd, 404, "Transaction not found.");
+        auto parts = splitPipe(lines[(size_t)id - 1]);
+        if (parts.size() < 5) return sendErr(fd, 404, "Transaction not found.");
+        string owner = parts.size() >= 6 ? parts[5] : "";
+        if (!ownerVisible(owner, user)) return sendErr(fd, 404, "Transaction not found.");
+        Tx gone; gone.id = id; gone.date = parts[0]; gone.type = parts[1]; gone.category = parts[2];
+        try { gone.amount = stod(parts[3]); } catch (...) { return sendErr(fd, 404, "Transaction not found."); }
+        gone.note = parts[4]; gone.owner = owner;
+        lines.erase(lines.begin() + (size_t)(id - 1));
+        if (!writeLines(joinPath(g_dataDir, "transactions.txt"), lines))
+            return sendErr(fd, 500, "Could not delete the transaction. Please try again later.");
+        return sendJson(fd, 200, txJson(gone));
     }
 
     if (path == "/api/savings" && method == "GET") {

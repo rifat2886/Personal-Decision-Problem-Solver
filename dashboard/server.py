@@ -279,7 +279,12 @@ def _append_decision_locked(data_dir, dtype, priority, title, owner=""):
 
 def load_transactions(data_dir):
     out = []
-    for line in read_lines(data_dir, "transactions.txt"):
+    # Txt mode has no id column in transactions.txt, so the id is the
+    # 1-based line index in the FILE (all owners' lines, as read_lines
+    # sees them — blank lines are skipped by read_lines, and malformed
+    # lines consume an index but produce no row). The DELETE handler
+    # uses the same read_lines view, so id <-> line is unambiguous.
+    for idx, line in enumerate(read_lines(data_dir, "transactions.txt"), start=1):
         parts = line.split("|")
         if len(parts) < 5:
             continue
@@ -287,7 +292,7 @@ def load_transactions(data_dir):
             amount = float(parts[3])
         except ValueError:
             continue
-        out.append({"date": parts[0], "type": parts[1], "category": parts[2],
+        out.append({"id": idx, "date": parts[0], "type": parts[1], "category": parts[2],
                     "amount": amount, "note": parts[4],
                     "owner": parts[5] if len(parts) >= 6 else ""})
     return out
@@ -855,8 +860,41 @@ class Handler(BaseHTTPRequestHandler):
             append_line(data_dir, "transactions.txt",
                         "|".join([date, ttype, sanitize(category),
                                   str(amount), sanitize(note), user]))
-            return self.send_json(201, {"date": date, "type": ttype,
+            tx_id = len(read_lines(data_dir, "transactions.txt"))
+            return self.send_json(201, {"id": tx_id, "date": date, "type": ttype,
                                         "category": category, "amount": amount, "note": note})
+
+        if path.startswith("/api/transactions/") and method == "DELETE":
+            try:
+                tx_id = int(path.rsplit("/", 1)[-1])
+            except ValueError:
+                return self.send_error_json(404, "Transaction not found.")
+            if tx_id < 1:
+                return self.send_error_json(404, "Transaction not found.")
+            lines = read_lines(data_dir, "transactions.txt")
+            if tx_id > len(lines):
+                return self.send_error_json(404, "Transaction not found.")
+            parts = lines[tx_id - 1].split("|")
+            if len(parts) < 5:
+                return self.send_error_json(404, "Transaction not found.")
+            owner = parts[5] if len(parts) >= 6 else ""
+            if not owner_visible(owner, user, data_dir):
+                return self.send_error_json(404, "Transaction not found.")
+            try:
+                amount = float(parts[3])
+            except ValueError:
+                return self.send_error_json(404, "Transaction not found.")
+            gone = {"id": tx_id, "date": parts[0], "type": parts[1],
+                    "category": parts[2], "amount": amount, "note": parts[4]}
+            del lines[tx_id - 1]
+            # Never report a delete the store did not carry out
+            # (template-delete bug, 2026-11-10): a failed write must
+            # answer 500, not a false 200.
+            try:
+                write_lines(data_dir, "transactions.txt", lines)
+            except OSError:
+                return self.send_error_json(500, "Could not delete the transaction. Please try again later.")
+            return self.send_json(200, gone)
 
         if path == "/api/savings" and method == "GET":
             return self.send_json(200, [g for g in load_savings(data_dir) if owner_visible(g.get("owner", ""), user, data_dir)])
