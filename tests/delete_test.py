@@ -7,7 +7,9 @@ re-login. If the store cannot be rewritten, the API must answer 500 --
 never a false 200 that looks deleted until the next refresh.
 
 Covers, in txt mode (C++ + Python) and Postgres mode (C++):
-  decisions, tasks, AI history (C++ only; Python answers 501 for AI)
+  decisions, tasks, transactions, AI history (C++ only; Python answers 501 for AI)
+  + transaction cross-user delete (404, victim untouched) and
+    missing-transaction delete (404)
   + legacy (ownerless) and console-created rows
   + a read-only-file negative test (server run as `nobody`): DELETE
     must answer 500 and the row must stay, then succeed after the
@@ -119,21 +121,44 @@ def delete_flow(base, tok, label, with_ai=True):
     s, t1 = req(base, "POST", "/api/tasks", {"title": "DelTask", "urgency": 8, "importance": 9, "deadline": ""}, tok)
     ids = (d1.get("id"), d2.get("id"), t1.get("id"))
     check(f"[{label}] created 2 decisions + 1 task", all(v is not None for v in ids))
+    s, _ = req(base, "POST", "/api/transactions", {"date": "2026-11-15", "type": "income", "category": "DelTx", "amount": 100, "note": "DelNote"}, tok)
+    s, txs = req(base, "GET", "/api/transactions", token=tok)
+    tx_id = next((x.get("id") for x in txs if x.get("category") == "DelTx"), None)
+    check(f"[{label}] transaction created (id {tx_id})", tx_id is not None)
     hid = None
     if with_ai:
         s, r = req(base, "POST", "/api/ai/daily-decision", {"input": "delete me | pipe"}, tok)
         hid = r.get("history_id") if isinstance(r, dict) else None
         check(f"[{label}] AI entry created (history_id {hid})", bool(hid))
-    for kind, path, eid in (("decision", "/api/decisions/", d1.get("id")),
-                            ("decision-pipe", "/api/decisions/", d2.get("id")),
-                            ("task", "/api/tasks/", t1.get("id"))):
+    for kind, path, eid, get_path in (("decision", "/api/decisions/", d1.get("id"), "/api/decisions"),
+                            ("decision-pipe", "/api/decisions/", d2.get("id"), "/api/decisions"),
+                            ("task", "/api/tasks/", t1.get("id"), "/api/tasks"),
+                            ("transaction", "/api/transactions/", tx_id, "/api/transactions")):
         s, r = req(base, "DELETE", path + str(eid), token=tok)
         check(f"[{label}] DELETE {kind} {eid} -> 200", s == 200)
-        s, lst = req(base, "GET", path.rstrip("/") if kind == "task" else "/api/decisions", token=tok)
+        if kind == "transaction":
+            check(f"[{label}] DELETE transaction returns the deleted object",
+                  isinstance(r, dict) and r.get("category") == "DelTx" and r.get("id") == eid)
+        s, lst = req(base, "GET", get_path, token=tok)
         key = "id"
         check(f"[{label}] {kind} {eid} gone from GET", all(x.get(key) != eid for x in lst))
-        s, lst = req(base, "GET", path.rstrip("/") if kind == "task" else "/api/decisions", token=tok)
+        s, lst = req(base, "GET", get_path, token=tok)
         check(f"[{label}] {kind} {eid} STILL gone on refresh GET", all(x.get(key) != eid for x in lst))
+    s, r = req(base, "DELETE", "/api/transactions/999999", token=tok)
+    check(f"[{label}] DELETE missing transaction -> 404 (got {s})", s == 404)
+    # Cross-user: a second user's transaction must be untouchable.
+    user2 = USER + "b"
+    req(base, "POST", "/api/register", {"username": user2, "password": "D1234567", "confirm_password": "D1234567"})
+    tok2 = login(base, user2, "D1234567")
+    req(base, "POST", "/api/transactions", {"date": "2026-11-15", "type": "expense", "category": "VictimTx", "amount": 50, "note": "Victim"}, tok2)
+    s, txs2 = req(base, "GET", "/api/transactions", token=tok2)
+    victim_id = next((x.get("id") for x in txs2 if x.get("category") == "VictimTx"), None)
+    check(f"[{label}] victim transaction created (id {victim_id})", victim_id is not None)
+    if victim_id is not None:
+        s, r = req(base, "DELETE", f"/api/transactions/{victim_id}", token=tok)
+        check(f"[{label}] cross-user DELETE transaction -> 404 (got {s})", s == 404)
+        s, txs2 = req(base, "GET", "/api/transactions", token=tok2)
+        check(f"[{label}] victim transaction untouched", any(x.get("id") == victim_id for x in txs2))
     if with_ai and hid:
         s, r = req(base, "DELETE", f"/api/ai/history/{hid}", token=tok)
         check(f"[{label}] DELETE AI history {hid} -> 200", s == 200)
@@ -154,6 +179,9 @@ def restart_check(base, cmd, port, data_dir, env_extra, label, with_ai=True):
             s, ts = req(base, "GET", "/api/tasks", token=tok)
             check(f"[{label}] after restart: decisions + tasks still empty",
                   ds == [] and ts == [])
+            s, txs = req(base, "GET", "/api/transactions", token=tok)
+            check(f"[{label}] after restart: transactions still empty",
+                  txs == [])
             if with_ai:
                 s, h = req(base, "GET", "/api/ai/history?limit=50", token=tok)
                 if isinstance(h, dict):
@@ -301,6 +329,32 @@ def ui_flow(port, data_dir):
             pg.wait_for_timeout(1500)
             check("[ui] task STILL gone after refresh + re-login",
                   "UIDelTask" not in pg.locator("#taskList").inner_text())
+            # Transaction delete (confirm dialog: accept it): fill the
+            # form, delete from the list, refresh + re-login, stays gone.
+            pg.on("dialog", lambda dialog: dialog.accept())
+            pg.click('button[data-section="finance"]')
+            pg.fill("#txDate", "2026-11-15")
+            pg.fill("#txCategory", "UIDelTx")
+            pg.fill("#txAmount", "100")
+            pg.fill("#txNote", "UIDel")
+            pg.click("#txBtn")
+            pg.wait_for_timeout(1500)
+            check("[ui] transaction visible before delete",
+                  "UIDelTx" in pg.locator("#txList").inner_text())
+            pg.locator('#txList button.btn-danger').first.click()
+            pg.wait_for_timeout(2000)
+            check("[ui] transaction gone right after Delete click",
+                  "UIDelTx" not in pg.locator("#txList").inner_text())
+            pg.reload()
+            pg.click("button[data-section='auth']")
+            pg.fill("#loginUser", "deluser")
+            pg.fill("#loginPass", "D1234567")
+            pg.click("#loginBtn")
+            pg.wait_for_function("document.querySelector('section.active').id === 'overview'", timeout=15000)
+            pg.click('button[data-section="finance"]')
+            pg.wait_for_timeout(1500)
+            check("[ui] transaction STILL gone after refresh + re-login",
+                  "UIDelTx" not in pg.locator("#txList").inner_text())
             b.close()
     finally:
         stop_server(proc)

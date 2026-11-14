@@ -1230,11 +1230,17 @@ async function loadTransactions() {
     const income = txs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
     const expense = txs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
     el("txList").innerHTML = "<p>Balance: <b>" + (income - expense).toFixed(2) + "</b> (income " + income.toFixed(2) + ", expense " + expense.toFixed(2) + ")</p>" +
-      (txs.length ? "<table><tr><th>Date</th><th>Type</th><th>Category</th><th>Amount</th><th>Note</th></tr>" +
-        txs.map(t => `<tr><td>${esc(t.date)}</td><td>${esc(t.type)}</td><td>${esc(t.category)}</td><td>${t.amount}</td><td>${esc(t.note)}</td></tr>`).join("") + "</table>"
+      (txs.length ? "<table><tr><th>Date</th><th>Type</th><th>Category</th><th>Amount</th><th>Note</th><th></th></tr>" +
+        txs.map(t => `<tr><td>${esc(t.date)}</td><td>${esc(t.type)}</td><td>${esc(t.category)}</td><td>${t.amount}</td><td>${esc(t.note)}</td><td><button class="btn btn-danger" onclick="deleteTransaction(${t.id})">Delete</button></td></tr>`).join("") + "</table>"
         : "<div class='empty'>No transactions yet.</div>");
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
+async function deleteTransaction(id) {
+  if (!window.confirm("Delete this transaction?")) return;
+  try { await api("/api/transactions/" + id, { method: "DELETE" }); loadTransactions(); loadOverview(); }
+  catch (e) { showMsg("globalMsg", e.message, false); }
+}
+window.deleteTransaction = deleteTransaction;
 el("txBtn").addEventListener("click", async () => {
   try {
     await api("/api/transactions", { method: "POST", body: JSON.stringify({

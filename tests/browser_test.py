@@ -193,6 +193,17 @@ def main():
             page.wait_for_timeout(1500)
             check("budget result 3800", "3800" in page.content())
 
+            # Transaction form: add one, the Delete button appears.
+            page.click("button[data-section='finance']")
+            page.fill("#txDate", "2026-11-15")
+            page.fill("#txCategory", "BrowserTx")
+            page.fill("#txAmount", "100")
+            page.fill("#txNote", "Browser")
+            page.click("#txBtn")
+            page.wait_for_timeout(1500)
+            check("transaction Delete button present",
+                  page.locator("#txList button.btn-danger").count() > 0)
+
             # Habit ring (Panze style): 0% on an empty log, then 3%
             # after marking one habit done today (1 of 30 days).
             page.click("button[data-section='habits']")
