@@ -198,6 +198,108 @@ def main():
             if g.get("name") == "Laptop":
                 saved = g.get("saved")
         check("concurrent savings = 1000", saved == 1000, str(body))
+
+        # 4b. Edit transactions + savings goals (PATCH, 2026-11-15).
+        status, body = req(port, "POST", "/api/transactions", token=t,
+                           body={"type": "income", "category": "EditMe", "amount": 500,
+                                 "note": "orig", "date": "2026-11-02"})
+        check("edit tx setup", status in (200, 201) and body.get("id"), str(body))
+        edit_tx = body.get("id")
+        status, body = req(port, "PATCH", f"/api/transactions/{edit_tx}", token=t,
+                           body={"date": "2026-11-03", "type": "expense", "category": "Edited",
+                                 "amount": 700, "note": "changed"})
+        check("tx PATCH all fields", status == 200 and body.get("category") == "Edited"
+              and body.get("amount") == 700 and body.get("type") == "expense"
+              and body.get("date") == "2026-11-03" and body.get("note") == "changed", str(body))
+        status, body = req(port, "PATCH", f"/api/transactions/{edit_tx}", token=t,
+                           body={"amount": 750})
+        check("tx PATCH partial keeps others", status == 200 and body.get("amount") == 750
+              and body.get("category") == "Edited", str(body))
+        status, body = req(port, "GET", "/api/transactions", token=t)
+        check("tx PATCH visible in GET", status == 200 and any(
+            x.get("id") == edit_tx and x.get("amount") == 750 for x in body), str(body)[:200])
+        status, body = req(port, "PATCH", f"/api/transactions/{edit_tx}", token=t,
+                           body={"amount": -5})
+        check("tx PATCH negative amount 400", status == 400, str(body))
+        status, body = req(port, "PATCH", f"/api/transactions/{edit_tx}", token=t,
+                           body={"date": "2026-13-99"})
+        check("tx PATCH bad date 400", status == 400, str(body))
+        status, body = req(port, "PATCH", f"/api/transactions/{edit_tx}", token=t,
+                           body={"type": "weird"})
+        check("tx PATCH bad type 400", status == 400, str(body))
+        status, body = req(port, "PATCH", "/api/transactions/99999", token=t,
+                           body={"amount": 1})
+        check("tx PATCH missing id 404", status == 404, str(body))
+        status, body = req(port, "PATCH", "/api/transactions/abc", token=t,
+                           body={"amount": 1})
+        check("tx PATCH non-numeric id 404", status == 404, str(body))
+        status, body = req(port, "PATCH", f"/api/transactions/{edit_tx}", token=token_new,
+                           body={"amount": 1})
+        check("tx PATCH cross-user 404", status == 404, str(body))
+        status, body = req(port, "GET", "/api/transactions", token=t)
+        check("tx PATCH victim untouched", status == 200 and any(
+            x.get("id") == edit_tx and x.get("amount") == 750 for x in body), str(body)[:200])
+        status, body = req(port, "POST", "/api/savings", token=t,
+                           body={"name": "EditGoal", "target": 5000})
+        check("edit goal setup", status in (200, 201) and body.get("id"), str(body))
+        edit_goal = body.get("id")
+        status, body = req(port, "GET", "/api/savings", token=t)
+        check("goal GET includes id", status == 200 and any(
+            x.get("id") == edit_goal for x in body), str(body)[:200])
+        status, body = req(port, "PATCH", f"/api/savings/{edit_goal}", token=t,
+                           body={"target": 6000})
+        check("goal PATCH target only", status == 200 and body.get("target") == 6000
+              and body.get("saved") == 0, str(body))
+        status, body = req(port, "PATCH", f"/api/savings/{edit_goal}", token=t,
+                           body={"saved": 1500})
+        check("goal PATCH saved only", status == 200 and body.get("saved") == 1500
+              and body.get("target") == 6000, str(body))
+        status, body = req(port, "PATCH", f"/api/savings/{edit_goal}", token=t,
+                           body={"name": "Renamed", "target": 6500})
+        check("goal PATCH ignores name", status == 200 and body.get("name") == "EditGoal"
+              and body.get("target") == 6500, str(body))
+        status, body = req(port, "PATCH", f"/api/savings/{edit_goal}", token=t,
+                           body={"target": -1})
+        check("goal PATCH negative target 400", status == 400, str(body))
+        status, body = req(port, "PATCH", f"/api/savings/{edit_goal}", token=t,
+                           body={"saved": -1})
+        check("goal PATCH negative saved 400", status == 400, str(body))
+        status, body = req(port, "PATCH", "/api/savings/99999", token=t,
+                           body={"target": 1})
+        check("goal PATCH missing id 404", status == 404, str(body))
+        status, body = req(port, "PATCH", f"/api/savings/{edit_goal}", token=token_new,
+                           body={"target": 1})
+        check("goal PATCH cross-user 404", status == 404, str(body))
+        status, body = req(port, "GET", "/api/savings", token=t)
+        check("goal PATCH victim untouched", status == 200 and any(
+            x.get("id") == edit_goal and x.get("target") == 6500 for x in body), str(body)[:200])
+        # Edits survive a server restart (the txt store is the source
+        # of truth). Sessions are in-memory, so re-login after restart
+        # and refresh t; later sections all use t.
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            proc.kill()
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, text=True)
+        for _ in range(30):
+            status, _ = req(port, "GET", "/")
+            if status != 0:
+                break
+            time.sleep(0.5)
+        check("server restarts for edit persistence", status != 0)
+        status, body = req(port, "POST", "/api/login",
+                           body={"username": "olduser", "password": "OldPass123"})
+        check("re-login after restart", status == 200 and "token" in body, str(body))
+        t = body.get("token", t)
+        status, body = req(port, "GET", "/api/transactions", token=t)
+        check("tx edit persists after restart", status == 200 and any(
+            x.get("id") == edit_tx and x.get("amount") == 750 for x in body), str(body)[:200])
+        status, body = req(port, "GET", "/api/savings", token=t)
+        check("goal edit persists after restart", status == 200 and any(
+            x.get("id") == edit_goal and x.get("target") == 6500 for x in body), str(body)[:200])
+
         status, body = req(port, "POST", "/api/habits", token=t,
                            body={"habit": "Reading", "date": "2026-11-03"})
         check("habit mark", status in (200, 201), str(body))
@@ -229,7 +331,7 @@ def main():
         status, body = req(port, "GET", "/")
         check("landing page 200", status == 200, str(status))
         # 5. Google Sign-In (Phase 3): separate clearly-delimited
-        # block, 6 checks on EACH server (total becomes 44).
+        # block, 6 checks on EACH server (total becomes 69).
         # No GOOGLE_CLIENT_ID is set here, so the C++ server
         # reports sign-in disabled (config enabled=false, sign-in
         # 503) and the Python server answers 501 for Google auth

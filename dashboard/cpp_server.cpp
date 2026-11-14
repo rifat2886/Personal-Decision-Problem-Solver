@@ -830,7 +830,7 @@ struct FileLock {
 // NOT get access to other users' records.
 struct Decision { string id, date, type, title, owner; int priority = 0; };
 struct Tx { long long id = 0; string date, type, category, note, owner; double amount = 0; };
-struct Goal { string name, owner; double target = 0, saved = 0; };
+struct Goal { long long id = 0; string name, owner; double target = 0, saved = 0; };
 struct Task { string id, title, deadline, status, owner; int urgency = 0, importance = 0; int score() const { return urgency * 2 + importance * 3; } };
 
 static bool loadUsers(map<string, pair<string, string>>& users, string& err) {
@@ -1260,16 +1260,23 @@ static string txJson(const Tx& t) {
 static vector<Goal> loadGoals() {
     if (pgMode()) {
         vector<Goal> out; vector<pgstore::Row> rows; string err;
-        if (!pgstore::pgQuery("SELECT name, target, saved, owner FROM savings_goals ORDER BY id", {}, rows, err)) return out;
-        for (auto& r : rows) { Goal g; g.name = r[0].text; try { g.target = stod(r[1].text); g.saved = stod(r[2].text); } catch (...) { continue; } g.owner = r[3].isNull ? "" : r[3].text; out.push_back(g); }
+        if (!pgstore::pgQuery("SELECT id, name, target, saved, owner FROM savings_goals ORDER BY id", {}, rows, err)) return out;
+        for (auto& r : rows) { Goal g; try { g.id = stoll(r[0].text); } catch (...) { continue; } g.name = r[1].text; try { g.target = stod(r[2].text); g.saved = stod(r[3].text); } catch (...) { continue; } g.owner = r[4].isNull ? "" : r[4].text; out.push_back(g); }
         return out;
     }
     vector<Goal> out;
-    for (auto& line : readLines(joinPath(g_dataDir, "savings_goals.txt"))) {
-        auto parts = splitPipe(line); if (parts.size() < 3) continue;
-        try { Goal g; g.name = parts[0]; g.target = stod(parts[1]); g.saved = stod(parts[2]); g.owner = parts.size() >= 4 ? parts[3] : ""; out.push_back(g); } catch (...) {}
+    // Txt mode has no id column in savings_goals.txt, so the id is the
+    // 1-based line index in the FILE (same scheme as transactions.txt).
+    auto lines = readLines(joinPath(g_dataDir, "savings_goals.txt"));
+    for (size_t i = 0; i < lines.size(); i++) {
+        auto parts = splitPipe(lines[i]); if (parts.size() < 3) continue;
+        try { Goal g; g.id = (long long)i + 1; g.name = parts[0]; g.target = stod(parts[1]); g.saved = stod(parts[2]); g.owner = parts.size() >= 4 ? parts[3] : ""; out.push_back(g); } catch (...) {}
     }
     return out;
+}
+static string goalJson(const Goal& g) {
+    return "{\"id\":" + to_string(g.id) + ",\"name\":" + jsonStr(g.name) +
+           ",\"target\":" + fmtNum(g.target) + ",\"saved\":" + fmtNum(g.saved) + "}";
 }
 static void saveGoals(const vector<Goal>& goals) {
     if (pgMode()) {
@@ -2773,12 +2780,67 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
             return sendErr(fd, 500, "Could not delete the transaction. Please try again later.");
         return sendJson(fd, 200, txJson(gone));
     }
+    if (path.rfind("/api/transactions/", 0) == 0 && method == "PATCH") {
+        string idStr = path.substr(string("/api/transactions/").size());
+        long long id = 0; bool numeric = !idStr.empty();
+        for (char c : idStr) if (!isdigit((unsigned char)c)) numeric = false;
+        if (numeric) { try { id = stoll(idStr); } catch (...) { numeric = false; } }
+        if (!numeric || id < 1) return sendErr(fd, 404, "Transaction not found.");
+        // Partial updates: only fields present in the body change.
+        // Provided fields are validated exactly like POST.
+        string date, type, category, note; double amount = -1;
+        bool hasDate = jsonStringField(req.body, "date", date);
+        bool hasType = jsonStringField(req.body, "type", type);
+        bool hasCategory = jsonStringField(req.body, "category", category);
+        bool hasNote = jsonStringField(req.body, "note", note);
+        bool hasAmount = jsonNumberField(req.body, "amount", amount);
+        if ((hasDate && !validDate(date)) || (hasType && type != "income" && type != "expense") ||
+            (hasCategory && trimStr(category).empty()) || (hasAmount && amount < 0))
+            return sendErr(fd, 400, "Need a real date, type income/expense, a category, and an amount >= 0.");
+        if (pgMode()) {
+            auto allTxs = loadTxs(); const Tx* found = nullptr;
+            for (auto& t : allTxs) if (t.id == id && ownerVisible(t.owner, user)) found = &t;
+            if (!found) return sendErr(fd, 404, "Transaction not found.");
+            Tx upd = *found;
+            if (hasDate) upd.date = date;
+            if (hasType) upd.type = type;
+            if (hasCategory) upd.category = category;
+            if (hasAmount) upd.amount = amount;
+            if (hasNote) upd.note = note;
+            string err;
+            // Ownership is checked again in the WHERE clause
+            // (defence in depth; COALESCE covers legacy NULL-owner
+            // rows, which loadTxs reports as "").
+            if (!pgstore::pgExec("UPDATE transactions SET tx_date = $1, type = $2, category = $3, amount = $4, note = $5 WHERE id = $6 AND COALESCE(owner, '') = $7",
+                                 {upd.date, upd.type, sanitize(upd.category), fmtNumRaw(upd.amount), sanitize(upd.note), to_string(id), upd.owner}, err))
+                return sendErr(fd, 500, "Could not update the transaction. Please try again later.");
+            return sendJson(fd, 200, txJson(upd));
+        }
+        FileLock lock("transactions.txt");
+        auto lines = readLines(joinPath(g_dataDir, "transactions.txt"));
+        if (id > (long long)lines.size()) return sendErr(fd, 404, "Transaction not found.");
+        auto parts = splitPipe(lines[(size_t)id - 1]);
+        if (parts.size() < 5) return sendErr(fd, 404, "Transaction not found.");
+        string owner = parts.size() >= 6 ? parts[5] : "";
+        if (!ownerVisible(owner, user)) return sendErr(fd, 404, "Transaction not found.");
+        Tx upd; upd.id = id; upd.date = parts[0]; upd.type = parts[1]; upd.category = parts[2]; upd.owner = owner;
+        try { upd.amount = stod(parts[3]); } catch (...) { return sendErr(fd, 404, "Transaction not found."); }
+        upd.note = parts[4];
+        if (hasDate) upd.date = date;
+        if (hasType) upd.type = type;
+        if (hasCategory) upd.category = category;
+        if (hasAmount) upd.amount = amount;
+        if (hasNote) upd.note = note;
+        lines[(size_t)id - 1] = upd.date + "|" + upd.type + "|" + sanitize(upd.category) + "|" + fmtNumRaw(upd.amount) + "|" + sanitize(upd.note) + "|" + sanitize(upd.owner);
+        if (!writeLines(joinPath(g_dataDir, "transactions.txt"), lines))
+            return sendErr(fd, 500, "Could not update the transaction. Please try again later.");
+        return sendJson(fd, 200, txJson(upd));
+    }
 
     if (path == "/api/savings" && method == "GET") {
         auto allGoals = loadGoals(); vector<Goal> goals; for (auto& g : allGoals) if (ownerVisible(g.owner, user)) goals.push_back(g);
         string out = "["; bool first = true;
-        for (auto& g : goals) { if (!first) out += ","; first = false;
-            out += "{\"name\":" + jsonStr(g.name) + ",\"target\":" + fmtNum(g.target) + ",\"saved\":" + fmtNum(g.saved) + "}"; }
+        for (auto& g : goals) { if (!first) out += ","; first = false; out += goalJson(g); }
         return sendJson(fd, 200, out + "]");
     }
     if (path == "/api/savings" && method == "POST") {
@@ -2788,7 +2850,10 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         auto goals = loadGoals();
         for (auto& g : goals) if (g.name == name && ownerVisible(g.owner, user)) return sendErr(fd, 400, "A goal with that name already exists.");
         Goal ng; ng.name = name; ng.target = target; ng.saved = 0; ng.owner = user; goals.push_back(ng); saveGoals(goals);
-        return sendJson(fd, 201, "{\"name\":" + jsonStr(name) + ",\"target\":" + fmtNum(target) + ",\"saved\":0}");
+        // saveGoals rewrites the store (pg full replace regenerates
+        // ids), so re-read to report the created goal's real id.
+        for (auto& g : loadGoals()) if (g.name == name && g.owner == user) return sendJson(fd, 201, goalJson(g));
+        return sendJson(fd, 201, goalJson(ng));
     }
     if (path == "/api/savings/add" && method == "POST") {
         string name; double amount = -1; jsonStringField(req.body, "name", name); jsonNumberField(req.body, "amount", amount);
@@ -2796,8 +2861,53 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         FileLock lock("savings_goals.txt");
         auto goals = loadGoals();
         for (auto& g : goals) if (g.name == name && ownerVisible(g.owner, user)) { if (g.owner.empty()) g.owner = user; g.saved += amount; saveGoals(goals);
-            return sendJson(fd, 200, "{\"name\":" + jsonStr(g.name) + ",\"target\":" + fmtNum(g.target) + ",\"saved\":" + fmtNum(g.saved) + "}"); }
+            return sendJson(fd, 200, goalJson(g)); }
         return sendErr(fd, 404, "Goal not found.");
+    }
+    if (path.rfind("/api/savings/", 0) == 0 && method == "PATCH") {
+        string idStr = path.substr(string("/api/savings/").size());
+        long long id = 0; bool numeric = !idStr.empty();
+        for (char c : idStr) if (!isdigit((unsigned char)c)) numeric = false;
+        if (numeric) { try { id = stoll(idStr); } catch (...) { numeric = false; } }
+        if (!numeric || id < 1) return sendErr(fd, 404, "Goal not found.");
+        // Only target and saved are editable; the name is the unique
+        // key (savings_goals_name_owner_idx) and is never changed.
+        double target, saved; bool hasTarget = jsonNumberField(req.body, "target", target);
+        bool hasSaved = jsonNumberField(req.body, "saved", saved);
+        if ((hasTarget && target < 0) || (hasSaved && saved < 0))
+            return sendErr(fd, 400, "Target and saved must be numbers >= 0.");
+        if (pgMode()) {
+            auto allGoals = loadGoals(); const Goal* found = nullptr;
+            for (auto& g : allGoals) if (g.id == id && ownerVisible(g.owner, user)) found = &g;
+            if (!found) return sendErr(fd, 404, "Goal not found.");
+            Goal upd = *found;
+            if (hasTarget) upd.target = target;
+            if (hasSaved) upd.saved = saved;
+            string err;
+            // Targeted UPDATE (not saveGoals, whose pg full replace
+            // would regenerate every goal's id). Ownership is checked
+            // again in the WHERE clause; COALESCE covers legacy
+            // NULL-owner rows, which loadGoals reports as "".
+            if (!pgstore::pgExec("UPDATE savings_goals SET target = $1, saved = $2 WHERE id = $3 AND COALESCE(owner, '') = $4",
+                                 {fmtNumRaw(upd.target), fmtNumRaw(upd.saved), to_string(id), upd.owner}, err))
+                return sendErr(fd, 500, "Could not update the goal. Please try again later.");
+            return sendJson(fd, 200, goalJson(upd));
+        }
+        FileLock lock("savings_goals.txt");
+        auto lines = readLines(joinPath(g_dataDir, "savings_goals.txt"));
+        if (id > (long long)lines.size()) return sendErr(fd, 404, "Goal not found.");
+        auto parts = splitPipe(lines[(size_t)id - 1]);
+        if (parts.size() < 3) return sendErr(fd, 404, "Goal not found.");
+        string owner = parts.size() >= 4 ? parts[3] : "";
+        if (!ownerVisible(owner, user)) return sendErr(fd, 404, "Goal not found.");
+        Goal upd; upd.id = id; upd.name = parts[0]; upd.owner = owner;
+        try { upd.target = stod(parts[1]); upd.saved = stod(parts[2]); } catch (...) { return sendErr(fd, 404, "Goal not found."); }
+        if (hasTarget) upd.target = target;
+        if (hasSaved) upd.saved = saved;
+        lines[(size_t)id - 1] = sanitize(upd.name) + "|" + fmtNumRaw(upd.target) + "|" + fmtNumRaw(upd.saved) + "|" + sanitize(upd.owner);
+        if (!writeLines(joinPath(g_dataDir, "savings_goals.txt"), lines))
+            return sendErr(fd, 500, "Could not update the goal. Please try again later.");
+        return sendJson(fd, 200, goalJson(upd));
     }
 
     if (path == "/api/habits" && method == "GET") {

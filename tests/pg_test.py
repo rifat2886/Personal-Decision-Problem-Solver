@@ -183,6 +183,48 @@ def main():
         s, b, _ = req(args.port, "GET", "/api/transactions", token=tok_b)
         check("bob cannot see alice transaction", s == 200 and "Salary" not in b, b)
 
+        # Edit transactions + savings goals (PATCH, Postgres mode).
+        s, b, _ = req(args.port, "GET", "/api/transactions", token=tok_a)
+        txs = json.loads(b) if s == 200 else []
+        alice_tx = next((x for x in txs if x.get("category") == "Salary"), None)
+        check("pg tx GET includes id", alice_tx is not None and isinstance(alice_tx.get("id"), int), b)
+        tx_id = alice_tx.get("id") if alice_tx else 0
+        s, b, _ = req(args.port, "PATCH", f"/api/transactions/{tx_id}", token=tok_a,
+                      body={"category": "EditedSalary", "amount": 6000})
+        check("pg tx PATCH", s == 200 and json.loads(b).get("category") == "EditedSalary"
+              and json.loads(b).get("amount") == 6000, b)
+        s, b, _ = req(args.port, "PATCH", f"/api/transactions/{tx_id}", token=tok_a,
+                      body={"amount": -5})
+        check("pg tx PATCH negative 400", s == 400, b)
+        s, b, _ = req(args.port, "PATCH", "/api/transactions/99999", token=tok_a, body={"amount": 1})
+        check("pg tx PATCH missing 404", s == 404, b)
+        s, b, _ = req(args.port, "PATCH", f"/api/transactions/{tx_id}", token=tok_b, body={"amount": 1})
+        check("pg tx PATCH cross-user 404", s == 404, b)
+        s, b, _ = req(args.port, "GET", "/api/transactions", token=tok_a)
+        txs2 = json.loads(b) if s == 200 else []
+        check("pg tx PATCH victim untouched",
+              any(x.get("id") == tx_id and x.get("amount") == 6000 for x in txs2), b)
+        s, b, _ = req(args.port, "GET", "/api/savings", token=tok_a)
+        goals = json.loads(b) if s == 200 else []
+        trip = next((x for x in goals if x.get("name") == "Trip"), None)
+        check("pg goal GET includes id", trip is not None and isinstance(trip.get("id"), int), b)
+        goal_id = trip.get("id") if trip else 0
+        s, b, _ = req(args.port, "PATCH", f"/api/savings/{goal_id}", token=tok_a,
+                      body={"target": 12000, "saved": 2000})
+        check("pg goal PATCH", s == 200 and json.loads(b).get("target") == 12000
+              and json.loads(b).get("saved") == 2000, b)
+        s, b, _ = req(args.port, "PATCH", f"/api/savings/{goal_id}", token=tok_a,
+                      body={"saved": -1})
+        check("pg goal PATCH negative 400", s == 400, b)
+        s, b, _ = req(args.port, "PATCH", "/api/savings/99999", token=tok_a, body={"target": 1})
+        check("pg goal PATCH missing 404", s == 404, b)
+        s, b, _ = req(args.port, "PATCH", f"/api/savings/{goal_id}", token=tok_b, body={"target": 1})
+        check("pg goal PATCH cross-user 404", s == 404, b)
+        s, b, _ = req(args.port, "GET", "/api/savings", token=tok_a)
+        goals2 = json.loads(b) if s == 200 else []
+        check("pg goal PATCH victim untouched",
+              any(x.get("id") == goal_id and x.get("target") == 12000 for x in goals2), b)
+
         # AI history (Phase 2.1, Postgres): the server's pgInit must
         # have created the table; owner is NOT NULL (no legacy rows);
         # reads/writes are owner-filtered. Rows are inserted directly

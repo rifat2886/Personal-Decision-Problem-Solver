@@ -1224,14 +1224,20 @@ el("budBtn").addEventListener("click", async () => {
 });
 
 // -- finance --------------------------------------------------------
+// Last loaded transactions/goals, so Edit can pre-fill the form.
+let txCache = [];
+let goalCache = [];
+let editingTxId = null;
+let editingGoalId = null;
 async function loadTransactions() {
   try {
     const txs = await api("/api/transactions");
+    txCache = txs;
     const income = txs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
     const expense = txs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
     el("txList").innerHTML = "<p>Balance: <b>" + (income - expense).toFixed(2) + "</b> (income " + income.toFixed(2) + ", expense " + expense.toFixed(2) + ")</p>" +
       (txs.length ? "<table><tr><th>Date</th><th>Type</th><th>Category</th><th>Amount</th><th>Note</th><th></th></tr>" +
-        txs.map(t => `<tr><td>${esc(t.date)}</td><td>${esc(t.type)}</td><td>${esc(t.category)}</td><td>${t.amount}</td><td>${esc(t.note)}</td><td><button class="btn btn-danger" onclick="deleteTransaction(${t.id})">Delete</button></td></tr>`).join("") + "</table>"
+        txs.map(t => `<tr><td>${esc(t.date)}</td><td>${esc(t.type)}</td><td>${esc(t.category)}</td><td>${t.amount}</td><td>${esc(t.note)}</td><td><button class="btn btn-secondary" onclick="editTransaction(${t.id})">Edit</button> <button class="btn btn-danger" onclick="deleteTransaction(${t.id})">Delete</button></td></tr>`).join("") + "</table>"
         : "<div class='empty'>No transactions yet.</div>");
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
@@ -1241,12 +1247,42 @@ async function deleteTransaction(id) {
   catch (e) { showMsg("globalMsg", e.message, false); }
 }
 window.deleteTransaction = deleteTransaction;
+function editTransaction(id) {
+  const t = txCache.find(x => x.id === id);
+  if (!t) return;
+  el("txDate").value = t.date; el("txType").value = t.type;
+  el("txCategory").value = t.category; el("txAmount").value = t.amount;
+  el("txNote").value = t.note;
+  editingTxId = id;
+  el("txBtn").textContent = "Save changes";
+  el("txCancelBtn").style.display = "";
+  el("txMsg").textContent = "";
+  el("txDate").focus();
+}
+window.editTransaction = editTransaction;
+function cancelTxEdit() {
+  editingTxId = null;
+  el("txDate").value = ""; el("txType").value = "income";
+  el("txCategory").value = ""; el("txAmount").value = ""; el("txNote").value = "";
+  el("txBtn").textContent = "Add transaction";
+  el("txCancelBtn").style.display = "none";
+  el("txMsg").textContent = "";
+}
+el("txCancelBtn").addEventListener("click", cancelTxEdit);
 el("txBtn").addEventListener("click", async () => {
   try {
-    await api("/api/transactions", { method: "POST", body: JSON.stringify({
-      date: el("txDate").value, type: el("txType").value, category: el("txCategory").value.trim(),
-      amount: +el("txAmount").value, note: el("txNote").value }) });
-    showMsg("txMsg", "Transaction saved.", true); loadTransactions();
+    const body = { date: el("txDate").value, type: el("txType").value,
+      category: el("txCategory").value.trim(), amount: +el("txAmount").value,
+      note: el("txNote").value };
+    if (editingTxId !== null) {
+      await api("/api/transactions/" + editingTxId, { method: "PATCH", body: JSON.stringify(body) });
+      cancelTxEdit();
+      showMsg("txMsg", "Transaction updated.", true);
+      loadTransactions(); loadOverview();
+    } else {
+      await api("/api/transactions", { method: "POST", body: JSON.stringify(body) });
+      showMsg("txMsg", "Transaction saved.", true); loadTransactions();
+    }
   } catch (e) { showMsg("txMsg", e.message, false); }
 });
 
@@ -1254,16 +1290,50 @@ el("txBtn").addEventListener("click", async () => {
 async function loadSavings() {
   try {
     const goals = await api("/api/savings");
-    el("svList").innerHTML = goals.length ? "<table><tr><th>Goal</th><th>Target</th><th>Saved</th><th>Remaining</th></tr>" +
-      goals.map(g => `<tr><td>${esc(g.name)}</td><td>${g.target}</td><td>${g.saved}</td><td>${(g.target - g.saved).toFixed(2)}</td></tr>`).join("") + "</table>"
+    goalCache = goals;
+    el("svList").innerHTML = goals.length ? "<table><tr><th>Goal</th><th>Target</th><th>Saved</th><th>Remaining</th><th></th></tr>" +
+      goals.map(g => `<tr><td>${esc(g.name)}</td><td>${g.target}</td><td>${g.saved}</td><td>${(g.target - g.saved).toFixed(2)}</td><td><button class="btn btn-secondary" onclick="editGoal(${g.id})">Edit</button></td></tr>`).join("") + "</table>"
       : "<div class='empty'>No savings goals yet.</div>";
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
+function editGoal(id) {
+  const g = goalCache.find(x => x.id === id);
+  if (!g) return;
+  // The name is the goal's unique key and is never edited.
+  el("svName").value = g.name; el("svName").disabled = true;
+  el("svTarget").value = g.target;
+  el("svSaved").value = g.saved;
+  el("svSavedLabel").style.display = "";
+  editingGoalId = id;
+  el("svBtn").textContent = "Save changes";
+  el("svCancelBtn").style.display = "";
+  el("svMsg").textContent = "";
+  el("svTarget").focus();
+}
+window.editGoal = editGoal;
+function cancelGoalEdit() {
+  editingGoalId = null;
+  el("svName").value = ""; el("svName").disabled = false;
+  el("svTarget").value = ""; el("svSaved").value = "";
+  el("svSavedLabel").style.display = "none";
+  el("svBtn").textContent = "Add goal";
+  el("svCancelBtn").style.display = "none";
+  el("svMsg").textContent = "";
+}
+el("svCancelBtn").addEventListener("click", cancelGoalEdit);
 el("svBtn").addEventListener("click", async () => {
   try {
-    await api("/api/savings", { method: "POST", body: JSON.stringify({
-      name: el("svName").value.trim(), target: +el("svTarget").value }) });
-    showMsg("svMsg", "Goal added.", true); loadSavings();
+    if (editingGoalId !== null) {
+      await api("/api/savings/" + editingGoalId, { method: "PATCH", body: JSON.stringify({
+        target: +el("svTarget").value, saved: +el("svSaved").value }) });
+      cancelGoalEdit();
+      showMsg("svMsg", "Goal updated.", true);
+      loadSavings(); loadOverview();
+    } else {
+      await api("/api/savings", { method: "POST", body: JSON.stringify({
+        name: el("svName").value.trim(), target: +el("svTarget").value }) });
+      showMsg("svMsg", "Goal added.", true); loadSavings();
+    }
   } catch (e) { showMsg("svMsg", e.message, false); }
 });
 el("svAddBtn").addEventListener("click", async () => {
