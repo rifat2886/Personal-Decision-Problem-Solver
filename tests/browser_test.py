@@ -189,6 +189,18 @@ def main():
             page.wait_for_timeout(1500)
             check("budget result 3800", "3800" in page.content())
 
+            # Habit ring (Panze style): 0% on an empty log, then 3%
+            # after marking one habit done today (1 of 30 days).
+            page.click("button[data-section='habits']")
+            page.wait_for_function("document.getElementById('hbRingCaption').textContent.length > 0")
+            check("habit ring 0% on empty log", page.evaluate("document.getElementById('hbRingPct').textContent") == "0%")
+            page.fill("#hbName", "RingHabit")
+            page.fill("#hbDate", time.strftime("%Y-%m-%d", time.localtime()))
+            page.click("#hbBtn")
+            page.wait_for_function("document.getElementById('hbRingPct').textContent === '3%'")
+            check("habit ring 3% after one day", page.evaluate("document.getElementById('hbRingPct').textContent") == "3%")
+            check("habit ring caption 1 active day", "1 active day in the last 30 days" in page.evaluate("document.getElementById('hbRingCaption').textContent"))
+
             # AI Daily Decision (Phase 3.1): client-side validation,
             # mock-Gemini success, newline sanitization, 503 and 400.
             page.click("button[data-section='ai-daily']")

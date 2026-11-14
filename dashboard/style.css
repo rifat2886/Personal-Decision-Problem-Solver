@@ -343,6 +343,26 @@ textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-
   .ai-opt-row { flex-wrap: wrap; }
 }
 
+/* ---- Habit ring (Panze style): donut showing overall completion
+   over the last 30 days, from the user's own habit log (see
+   loadHabits in app.js). r=52, circumference 2*pi*52 = 326.73;
+   app.js sets stroke-dashoffset from the real percentage. The
+   gradient stops follow the theme: pink-to-blue in light mode,
+   orange in the dark fallback. */
+.ring-card { text-align: center; }
+.ring-wrap { position: relative; width: 140px; height: 140px; margin: 4px auto 8px; }
+.ring { width: 140px; height: 140px; transform: rotate(-90deg); }
+.ring-track { fill: none; stroke: var(--primary-soft); stroke-width: 12; }
+.ring-fill { fill: none; stroke: url(#ringGrad); stroke-width: 12; stroke-linecap: round; stroke-dasharray: 326.73; stroke-dashoffset: 326.73; transition: stroke-dashoffset 0.6s ease; }
+.ring-stop-a { stop-color: #b05ab9; }
+.ring-stop-b { stop-color: #215aca; }
+[data-theme="dark"] .ring-track { stroke: var(--border); }
+[data-theme="dark"] .ring-stop-a { stop-color: #fb923c; }
+[data-theme="dark"] .ring-stop-b { stop-color: #f97316; }
+.ring-center { position: absolute; inset: 0; display: grid; place-items: center; }
+.ring-center span { font-size: 30px; font-weight: 800; color: var(--primary); }
+.ring-caption { margin: 0; }
+
 /* ---- AI welcome card (Overview): Panze-style welcome card in the
    pink-to-blue gradient. White text on the gradient for contrast;
    the buttons inside are white so they stay readable. In the dark
