@@ -169,10 +169,18 @@ function runCountUps(root) {
   });
 }
 
-// AI "thinking" indicator: three bouncing dots + label (styled
-// in style.css). Replaces the old plain "Thinking…" text.
+// AI "thinking" indicator: an infinite-loop loader — a gradient
+// light travelling forever around a figure-8 path (pure inline
+// SVG, no GIF, no image file, no CDN), with a short label.
+// Replaces the old three-dot indicator. The gradient (Panze
+// pink→blue) is defined in the SVG itself; the runner's stroke
+// is set as a presentation attribute so it always resolves,
+// while the dash travel lives in style.css (loopTravel). With
+// reduced motion the CSS kill-switch freezes the runner and the
+// indicator is static.
+const LOOP_PATH = "M24 12 C21 6 15 4 11 6 C6 8 4 12 7 16 C10 20 18 19 24 12 C30 5 38 4 41 8 C44 12 42 16 37 18 C33 20 27 18 24 12 Z";
 function aiThinkingHtml() {
-  return '<div class="ai-thinking" role="status"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>AI is thinking…</span></div>';
+  return '<div class="ai-thinking" role="status"><svg class="loop-loader" viewBox="0 0 48 24" aria-hidden="true"><defs><linearGradient id="loopGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#B05AB9"/><stop offset="100%" stop-color="#215ACA"/></linearGradient></defs><path class="loop-track" d="' + LOOP_PATH + '"/><path class="loop-runner" d="' + LOOP_PATH + '" stroke="url(#loopGrad)"/></svg><span>AI is thinking…</span></div>';
 }
 
 // Skeleton loading rows: grey bars with a slow light sweep, used
@@ -380,7 +388,33 @@ el("logoutBtn").addEventListener("click", async () => {
 });
 
 // -- auth -----------------------------------------------------------
+// Button loading state (Login / Register): while the auth request
+// is in flight the button shows a small inline loop spinner, is
+// disabled, and then returns to exactly its previous content and
+// disabled state. The previous disabled state is restored (not
+// blindly cleared) because checkBackend() disables these buttons
+// when no backend is connected.
+function setBtnLoading(btn, loading, label) {
+  if (!btn) return;
+  if (loading) {
+    if (btn.dataset.loading) return;
+    btn.dataset.loading = "1";
+    btn.dataset.oldHtml = btn.innerHTML;
+    btn.dataset.wasDisabled = btn.disabled ? "1" : "0";
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span>' + label;
+  } else {
+    if (!btn.dataset.loading) return;
+    btn.innerHTML = btn.dataset.oldHtml;
+    btn.disabled = btn.dataset.wasDisabled === "1";
+    delete btn.dataset.loading;
+    delete btn.dataset.oldHtml;
+    delete btn.dataset.wasDisabled;
+  }
+}
 el("loginBtn").addEventListener("click", async () => {
+  const btn = el("loginBtn");
+  setBtnLoading(btn, true, "Logging in…");
   try {
     const data = await api("/api/login", { method: "POST", body: JSON.stringify({
       username: el("loginUser").value.trim(), password: el("loginPass").value }) });
@@ -396,19 +430,25 @@ el("loginBtn").addEventListener("click", async () => {
     showMsg("loginMsg", e.message, false);
     // A failed login shakes the login card — the error cannot be missed.
     replayAnim(el("loginBtn").closest(".card"), "animate__shakeX", 500);
+  } finally {
+    setBtnLoading(btn, false);
   }
 });
 
 el("regBtn").addEventListener("click", async () => {
+  // Client-side validation first: a mismatch never reaches the
+  // server, so it must not show the loading state either.
+  if (el("regPass").value !== el("regPassConfirm").value) {
+    showMsg("regMsg", "Passwords do not match.", false);
+    replayAnim(el("regBtn").closest(".card"), "animate__shakeX", 500);
+    return;
+  }
+  const btn = el("regBtn");
+  setBtnLoading(btn, true, "Registering…");
   try {
     // Confirm password (auth fix, 2026-11-09): a typo at registration
     // used to lock the account with no recovery, so the form asks
     // twice and the server rejects a mismatch (400).
-    if (el("regPass").value !== el("regPassConfirm").value) {
-      showMsg("regMsg", "Passwords do not match.", false);
-      replayAnim(el("regBtn").closest(".card"), "animate__shakeX", 500);
-      return;
-    }
     const data = await api("/api/register", { method: "POST", body: JSON.stringify({
       username: el("regUser").value.trim(), password: el("regPass").value,
       confirm_password: el("regPassConfirm").value }) });
@@ -416,6 +456,8 @@ el("regBtn").addEventListener("click", async () => {
   } catch (e) {
     showMsg("regMsg", e.message, false);
     replayAnim(el("regBtn").closest(".card"), "animate__shakeX", 500);
+  } finally {
+    setBtnLoading(btn, false);
   }
 });
 
@@ -642,8 +684,10 @@ el("aiDailyBtn").addEventListener("click", async () => {
   const body = { input };
   if (options.length) body.options = options;
   btn.disabled = true;
-  const oldText = btn.textContent;
-  btn.textContent = "Thinking…";
+  const btnLabel = btn.querySelector(".ai-btn-label");
+  const oldText = btnLabel.textContent;
+  btn.classList.add("ai-busy");
+  btnLabel.textContent = "Thinking…";
   replyBox.innerHTML = aiThinkingHtml();
   try {
     const r = await api("/api/ai/daily-decision", { method: "POST", body: JSON.stringify(body) });
@@ -668,7 +712,8 @@ el("aiDailyBtn").addEventListener("click", async () => {
     else showMsg("aiDailyMsg", m, false);
   } finally {
     btn.disabled = false;
-    btn.textContent = oldText;
+    btn.classList.remove("ai-busy");
+    btnLabel.textContent = oldText;
   }
 });
 
@@ -745,8 +790,10 @@ el("aiTaskBtn").addEventListener("click", async () => {
   if (deadline) body.deadline = deadline;
   if (status) body.status = status;
   btn.disabled = true;
-  const oldText = btn.textContent;
-  btn.textContent = "Thinking…";
+  const btnLabel = btn.querySelector(".ai-btn-label");
+  const oldText = btnLabel.textContent;
+  btn.classList.add("ai-busy");
+  btnLabel.textContent = "Thinking…";
   replyBox.innerHTML = aiThinkingHtml();
   try {
     const r = await api("/api/ai/task-analyzer", { method: "POST", body: JSON.stringify(body) });
@@ -771,7 +818,8 @@ el("aiTaskBtn").addEventListener("click", async () => {
     else showMsg("aiTaskMsg", m, false);
   } finally {
     btn.disabled = false;
-    btn.textContent = oldText;
+    btn.classList.remove("ai-busy");
+    btnLabel.textContent = oldText;
   }
 });
 
@@ -885,8 +933,10 @@ el("aiStudyBtn").addEventListener("click", async () => {
   if (examDate) body.exam_date = examDate;
   if (desc) body.description = desc;
   btn.disabled = true;
-  const oldText = btn.textContent;
-  btn.textContent = "Thinking…";
+  const btnLabel = btn.querySelector(".ai-btn-label");
+  const oldText = btnLabel.textContent;
+  btn.classList.add("ai-busy");
+  btnLabel.textContent = "Thinking…";
   replyBox.innerHTML = aiThinkingHtml();
   try {
     const r = await api("/api/ai/study-planner", { method: "POST", body: JSON.stringify(body) });
@@ -912,7 +962,8 @@ el("aiStudyBtn").addEventListener("click", async () => {
     else showMsg("aiStudyMsg", m, false);
   } finally {
     btn.disabled = false;
-    btn.textContent = oldText;
+    btn.classList.remove("ai-busy");
+    btnLabel.textContent = oldText;
   }
 });
 
@@ -953,8 +1004,10 @@ el("aiProblemBtn").addEventListener("click", async () => {
   }
   const body = { problem };
   btn.disabled = true;
-  const oldText = btn.textContent;
-  btn.textContent = "Thinking…";
+  const btnLabel = btn.querySelector(".ai-btn-label");
+  const oldText = btnLabel.textContent;
+  btn.classList.add("ai-busy");
+  btnLabel.textContent = "Thinking…";
   replyBox.innerHTML = aiThinkingHtml();
   try {
     const r = await api("/api/ai/problem-solver", { method: "POST", body: JSON.stringify(body) });
@@ -979,7 +1032,8 @@ el("aiProblemBtn").addEventListener("click", async () => {
     else showMsg("aiProblemMsg", m, false);
   } finally {
     btn.disabled = false;
-    btn.textContent = oldText;
+    btn.classList.remove("ai-busy");
+    btnLabel.textContent = oldText;
   }
 });
 
@@ -1129,8 +1183,10 @@ el("aiBudgetBtn").addEventListener("click", async () => {
   if (goal) body.savings_goal = goal;
   if (input) body.input = input;
   btn.disabled = true;
-  const oldText = btn.textContent;
-  btn.textContent = "Thinking…";
+  const btnLabel = btn.querySelector(".ai-btn-label");
+  const oldText = btnLabel.textContent;
+  btn.classList.add("ai-busy");
+  btnLabel.textContent = "Thinking…";
   replyBox.innerHTML = aiThinkingHtml();
   try {
     const r = await api("/api/ai/budget", { method: "POST", body: JSON.stringify(body) });
@@ -1155,7 +1211,8 @@ el("aiBudgetBtn").addEventListener("click", async () => {
     else showMsg("aiBudgetMsg", m, false);
   } finally {
     btn.disabled = false;
-    btn.textContent = oldText;
+    btn.classList.remove("ai-busy");
+    btnLabel.textContent = oldText;
   }
 });
 
@@ -1255,8 +1312,10 @@ el("aiHabitBtn").addEventListener("click", async () => {
   if (today) body.today = today;
   if (input) body.input = input;
   btn.disabled = true;
-  const oldText = btn.textContent;
-  btn.textContent = "Thinking…";
+  const btnLabel = btn.querySelector(".ai-btn-label");
+  const oldText = btnLabel.textContent;
+  btn.classList.add("ai-busy");
+  btnLabel.textContent = "Thinking…";
   replyBox.innerHTML = aiThinkingHtml();
   try {
     const r = await api("/api/ai/habit", { method: "POST", body: JSON.stringify(body) });
@@ -1281,7 +1340,8 @@ el("aiHabitBtn").addEventListener("click", async () => {
     else showMsg("aiHabitMsg", m, false);
   } finally {
     btn.disabled = false;
-    btn.textContent = oldText;
+    btn.classList.remove("ai-busy");
+    btnLabel.textContent = oldText;
   }
 });
 
@@ -1374,20 +1434,37 @@ el("aiHistoryFilter").addEventListener("change", renderAiHistory);
 el("aiHistoryRefreshBtn").addEventListener("click", loadAiHistory);
 
 // -- tasks ----------------------------------------------------------
+// The task the user has just marked done: its status cell gets the
+// popping checkmark on the next render only (loadTasks clears it
+// after rendering, so later renders keep the plain mark).
+let justCompletedTask = null;
+function taskStatusCell(t) {
+  if (t.status !== "Completed") return esc(t.status);
+  // Task ids are STRINGS in the API (cpp_server.cpp: struct Task
+  // has `string id`), but the inline onclick passes a number
+  // literal — compare as strings or the pop never matches.
+  const pop = (justCompletedTask !== null && String(t.id) === justCompletedTask) ? " done-pop" : "";
+  return '<span class="done-mark' + pop + '">\u2713 Completed</span>';
+}
 async function loadTasks() {
   el("taskList").innerHTML = skeletonHtml();
   try {
     const tasks = await api("/api/tasks");
     el("taskList").innerHTML = tasks.length ? "<table><tr><th>Title</th><th>Score</th><th>Deadline</th><th>Status</th><th></th></tr>" +
-      tasks.map(t => `<tr><td>${esc(t.title)}</td><td>${t.score}</td><td>${esc(t.deadline || "Not set")}</td><td>${esc(t.status)}</td><td>` +
+      tasks.map(t => `<tr><td>${esc(t.title)}</td><td>${t.score}</td><td>${esc(t.deadline || "Not set")}</td><td>${taskStatusCell(t)}</td><td>` +
         `<button class="btn btn-primary" onclick="setTaskStatus(${t.id},'Completed')">Complete</button>` +
         `<button class="btn btn-danger" onclick="deleteTask(${t.id})">Delete</button></td></tr>`).join("") + "</table>"
       : "<div class='empty'>No tasks yet. Add your first task above.</div>";
     staggerRows(el("taskList"), "tr");
+    justCompletedTask = null;
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
 async function setTaskStatus(id, status) {
-  try { await api("/api/tasks/" + id, { method: "PATCH", body: JSON.stringify({ status }) }); loadTasks(); loadStatusList(); }
+  try {
+    await api("/api/tasks/" + id, { method: "PATCH", body: JSON.stringify({ status }) });
+    if (status === "Completed") justCompletedTask = String(id);
+    loadTasks(); loadStatusList();
+  }
   catch (e) { showMsg("globalMsg", e.message, false); }
 }
 async function deleteTask(id) {
@@ -1561,13 +1638,22 @@ el("svAddBtn").addEventListener("click", async () => {
 // Previous habit-ring % (for the count-up start and the
 // heartbeat: the ring only celebrates when the % has risen).
 let lastHbPct = 0;
+// The habit the user has just marked done: its row gets the
+// popping checkmark on the next render only (loadHabits clears
+// it after rendering).
+let justRecordedHabit = null;
 async function loadHabits() {
   try {
     const habits = await api("/api/habits");
     el("hbList").innerHTML = habits.length ? "<table><tr><th>Habit</th><th>Recorded dates</th></tr>" +
-      habits.map(h => `<tr><td>${esc(h.habit)}</td><td>${esc(h.dates.join(", "))}</td></tr>`).join("") + "</table>"
+      habits.map(h => {
+        const pop = (justRecordedHabit && justRecordedHabit === h.habit)
+          ? ' <span class="done-mark done-pop">\u2713</span>' : "";
+        return `<tr><td>${esc(h.habit)}${pop}</td><td>${esc(h.dates.join(", "))}</td></tr>`;
+      }).join("") + "</table>"
       : "<div class='empty'>No habit records yet.</div>";
     staggerRows(el("hbList"), "tr");
+    justRecordedHabit = null;
     // Habit ring (Panze style): overall completion over the last 30
     // days, from the SAME data as the table above — distinct dates
     // with at least one completion across all of this user's habits,
@@ -1608,6 +1694,7 @@ el("hbBtn").addEventListener("click", async () => {
   try {
     const r = await api("/api/habits", { method: "POST", body: JSON.stringify({
       habit: el("hbName").value.trim(), date: el("hbDate").value }) });
+    justRecordedHabit = el("hbName").value.trim();
     showMsg("hbMsg", "Recorded. Total " + r.total + ", consecutive streak " + r.streak + " day(s).", true); loadHabits();
   } catch (e) { showMsg("hbMsg", e.message, false); }
 });

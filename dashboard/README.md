@@ -363,8 +363,10 @@ What is animated, and how:
 - **AI replies** — typing effect (`typeInto` in `app.js`): the
   reply appears in word-sized chunks over ~2s with a blinking
   caret; the final text is byte-identical to the server reply
-  (line breaks included). While the call is in flight, three
-  bouncing dots say "AI is thinking…".
+  (line breaks included). While the call is in flight, an
+  infinite-loop loader (a gradient light travelling a figure-8
+  path, pure inline SVG — see below) says "AI is thinking…",
+  and the Ask button's spark icon spins.
 - **Numbers** — count-up (~750ms, ease-out cubic) on the Overview
   stat values, the budget donut centre, the top-score KPI tile,
   the savings ring centres and the habit ring % (from its previous
@@ -373,10 +375,20 @@ What is animated, and how:
   "Goal reached!" badge appears.
 - **Sidebar** — the active item's accent bar grows from the middle
   of the button's left edge; hovering a button slides it 3px right.
+  Each nav icon also does a small hand-tuned micro-animation on
+  hover, chosen for what the icon means (a gear spins, a star
+  twinkles, a clock swings — 8 variants across 30 icons, never one
+  identical motion); the active section's icon breathes softly.
 - **Landing hero** — eyebrow, headline, subtext, buttons and note
   arrive one after another.
 - **Loading** — skeleton rows with a slow light sweep while lists
   load (replacing the old "Loading…" text in the six list loaders).
+  The Login / Register buttons show a small inline loop spinner
+  while the auth request is in flight.
+- **Done checkmarks** — marking a task done (Task Management) or
+  recording a habit pops a green checkmark in, once, at the moment
+  of completion (`.done-mark.done-pop`); later renders keep the
+  plain mark.
 
 Entrances use small hand-tuned keyframes in `style.css`, not
 Animate.css's `fadeInUp`, because that class slides a full element
@@ -394,3 +406,13 @@ reduced-motion page.
 `window.confirm()` dialog, which cannot be animated. Replacing it
 with a custom zoom-in modal would change four delete flows and
 their tests, so it was left out of this batch.
+
+**Pinterest references (2026-11-15):** the infinite-loop loader
+and the icon micro-interactions were inspired by two Pinterest
+pins the user sent ("6 Infinite Loop Loading Animation" and
+"Uicon V3.0 Animated Icons"). Both were rebuilt from scratch as
+original CSS/SVG in this repo — no GIF, no image file, no icon
+font, no CDN. Uicon is a paid icon pack (ui8.net): its icons were
+NOT copied and nothing was fetched from ui8.net; the
+micro-animations use the dashboard's existing emoji icons plus
+one original spark SVG on the AI Ask buttons.

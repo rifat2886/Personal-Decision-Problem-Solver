@@ -53,6 +53,14 @@ MOCK_AI_REPLY = "Mocked AI reply.\nSecond line of the reply."
 
 class MockGemini(http.server.BaseHTTPRequestHandler):
     requests = []
+    # Test-controlled response delay (seconds). The pins loader
+    # checks set this to hold the AI call in flight while they
+    # inspect the loader. A route-level sleep cannot do this:
+    # time.sleep in a Playwright route handler blocks the sync
+    # API's event loop, so no check can run during the delay and
+    # the busy window closes before the checks execute. The mock
+    # runs on its own thread, so this sleep blocks nothing else.
+    delay = 0.0
 
     def log_message(self, *args):
         pass
@@ -62,6 +70,8 @@ class MockGemini(http.server.BaseHTTPRequestHandler):
         body = self.rfile.read(length) if length else b""
         text = body.decode("utf-8", "replace")
         MockGemini.requests.append(text)
+        if MockGemini.delay:
+            time.sleep(MockGemini.delay)
         if "MOCK-RATE-LIMIT" in text:
             self._send(429, b'{"error":{"message":"quota exceeded"}}')
             return
@@ -442,8 +452,18 @@ def main():
             check("anim no cdn stylesheet",
                   page.evaluate("[...document.querySelectorAll('link[rel=\"stylesheet\"]')].every(l => { const h = l.getAttribute('href') || ''; return !h.startsWith('http') && !h.startsWith('//'); })"))
             # Section switch applies the entrance animation.
+            # The Overview section still shows the previous
+            # visit's render (donut centre already 3600.00) when
+            # this section opens, so a plain value wait below can
+            # pass on that stale render while the fresh
+            # loadOverview is still fetching — the fresh render
+            # then restarts the count-ups and the checks read
+            # mid-count values. Mark the stale stat cards first
+            # and wait for the fresh render (new nodes, no mark).
+            page.evaluate("document.querySelector('#overviewCards .stat')?.setAttribute('data-probe', 'stale')")
             page.click("button[data-section='overview']")
             page.wait_for_function("document.querySelector('section.active')?.id === 'overview'")
+            page.wait_for_function("document.querySelector('#overviewCards .stat') !== null && document.querySelector('#overviewCards .stat').dataset.probe !== 'stale'", timeout=10000)
             check("anim section entrance",
                   page.evaluate("getComputedStyle(document.querySelector('section#overview')).animationName") == "animSectionIn")
             # Cards stagger in with varied delays (at least 3
@@ -513,7 +533,12 @@ def main():
             page.fill("#svAddAmount", "100")
             page.click("#svAddBtn")
             page.wait_for_function("document.getElementById('svAddMsg').textContent.includes('100')")
-            page.wait_for_function("document.querySelector('#svRings .gx-ring-item[data-goal=\"FullGoal\"]') !== null")
+            # Wait for the 100% render, not just the ring item's
+            # existence: the item already exists from the add-goal
+            # step (at 0%), so an existence wait can match the
+            # stale render and the class check below races the
+            # re-render after the add.
+            page.wait_for_function("document.querySelector('#svRings .gx-ring-item[data-goal=\"FullGoal\"]')?.dataset.pct === '100'")
             check("anim goal-complete class",
                   page.evaluate("document.querySelector('#svRings .gx-ring-item[data-goal=\"FullGoal\"]').classList.contains('goal-complete')"))
             check("anim goal-complete badge",
@@ -526,6 +551,106 @@ def main():
                       const rows = [...document.querySelectorAll('#taskList tr.anim-row')];
                       const delays = rows.map(r => r.style.getPropertyValue('--anim-delay'));
                       return rows.length >= 2 && new Set(delays).size >= 2; }"""))
+
+            # Pinterest features: infinite-loop AI loader, auth
+            # button loading state, sidebar icon micro-animations,
+            # done-checkmark pops.
+            # AI loader: hold the AI call in flight via the mock
+            # delay (see MockGemini.delay) so the loader is
+            # observable, then check it appears (inline SVG, no
+            # img/GIF), the Ask button spins its icon, and both
+            # disappear when the reply arrives.
+            MockGemini.delay = 2.0
+            page.click("button[data-section='ai-daily']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'ai-daily'")
+            page.fill("#aiDailyInput", "Should I study maths or physics tonight?")
+            page.click("#aiDailyBtn")
+            page.wait_for_selector("#aiDailyReply .ai-thinking", timeout=5000)
+            check("pins ai loader appears while pending",
+                  page.is_visible("#aiDailyReply .loop-loader"))
+            check("pins ai loader is inline svg, no img",
+                  page.evaluate("document.querySelector('#aiDailyReply .loop-loader') instanceof SVGSVGElement")
+                  and page.evaluate("document.querySelector('#aiDailyReply img') === null"))
+            check("pins ai ask button busy while pending",
+                  page.evaluate("document.getElementById('aiDailyBtn').classList.contains('ai-busy')"))
+            check("pins ai ask icon spins while pending",
+                  page.evaluate("getComputedStyle(document.querySelector('#aiDailyBtn .ai-btn-ic svg')).animationName") == "icSpin")
+            page.wait_for_function("document.getElementById('aiDailyReply').textContent.includes('Mocked AI reply.')", timeout=10000)
+            check("pins ai loader disappears after reply",
+                  page.evaluate("document.querySelector('#aiDailyReply .ai-thinking') === null"))
+            check("pins ai ask button idle after reply",
+                  not page.evaluate("document.getElementById('aiDailyBtn').classList.contains('ai-busy')")
+                  and page.evaluate("document.querySelector('#aiDailyBtn .ai-btn-label').textContent") == "Ask AI")
+            # Leave the input empty: the ai-daily section below
+            # clicks Ask with no input and expects the client-side
+            # "describe the decision" error.
+            page.fill("#aiDailyInput", "")
+            MockGemini.delay = 0.0
+            # Sidebar icon micro-animations: hovering a nav button
+            # animates its icon, each icon has its own variant
+            # (30 icons, at least 6 distinct variants), and the
+            # active section's icon breathes.
+            page.click("button[data-section='overview']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'overview'")
+            page.hover("button[data-section='tasks']")
+            check("pins sidebar icon animates on hover",
+                  page.evaluate("getComputedStyle(document.querySelector('button[data-section=\"tasks\"] .nav-ic')).animationName") == "navBounce")
+            check("pins sidebar icons vary by icon",
+                  page.evaluate("""() => {
+                      const icons = [...document.querySelectorAll('.sidebar .nav-ic')];
+                      const anims = new Set(icons.map(i => i.dataset.anim));
+                      return icons.length === 30 && anims.size >= 6; }"""))
+            check("pins sidebar active icon breathes",
+                  page.evaluate("getComputedStyle(document.querySelector('button[data-section=\"overview\"].active .nav-ic')).animationName") == "navIcActive")
+            # Done checkmark: completing a fresh task pops a green
+            # checkmark into its status cell.
+            page.click("button[data-section='tasks']")
+            page.fill("#taskTitle", "PinTask")
+            page.fill("#taskUrgency", "7")
+            page.fill("#taskImportance", "7")
+            page.fill("#taskDeadline", "2026-11-22")
+            page.click("#taskAddBtn")
+            page.wait_for_function("document.getElementById('taskList').textContent.includes('PinTask')")
+            page.locator("#taskList tr", has_text="PinTask").locator("button", has_text="Complete").click()
+            page.wait_for_function("document.querySelector('#taskList .done-mark.done-pop') !== null", timeout=10000)
+            check("pins task done checkmark pops",
+                  "✓ Completed" in page.evaluate("document.querySelector('#taskList .done-mark.done-pop').textContent"))
+            # Done checkmark: recording a fresh habit pops a
+            # checkmark beside its row.
+            page.click("button[data-section='habits']")
+            page.fill("#hbName", "PinHabit")
+            page.fill("#hbDate", date.today().isoformat())
+            page.click("#hbBtn")
+            page.wait_for_function("document.querySelector('#hbList .done-mark.done-pop') !== null", timeout=10000)
+            check("pins habit done checkmark pops",
+                  page.evaluate("document.querySelector('#hbList .done-mark.done-pop') !== null"))
+            # Auth button loading state: on a fresh page, check
+            # the login button shows its spinner and is disabled
+            # while the login hashes the password server-side
+            # (PBKDF2, ~2s — a real in-flight window, so no
+            # artificial delay is needed; a sleep in a route
+            # handler would block Playwright's event loop and
+            # hide the window instead).
+            lpage = browser.new_page()
+            lpage.goto(base + "/", timeout=15000)
+            lpage.click("button[data-section='auth']")
+            lpage.fill("#regUser", "pinuser")
+            lpage.fill("#regPass", "Pin12345")
+            lpage.fill("#regPassConfirm", "Pin12345")
+            lpage.click("#regBtn")
+            lpage.wait_for_function("document.querySelector('#regMsg').textContent.includes('Registered')")
+            lpage.fill("#loginUser", "pinuser")
+            lpage.fill("#loginPass", "Pin12345")
+            lpage.click("#loginBtn")
+            lpage.wait_for_selector("#loginBtn .btn-spinner", timeout=5000)
+            check("pins login button loading state",
+                  lpage.is_visible("#loginBtn .btn-spinner")
+                  and lpage.evaluate("document.getElementById('loginBtn').disabled") is True)
+            lpage.wait_for_function("document.querySelector('section.active').id === 'overview'", timeout=15000)
+            check("pins login succeeds after loading state",
+                  lpage.evaluate("document.querySelector('section.active').id") == "overview"
+                  and lpage.evaluate("document.getElementById('loginBtn').textContent") == "Login")
+            lpage.close()
 
             # AI Daily Decision (Phase 3.1): client-side validation,
             # mock-Gemini success, newline sanitization, 503 and 400.
@@ -979,8 +1104,9 @@ def main():
             # confirm dialog), logout clears the list, re-login
             # reloads it, and the empty state shows once all
             # entries are gone. The six AI sections above saved
-            # 11 entries in total (daily 1, task 1, study 1,
-            # problem 2, budget 3, habit 3); only successful
+            # 12 entries in total (daily 2 — the pins loader
+            # test call plus the 3.1 success call — task 1,
+            # study 1, problem 2, budget 3, habit 3); only successful
             # Gemini calls save history, so the 503/400 calls
             # above added none. Only successful GET/DELETE calls
             # are used here, so the console-error filter below
@@ -989,44 +1115,44 @@ def main():
             page.wait_for_function("document.querySelector('section.active')?.id === 'ai-history'")
             check("ai-history section visible after login", page.is_visible("section#ai-history"))
             check("ai-history filter options", page.evaluate("document.querySelectorAll('#aiHistoryFilter option').length") == 7)
-            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 11", timeout=15000)
-            check("ai-history renders 11 entries", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 11)
+            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 12", timeout=15000)
+            check("ai-history renders 12 entries", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 12)
             first = page.evaluate("document.querySelector('.ai-history-entry').textContent")
             check("ai-history newest first is habit", "Habit" in first and "Morning run" in first, first[:200])
             check("ai-history newest shows mock reply", "Mocked AI reply." in first, first[:200])
-            # Filter: daily-decision has 1 entry, habit has 3,
-            # all has 11. The filter re-renders without a call.
+            # Filter: daily-decision has 2 entries, habit has 3,
+            # all has 12. The filter re-renders without a call.
             page.select_option("#aiHistoryFilter", "daily-decision")
-            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 1")
-            check("ai-history filter daily-decision shows 1", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 1)
+            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 2")
+            check("ai-history filter daily-decision shows 2", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 2)
             check("ai-history filter daily-decision label", "Daily Decision" in page.evaluate("document.querySelector('.ai-history-entry').textContent"))
             page.select_option("#aiHistoryFilter", "habit")
             page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 3")
             check("ai-history filter habit shows 3", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 3)
             page.select_option("#aiHistoryFilter", "all")
-            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 11")
-            check("ai-history filter all shows 11", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 11)
+            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 12")
+            check("ai-history filter all shows 12", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 12)
             # Delete one entry via the UI (confirm dialog auto-accepted
             # by the handler registered before the study-plan delete
             # above — registering a second one made Playwright raise
             # "Cannot accept dialog which is already handled").
             page.locator(".ai-history-entry .btn-danger").first.click()
-            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 10")
-            check("ai-history delete removes entry", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 10)
+            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 11")
+            check("ai-history delete removes entry", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 11)
             check("ai-history delete message", "Entry deleted" in page.evaluate("document.getElementById('aiHistoryMsg').textContent"))
             # Logout clears the rendered list at once.
             page.click("#logoutBtn")
             page.wait_for_function("document.querySelector('section.active')?.id === 'landing'")
             check("ai-history logout clears list", page.evaluate("document.getElementById('aiHistoryList').innerHTML") == "")
-            # Log back in: the list reloads (10 entries left).
+            # Log back in: the list reloads (11 entries left).
             page.click("button[data-section='auth']")
             page.fill("#loginUser", "browseruser")
             page.fill("#loginPass", "Browser123")
             page.click("#loginBtn")
             page.wait_for_function("document.querySelector('section.active')?.id === 'overview'", timeout=10000)
             page.click("button[data-section='ai-history']")
-            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 10", timeout=15000)
-            check("ai-history reloads after re-login", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 10)
+            page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 11", timeout=15000)
+            check("ai-history reloads after re-login", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 11)
             # Delete the remaining entries via the API (all 200s,
             # so no console error is added), then reload the
             # section: the empty state must show.
@@ -1036,7 +1162,7 @@ def main():
                 const j = await r.json();
                 for (const e of j.history) { await fetch('/api/ai/history/' + e.id, {method:'DELETE', headers:{Authorization:'Bearer '+t}}); }
                 return j.history.length; }""")
-            check("ai-history api deletes remaining", remaining == 10, str(remaining))
+            check("ai-history api deletes remaining", remaining == 11, str(remaining))
             page.click("button[data-section='ai-history']")
             page.wait_for_function("document.getElementById('aiHistoryList').textContent.includes('No AI history yet')", timeout=15000)
             check("ai-history empty state", "No AI history yet" in page.evaluate("document.getElementById('aiHistoryList').textContent"))
@@ -1094,6 +1220,27 @@ def main():
                   rpage.evaluate("parseFloat(getComputedStyle(document.querySelector('section#landing')).animationDuration)") <= 0.001)
             check("anim reduced motion collapses card entrance",
                   rpage.evaluate("parseFloat(getComputedStyle(document.querySelector('#landing .card')).animationDuration)") <= 0.001)
+            # Pinterest: the loop loader is static under reduced
+            # motion (the kill-switch freezes the runner) but still
+            # visible, and the Ask button's icon does not spin.
+            rpage.click("button[data-section='auth']")
+            rpage.fill("#loginUser", "browseruser")
+            rpage.fill("#loginPass", "Browser123")
+            rpage.click("#loginBtn")
+            rpage.wait_for_function("document.querySelector('section.active').id === 'overview'")
+            MockGemini.delay = 2.0
+            rpage.click("button[data-section='ai-daily']")
+            rpage.wait_for_function("document.querySelector('section.active')?.id === 'ai-daily'")
+            rpage.fill("#aiDailyInput", "Reduced motion loader check")
+            rpage.click("#aiDailyBtn")
+            rpage.wait_for_selector("#aiDailyReply .ai-thinking", timeout=5000)
+            check("pins reduced motion loader is static",
+                  rpage.evaluate("parseFloat(getComputedStyle(document.querySelector('#aiDailyReply .loop-runner')).animationDuration)") <= 0.001
+                  and rpage.is_visible("#aiDailyReply .loop-loader"))
+            check("pins reduced motion ask icon does not spin",
+                  rpage.evaluate("parseFloat(getComputedStyle(document.querySelector('#aiDailyBtn .ai-btn-ic svg')).animationDuration)") <= 0.001)
+            rpage.wait_for_function("document.getElementById('aiDailyReply').textContent.includes('Mocked AI reply.')", timeout=10000)
+            MockGemini.delay = 0.0
             rpage.close()
 
             # Chromium logs a console error for every failed fetch,
