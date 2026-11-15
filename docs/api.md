@@ -524,7 +524,13 @@ locally-filtered copy that could come back on refresh.
 - `title`: optional, ≤ 500 bytes. `urgency` / `importance`: optional strict
   integers 1–10 (rejects `10.5`, `"high"`, trailing junk).
 - `deadline`: optional, ≤ 100 bytes. **It is NOT date-validated** — any
-  string up to 100 bytes is accepted (see §7).
+  string up to 100 bytes is accepted (see §7). But when it parses as a
+  real `YYYY-MM-DD` date, the prompt sent to Gemini anchors it to the
+  server clock: `Deadline: "2026-11-20" (5 days from today; today is
+  2026-11-15)` (past deadlines read e.g. `(3 days ago; today is ...)`).
+  The date is computed fresh from the server clock on every request —
+  Gemini has no live clock, so without this it misjudges how far away
+  the deadline is. A free-text deadline is sent as-is.
 - `status`: optional, must be `pending`, `in-progress`, or `done`;
   aliases `in_progress` → `in-progress`, `completed` → `done`.
 - Gemini is asked for five sections: Task Analysis, Priority Recommendation,

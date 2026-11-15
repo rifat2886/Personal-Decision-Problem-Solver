@@ -22,6 +22,9 @@ What is covered (txt mode, C++ server):
     history afterwards contains the entry with feature
     "task-analyzer"; "description" is the canonical key
     ("input" accepted too), status aliases are normalised.
+    A real YYYY-MM-DD deadline is anchored to the server clock
+    in the prompt (days remaining + today's date, computed
+    fresh per request); a free-text deadline is sent as-is.
     Removing the data dir mid-run makes the endpoint answer
     502 (history save failed), never a false 200.
   - Study Planner: 401 without login; 400 on missing / empty
@@ -1995,6 +1998,90 @@ def main():
                            token=token_b)[:2]
         check("bob DELETE alice habit entry 404",
               status == 404, f"{status} {body}")
+
+        # 1m. Task Analyzer deadline dates (Phase 2.2 date fix).
+        # A real YYYY-MM-DD deadline is anchored to the server
+        # clock in the prompt sent to Gemini (days remaining +
+        # today's date, computed fresh per request); a free-text
+        # deadline is sent as-is. Uses the relative `bid`
+        # pattern, so no fixed history id above is disturbed.
+        today_now = datetime.date.today()
+
+        def dplus(n):
+            return (today_now + datetime.timedelta(days=n)).isoformat()
+
+        # Future deadline, 5 days out.
+        before = len(MockGemini.requests)
+        status, body = req(port, "POST", "/api/ai/task-analyzer",
+                           token=token_a,
+                           body={"input": "Finish the report",
+                                 "deadline": dplus(5)})[:2]
+        check("task-analyzer future deadline 200", status == 200, f"{status} {body}")
+        check("task-analyzer future deadline history_id is bid",
+              body.get("history_id") == bid, str(body))
+        check("future deadline prompt has days + today",
+              f'Deadline: "{dplus(5)}" (5 days from today; today is {today_now.isoformat()})' in sent_prompt(before),
+              sent_prompt(before)[:400])
+        status, body = req(port, "GET", "/api/ai/history", token=token_a)[:2]
+        by_id = {h["id"]: h for h in body.get("history", [])}
+        check("future deadline stored prompt has days info",
+              "5 days from today" in by_id.get(bid, {}).get("prompt", ""),
+              str(by_id.get(bid)))
+        bid += 1
+        # Deadline today: 0 days from today.
+        before = len(MockGemini.requests)
+        status, body = req(port, "POST", "/api/ai/task-analyzer",
+                           token=token_a,
+                           body={"input": "Submit the form",
+                                 "deadline": dplus(0)})[:2]
+        check("task-analyzer today deadline 200", status == 200, f"{status} {body}")
+        check("task-analyzer today deadline history_id is bid",
+              body.get("history_id") == bid, str(body))
+        check("today deadline prompt says 0 days",
+              f'Deadline: "{dplus(0)}" (0 days from today; today is {today_now.isoformat()})' in sent_prompt(before),
+              sent_prompt(before)[:400])
+        bid += 1
+        # Past deadline: 3 days ago.
+        before = len(MockGemini.requests)
+        status, body = req(port, "POST", "/api/ai/task-analyzer",
+                           token=token_a,
+                           body={"input": "Chase the late reply",
+                                 "deadline": dplus(-3)})[:2]
+        check("task-analyzer past deadline 200", status == 200, f"{status} {body}")
+        check("task-analyzer past deadline history_id is bid",
+              body.get("history_id") == bid, str(body))
+        check("past deadline prompt says 3 days ago",
+              f'Deadline: "{dplus(-3)}" (3 days ago; today is {today_now.isoformat()})' in sent_prompt(before),
+              sent_prompt(before)[:400])
+        bid += 1
+        # Free-text deadline: accepted, sent as-is, no days math.
+        before = len(MockGemini.requests)
+        status, body = req(port, "POST", "/api/ai/task-analyzer",
+                           token=token_a,
+                           body={"input": "Plan the trip",
+                                 "deadline": "next Friday"})[:2]
+        check("task-analyzer free-text deadline 200", status == 200, f"{status} {body}")
+        check("task-analyzer free-text deadline history_id is bid",
+              body.get("history_id") == bid, str(body))
+        p = sent_prompt(before)
+        check("free-text deadline prompt has no days math",
+              'Deadline: "next Friday"' in p and
+              "days from today" not in p and "days ago" not in p,
+              p[:400])
+        bid += 1
+        # Singular: 1 day, not 1 days.
+        before = len(MockGemini.requests)
+        status, body = req(port, "POST", "/api/ai/task-analyzer",
+                           token=token_a,
+                           body={"input": "Book the tickets",
+                                 "deadline": dplus(1)})[:2]
+        check("task-analyzer 1-day deadline 200", status == 200, f"{status} {body}")
+        check("task-analyzer 1-day deadline history_id is bid",
+              body.get("history_id") == bid, str(body))
+        check("1-day deadline prompt is singular",
+              f'Deadline: "{dplus(1)}" (1 day from today; today is {today_now.isoformat()})' in sent_prompt(before),
+              sent_prompt(before)[:400])
+        bid += 1
         stop_server(p1)
 
         procs.remove(p1)
