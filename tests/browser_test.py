@@ -97,6 +97,25 @@ def check(name, cond, detail=""):
         print(f"  FAIL {name} {detail}")
 
 
+def chart_data(page, selector):
+    """Read a Chart.js chart's labels + dataset data from its canvas.
+
+    Returns {"labels": [...], "data": [[...], ...]} or None when the
+    canvas has no live chart (Chart.js not loaded, or the section
+    rendered an empty state instead). Chart data is available the
+    moment the chart is created, so these checks never race the
+    chart's entrance animation.
+    """
+    return page.evaluate("""(sel) => {
+        const cv = document.querySelector(sel);
+        if (!cv || typeof Chart === 'undefined') return null;
+        const ch = Chart.getChart(cv);
+        if (!ch) return null;
+        return { labels: ch.data.labels,
+                 data: ch.data.datasets.map(d => d.data) };
+    }""", selector)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--server", default="./cpp_server")
@@ -342,41 +361,65 @@ def main():
             page.locator("#spList .sp-plan", has_text="BrowserArt").locator("input[type=checkbox]").first.check()
             page.wait_for_function("document.getElementById('spList').textContent.includes('1/5 (20%)')")
 
+            # Chart.js is vendored locally (never a CDN) and is
+            # the real library: the UMD build loads from this
+            # server and exposes the global Chart.
+            chartjs = page.request.get(base + "/chart.umd.min.js")
+            check("chartjs served locally", chartjs.status == 200, str(chartjs.status))
+            chartjs_body = chartjs.text()
+            check("chartjs is the real library",
+                  "Chart.js v4.6.1" in chartjs_body and "MIT License" in chartjs_body)
+            check("chartjs local script tag",
+                  page.evaluate("!!document.querySelector('script[src=\"chart.umd.min.js\"]')"))
+            check("chartjs loaded in page",
+                  page.evaluate("typeof Chart === 'function' && Chart.version.indexOf('4.6.1') === 0"),
+                  page.evaluate("typeof Chart === 'undefined' ? 'no Chart' : Chart.version"))
+
             # Overview graphics: donut, task bars, trend.
             page.click("button[data-section='overview']")
             page.wait_for_function("document.getElementById('ovDonut').textContent.includes('3600.00')", timeout=10000)
-            page.wait_for_timeout(700)  # chart animations (0.5s) settle
+            page.wait_for_timeout(700)  # chart animations settle
             ovd = page.evaluate("document.getElementById('ovDonut').textContent")
             check("graphics donut remaining 3600.00", "3600.00" in ovd, ovd[:200])
             check("graphics donut spent 29%", "29%" in ovd, ovd[:200])
-            check("graphics donut svg present", page.locator("#ovDonut svg").count() == 1)
-            check("graphics donut tooltip titles", page.locator("#ovDonut title").count() == 2)
+            check("graphics donut canvas present", page.locator("#ovDonut canvas").count() == 1)
+            donut = chart_data(page, "#ovDonut canvas")
+            check("graphics donut chart data", donut is not None and donut["data"] == [[1500, 3600]], str(donut))
             ovt = page.evaluate("document.getElementById('ovTasks').textContent")
             check("graphics task bars 1/2 done and pending", ovt.count("1 / 2") == 2, ovt[:200])
             check("graphics task KPI top score 40", "40" in ovt and "BrowserTask" in ovt, ovt[:200])
             check("graphics task KPI deadline 2026-11-20", "2026-11-20" in ovt, ovt[:200])
-            check("graphics task bar fill renders",
-                  page.evaluate("document.querySelector('#ovTasks .gx-fill').getBoundingClientRect().width") > 0)
-            check("graphics trend 12 points", page.locator("#ovTrend circle").count() == 12,
-                  str(page.locator("#ovTrend circle").count()))
-            check("graphics trend Nov income title",
-                  "Nov 26: income 5100.00" in page.evaluate("document.getElementById('ovTrend').innerHTML"))
-            check("graphics trend 11 axis labels", page.locator("#ovTrend text").count() == 11,
-                  str(page.locator("#ovTrend text").count()))
+            check("graphics task canvas present", page.locator("#ovTasks canvas").count() == 1)
+            taskch = chart_data(page, "#ovTasks canvas")
+            check("graphics task chart data", taskch is not None and taskch["data"] == [[1, 1]], str(taskch))
+            check("graphics trend canvas present", page.locator("#ovTrend canvas").count() == 1)
+            trend = chart_data(page, "#ovTrend canvas")
+            check("graphics trend 6 months", trend is not None and len(trend["labels"]) == 6
+                  and trend["labels"][-1] == "Nov 26", str(trend and trend["labels"]))
+            check("graphics trend Nov income 5100",
+                  trend is not None and trend["data"][0][-1] == 5100, str(trend and trend["data"]))
+            check("graphics trend Nov expense 1500",
+                  trend is not None and trend["data"][1][-1] == 1500, str(trend and trend["data"]))
 
-            # Expense categories (Budget).
+            # Expense categories (Budget). Category names live on
+            # the canvas (Chart.js axis labels), so the wait is
+            # for the canvas, and the values come from the chart.
             page.click("button[data-section='budget']")
-            page.wait_for_function("document.getElementById('budCats').textContent.includes('Food')", timeout=10000)
-            cats = page.evaluate("document.getElementById('budCats').textContent")
-            check("graphics category Food 80%", "Food" in cats and "80%" in cats, cats[:200])
-            check("graphics category Transport 20%", "Transport" in cats and "20%" in cats, cats[:200])
-            check("graphics category bars 2", page.locator("#budCats .gx-bar-row").count() == 2)
-            check("graphics category tooltips", page.locator("#budCats [data-tip]").count() == 2)
+            page.wait_for_function("document.querySelector('#budCats canvas') !== null", timeout=10000)
+            check("graphics category canvas present", page.locator("#budCats canvas").count() == 1)
+            catsch = chart_data(page, "#budCats canvas")
+            check("graphics category labels", catsch is not None and catsch["labels"] == ["Food", "Transport"],
+                  str(catsch and catsch["labels"]))
+            check("graphics category data", catsch is not None and catsch["data"] == [[1200, 300]],
+                  str(catsch and catsch["data"]))
 
             # Habit week bars + heatmap.
             page.click("button[data-section='habits']")
             page.wait_for_function("document.getElementById('hbWeek').textContent.includes('3 / 7 days')", timeout=10000)
-            check("graphics week 7 bars", page.locator("#hbWeek .gx-week .col").count() == 7)
+            check("graphics week canvas present", page.locator("#hbWeek canvas").count() == 1)
+            week = chart_data(page, "#hbWeek canvas")
+            check("graphics week 7 days 3 done", week is not None and len(week["labels"]) == 7
+                  and week["data"][0].count(1) == 3, str(week and week["data"]))
             check("graphics week 3/7 days", "3 / 7 days" in page.evaluate("document.getElementById('hbWeek').textContent"))
             check("graphics week streak 3", "streak: 3 day(s)" in page.evaluate("document.getElementById('hbWeek').textContent"))
             check("graphics heatmap 30 cells", page.locator("#hbHeat .gx-heat-cell").count() == 30)
@@ -390,22 +433,40 @@ def main():
                   page.evaluate("document.querySelector('#svRings .gx-ring-item').dataset.pct") == "25")
             check("graphics savings ring goal name",
                   "BrowserGoal" in page.evaluate("document.getElementById('svRings').textContent"))
+            check("graphics savings canvas present", page.locator("#svRings canvas").count() == 1)
+            svg = chart_data(page, "#svRings canvas")
+            check("graphics savings chart data", svg is not None and svg["data"] == [[250, 750]], str(svg))
 
             # Study progress bar + timeline.
             page.click("button[data-section='study']")
             page.wait_for_function("document.getElementById('spList').textContent.includes('1/5 (20%)')", timeout=10000)
             page.wait_for_timeout(700)
-            check("graphics study progress bars 2", page.locator("#spList .gx-progress").count() == 2)
-            check("graphics study progress bar 20%",
-                  page.evaluate("""() => {
-                      const plans = [...document.querySelectorAll('#spList .sp-plan')];
-                      const art = plans.find(p => p.textContent.includes('BrowserArt'));
-                      return art ? art.querySelector('.gx-progress > div').style.width : ''; }""") == "20%")
+            check("graphics study progress canvases 2", page.locator("#spList .gx-study-canvas").count() == 2)
+            artch = page.evaluate("""() => {
+                const plans = [...document.querySelectorAll('#spList .sp-plan')];
+                const art = plans.find(p => p.textContent.includes('BrowserArt'));
+                const cv = art ? art.querySelector('.gx-study-canvas') : null;
+                const ch = cv && typeof Chart !== 'undefined' ? Chart.getChart(cv) : null;
+                return ch ? ch.data.datasets[0].data : null; }""")
+            check("graphics study progress chart 20%", artch == [20], str(artch))
             check("graphics study timeline 10 cells", page.locator("#spList .gx-timeline .cell").count() == 10,
                   str(page.locator("#spList .gx-timeline .cell").count()))
             check("graphics study timeline 1 done", page.locator("#spList .gx-timeline .cell.done").count() == 1)
             check("graphics study timeline 3 revision", page.locator("#spList .gx-timeline .cell.rev").count() == 3)
             check("graphics study timeline today cell", page.locator("#spList .gx-timeline .cell.today").count() >= 1)
+
+            # Design tokens (shadcn design language, plain CSS):
+            # the spacing/radii/focus tokens exist on :root.
+            check("design token radius-lg 22px",
+                  page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--radius-lg').trim()") == "22px")
+            check("design token space-4 16px",
+                  page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--space-4').trim()") == "16px")
+            check("design token focus-ring set",
+                  page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--focus-ring').trim()").startswith("0 0 0 3px"))
+            # Pins features still intact: all 30 sidebar icons
+            # carry their hover-animation span.
+            check("pins sidebar icons 30", page.locator(".nav-ic").count() == 30,
+                  str(page.locator(".nav-ic").count()))
 
             # Graphics empty states: a fresh user with no data at all.
             epage = browser.new_page()

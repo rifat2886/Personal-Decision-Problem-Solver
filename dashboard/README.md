@@ -416,3 +416,77 @@ font, no CDN. Uicon is a paid icon pack (ui8.net): its icons were
 NOT copied and nothing was fetched from ui8.net; the
 micro-animations use the dashboard's existing emoji icons plus
 one original spark SVG on the AI Ask buttons.
+
+## Dashboard charts (Chart.js, vendored)
+
+The dashboard's charts are drawn with **Chart.js 4.6.1**
+(`chartjs/Chart.js`, ~68,000 GitHub stars, MIT), vendored as
+`dashboard/chart.umd.min.js` and loaded from `index.html` with a
+local relative path before `app.js`. There is no CDN: the file is
+served from this repo (both servers' static allowlists and the
+Vercel rewrite), so the dashboard works offline on localhost, per
+the standing no-CDN rule. License: MIT (see the header comment
+in the file for the source URL and version).
+
+What is charted, and where the data comes from (all real data
+from the existing endpoints — no new endpoints, no sample data):
+
+- **Budget donut** (Overview) — doughnut, spent vs remaining of
+  total income; the centre number is an HTML overlay so it counts
+  up; overspend fills the ring and the negative remaining shows
+  in red.
+- **Task status** (Overview) — horizontal bars, done vs pending,
+  with KPI tiles for the top score and nearest deadline.
+- **Monthly trend** (Overview) — income vs expense lines over the
+  last 6 months, gradient area fills fading to transparent,
+  empty months at 0.
+- **Expense categories** (Budget) — horizontal bars sorted by
+  amount, one colour per category from a hand-picked palette,
+  exact amount + % drawn at the end of each bar.
+- **Habit week** (Habit Tracker) — 7 bars from the same
+  active-day set as the 30-day ring; done days get the pink→blue
+  gradient, quiet days a short stub.
+- **Savings rings** (Savings) — one doughnut per goal; the centre
+  shows the true % (over 100% when saved exceeds target).
+- **Study progress** (Study Planner) — one horizontal bar per
+  plan, from `/api/study-plans` progressPct.
+
+The **30-day habit heatmap** and the **study day-timeline strip**
+stay hand-built CSS/SVG: Chart.js has no native heatmap, and
+forcing one would be worse than the grid.
+
+How the wiring works (see the `gx*` renderers in `app.js`):
+
+- Each renderer takes a container element and already-fetched
+  data, sets the container's HTML (a `<canvas>` plus the text
+  that belongs in the DOM: legends, captions, KPI tiles) and
+  mounts the chart with `gxMake`. Charts are destroyed before
+  their container's `innerHTML` is replaced (`gxDestroyIn`),
+  because a live chart keeps a ResizeObserver on its canvas.
+- Colours are read from the CSS theme variables at render time
+  (`gxThemeColors`), so charts follow the light/dark theme; a
+  theme toggle re-renders the visible section's charts
+  (`gxReloadVisibleCharts`). Animation durations and easings are
+  tuned per chart (`gxAnim`); with `prefers-reduced-motion`,
+  Chart.js draws the final state at once.
+- If the vendored file ever fails to load, `Chart` is undefined
+  and the renderers skip the canvas — the DOM text (legends,
+  notes, tiles) still shows the numbers, so no section breaks.
+
+## Design tokens (shadcn design language, plain CSS)
+
+The design language follows **shadcn/ui** (~124–128k stars, MIT)
+as a reference only: shadcn/ui is React + Tailwind + CLI
+copy-paste and cannot be installed as code into this vanilla
+no-build dashboard (no React migration — out of scope). Instead
+its design language is implemented in plain CSS in `style.css`:
+a spacing scale (`--space-1` to `--space-8`), a radii scale
+(`--radius-sm`/`--radius-md`/`--radius-lg`/`--radius-full`), a
+consistent focus ring (`--focus-ring`, applied to inputs,
+buttons and nav items), and a stronger border token
+(`--border-strong`). Components (cards, buttons, inputs,
+badges, tables, sidebar) use the tokens instead of ad-hoc pixel
+values; the Panze light theme stays the default identity and
+the dark theme toggle keeps working. The
+`shadcn-design-reference` skill (in `~/workspace/custom-skills/`)
+records the tokens and the never-install rule for future work.

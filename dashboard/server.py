@@ -543,12 +543,13 @@ class Handler(BaseHTTPRequestHandler):
             name = "index.html"
         else:
             name = path.lstrip("/")
-        if name not in ("index.html", "style.css", "app.js", "animate.min.css"):
+        if name not in ("index.html", "style.css", "app.js", "animate.min.css", "chart.umd.min.js"):
             self.send_error_json(404, "Not found.")
             return
         full = os.path.join(self.static_dir, name)
         ctype = {"index.html": "text/html", "style.css": "text/css",
                  "app.js": "application/javascript",
+                 "chart.umd.min.js": "application/javascript",
                  "animate.min.css": "text/css"}[name]
         try:
             with open(full, "rb") as handle:
