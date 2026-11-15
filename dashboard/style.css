@@ -543,9 +543,10 @@ textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-
    section or card. Delays are deliberately uneven (see
    ANIM_DELAYS in app.js), so cards arrive like a hand dealing
    them, not a machine stamping them. Durations stay in the
-   0.3–0.6s band; nothing loops except the loading dots and the
-   skeleton shimmer. The prefers-reduced-motion block at the end
-   of this file is the kill-switch for all of it. */
+   0.3–0.6s band; nothing loops except the infinite-loop AI
+   loader, the button spinner and the skeleton shimmer. The
+   prefers-reduced-motion block at the end of this file is the
+   kill-switch for all of it. */
 
 /* Cards: soft rise + tiny settle, staggered by --anim-delay (set
    by app.js per card). fill-mode both keeps a card hidden until
@@ -574,14 +575,21 @@ textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-
 #landing.active .hero > *:nth-child(5) { animation-delay: 0.36s; }
 @keyframes animHeroIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
-/* AI "thinking" indicator: three dots bouncing in turn, with a
-   short label. Shown while an AI call is in flight (app.js
-   aiThinkingHtml), replacing the old plain "Thinking…" text. */
-.ai-thinking { display: flex; align-items: center; gap: 4px; color: var(--muted); padding: 12px 4px; font-size: 15px; }
-.ai-thinking .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); animation: aiDotBounce 1.2s ease-in-out infinite; }
-.ai-thinking .dot:nth-child(2) { animation-delay: 0.15s; }
-.ai-thinking .dot:nth-child(3) { animation-delay: 0.3s; }
-@keyframes aiDotBounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.45; } 30% { transform: translateY(-6px); opacity: 1; } }
+/* AI "thinking" indicator: an infinite-loop loader — a gradient
+   light travelling forever around a figure-8 path (pure inline
+   SVG, no GIF, no image file, no CDN), with a short label. Shown
+   while an AI call is in flight (app.js aiThinkingHtml); it
+   disappears the moment the reply (or an error) arrives. The
+   runner's dash pattern period is 114 units, and the keyframes
+   move the dash offset by exactly one period, so the loop is
+   seamless whatever the path's true length. With reduced motion
+   the kill-switch below freezes the runner: a static indicator.
+   Gradient stops are the Panze pink→blue (#B05AB9→#215ACA). */
+.ai-thinking { display: flex; align-items: center; gap: 10px; color: var(--muted); padding: 12px 4px; font-size: 15px; }
+.loop-loader { width: 54px; height: 27px; flex: 0 0 auto; }
+.loop-track { fill: none; stroke: var(--border); stroke-width: 2.5; opacity: 0.7; }
+.loop-runner { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 26 88; animation: loopTravel 1.5s linear infinite; }
+@keyframes loopTravel { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -114; } }
 
 /* Typing caret: a blinking block while an AI reply is typing
    (app.js adds .typing to the reply box and removes it at the
@@ -610,6 +618,61 @@ textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-
 .msg.animate__animated { --animate-duration: 0.5s; }
 .card.animate__animated { --animate-duration: 0.5s; }
 .ring-wrap.animate__animated { --animate-duration: 0.9s; }
+
+/* ---- Pinterest features: loop loader companions + icon motion --
+   (a) Button spinner: a small white ring shown inside the Login /
+   Register buttons while the auth request is in flight (app.js
+   setBtnLoading). White because those buttons are gradient
+   primary buttons; the ring spins until the request settles. */
+.btn-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.45); border-top-color: #fff; border-radius: 50%; animation: btnSpin 0.7s linear infinite; vertical-align: -2px; margin-right: 7px; }
+@keyframes btnSpin { to { transform: rotate(360deg); } }
+
+/* (b) AI Ask buttons: a spark icon (inline SVG in index.html)
+   that spins while the AI request is in flight (.ai-busy, set by
+   app.js) and stops the moment the reply or error arrives. The
+   label is a separate span so the handlers can swap its text
+   without wiping the icon. */
+.ai-ask-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.ai-btn-ic { display: inline-flex; }
+.ai-btn-ic svg { display: block; }
+.ai-ask-btn.ai-busy .ai-btn-ic svg { animation: icSpin 0.9s linear infinite; }
+@keyframes icSpin { to { transform: rotate(360deg); } }
+
+/* (c) Sidebar nav icons: each emoji sits in a .nav-ic span with a
+   data-anim variant chosen for what the icon MEANS (a gear spins,
+   a star twinkles, a clock swings), so the sidebar never does one
+   identical motion 30 times — that uniform look is exactly the
+   "AI touch" the user asked to avoid. The animation runs once per
+   hover. The active section's icon breathes softly, a persistent
+   treatment that sits beside (never fights) the accent bar. */
+.nav-ic { display: inline-block; }
+.sidebar button:hover .nav-ic[data-anim="bounce"] { animation: navBounce 0.5s var(--anim-ease); }
+.sidebar button:hover .nav-ic[data-anim="wiggle"] { animation: navWiggle 0.5s var(--anim-ease); }
+.sidebar button:hover .nav-ic[data-anim="spin"] { animation: navSpin 0.6s var(--anim-ease); }
+.sidebar button:hover .nav-ic[data-anim="twinkle"] { animation: navTwinkle 0.5s var(--anim-ease); }
+.sidebar button:hover .nav-ic[data-anim="swing"] { animation: navSwing 0.55s var(--anim-ease); }
+.sidebar button:hover .nav-ic[data-anim="tilt"] { animation: navTilt 0.45s var(--anim-ease); }
+.sidebar button:hover .nav-ic[data-anim="pulse"] { animation: navPulse 0.5s var(--anim-ease); }
+.sidebar button:hover .nav-ic[data-anim="flip"] { animation: navFlip 0.55s var(--anim-ease); }
+.sidebar button.active .nav-ic { animation: navIcActive 2.6s ease-in-out infinite; }
+@keyframes navBounce { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-4px); } 70% { transform: translateY(1px); } }
+@keyframes navWiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }
+@keyframes navSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@keyframes navTwinkle { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.3); } }
+@keyframes navSwing { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(14deg); } 75% { transform: rotate(-14deg); } }
+@keyframes navTilt { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-10deg) translateY(-1px); } }
+@keyframes navPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@keyframes navFlip { 0% { transform: rotateY(0); } 100% { transform: rotateY(360deg); } }
+@keyframes navIcActive { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+
+/* (d) Done checkmark: shown in the Task Management status cell
+   for Completed tasks and beside a just-recorded habit. The
+   .done-pop class is added only for the item the user has just
+   marked done (app.js tracks it), so the pop plays once, at the
+   moment of completion — later renders keep the plain mark. */
+.done-mark { display: inline-flex; align-items: center; gap: 5px; color: var(--success); font-weight: 700; white-space: nowrap; }
+.done-mark.done-pop { animation: donePop 0.35s var(--anim-ease); }
+@keyframes donePop { 0% { transform: scale(0.4) rotate(-25deg); opacity: 0; } 60% { transform: scale(1.18) rotate(5deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
 
 /* ---- Reduced motion: the kill-switch. Every animation and
    transition in this file (and Animate.css) collapses to an
