@@ -663,6 +663,65 @@ def main():
                       return icons.length === 30 && anims.size >= 6; }"""))
             check("pins sidebar active icon breathes",
                   page.evaluate("getComputedStyle(document.querySelector('button[data-section=\"overview\"].active .nav-ic')).animationName") == "navIcActive")
+            # Load-time icon stagger: when the dashboard first
+            # opens (login), every sidebar icon plays its own
+            # micro-animation once, staggered down the list with
+            # uneven delays. The stagger fires when the full
+            # sidebar first becomes visible — the sidebar is
+            # hidden until login, so a raw page load shows only
+            # Home + Login. It plays once: the class is removed
+            # when the wave finishes and section switches do
+            # not replay it. On mobile the nav is a closed
+            # drawer at login, so the stagger waits for the
+            # first drawer open.
+            ipage = browser.new_page()
+            ipage.goto(base + "/", timeout=15000)
+            ipage.click("button[data-section='auth']")
+            ipage.fill("#loginUser", "browseruser")
+            ipage.fill("#loginPass", "Browser123")
+            ipage.click("#loginBtn")
+            ipage.wait_for_function("document.getElementById('sidebar').classList.contains('icons-stagger')", timeout=15000)
+            check("icons load stagger class appears on login",
+                  ipage.evaluate("document.getElementById('sidebar').classList.contains('icons-stagger')"))
+            check("icons load stagger delays increase",
+                  ipage.evaluate("""() => {
+                      const icons = [...document.querySelectorAll('.sidebar .nav-ic')];
+                      const delays = icons.map(i => parseFloat(i.style.getPropertyValue('--ic-delay')));
+                      return icons.length === 30 && delays.every(d => !isNaN(d))
+                          && new Set(delays).size === 30
+                          && delays.every((d, j) => j === 0 || d > delays[j - 1]); }"""))
+            # The wave finishes on its own (~2.6s); the class is
+            # removed and a section switch does not replay it.
+            ipage.wait_for_function("!document.getElementById('sidebar').classList.contains('icons-stagger')", timeout=10000)
+            check("icons load stagger finishes once",
+                  not ipage.evaluate("document.getElementById('sidebar').classList.contains('icons-stagger')"))
+            ipage.click("button[data-section='tasks']")
+            ipage.wait_for_function("document.querySelector('section.active')?.id === 'tasks'")
+            ipage.wait_for_timeout(500)
+            check("icons load stagger does not replay on section switch",
+                  not ipage.evaluate("document.getElementById('sidebar').classList.contains('icons-stagger')"))
+            ipage.close()
+            # Mobile: no stagger while the drawer is closed; the
+            # first drawer open plays it.
+            dpage = browser.new_page(viewport={"width": 375, "height": 667})
+            dpage.goto(base + "/", timeout=15000)
+            dpage.evaluate("document.querySelector(\"button[data-section='auth']\").click()")
+            dpage.fill("#loginUser", "browseruser")
+            dpage.fill("#loginPass", "Browser123")
+            dpage.click("#loginBtn")
+            dpage.wait_for_function("document.querySelector('section.active').id === 'overview'", timeout=15000)
+            dpage.wait_for_timeout(500)
+            check("icons mobile no stagger while drawer closed",
+                  not dpage.evaluate("document.getElementById('sidebar').classList.contains('icons-stagger')"))
+            dpage.click("#menuBtn")
+            dpage.wait_for_function("document.getElementById('sidebar').classList.contains('icons-stagger')", timeout=5000)
+            check("icons mobile stagger on first drawer open",
+                  dpage.evaluate("""() => {
+                      const icons = [...document.querySelectorAll('.sidebar .nav-ic')];
+                      const delays = icons.map(i => parseFloat(i.style.getPropertyValue('--ic-delay')));
+                      return document.getElementById('sidebar').classList.contains('icons-stagger')
+                          && icons.length === 30 && delays.every(d => !isNaN(d)); }"""))
+            dpage.close()
             # Done checkmark: completing a fresh task pops a green
             # checkmark into its status cell.
             page.click("button[data-section='tasks']")
@@ -1289,6 +1348,12 @@ def main():
             rpage.fill("#loginPass", "Browser123")
             rpage.click("#loginBtn")
             rpage.wait_for_function("document.querySelector('section.active').id === 'overview'")
+            # Icons: no load stagger under reduced motion — the
+            # class is never added and no per-icon delay is set.
+            rpage.wait_for_timeout(500)
+            check("icons reduced motion no stagger",
+                  not rpage.evaluate("document.getElementById('sidebar').classList.contains('icons-stagger')")
+                  and rpage.evaluate("document.querySelector('.sidebar .nav-ic').style.getPropertyValue('--ic-delay')") == "")
             MockGemini.delay = 2.0
             rpage.click("button[data-section='ai-daily']")
             rpage.wait_for_function("document.querySelector('section.active')?.id === 'ai-daily'")

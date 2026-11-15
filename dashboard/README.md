@@ -379,6 +379,11 @@ What is animated, and how:
   hover, chosen for what the icon means (a gear spins, a star
   twinkles, a clock swings — 8 variants across 30 icons, never one
   identical motion); the active section's icon breathes softly.
+  When the dashboard first opens, all 30 icons play their own
+  motion once, staggered down the list with uneven delays
+  (`playIconStagger`, `.icons-stagger` + per-icon `--ic-delay`);
+  on mobile the wave waits for the first drawer open, since the
+  nav is a closed drawer at login.
 - **Landing hero** — eyebrow, headline, subtext, buttons and note
   arrive one after another.
 - **Loading** — skeleton rows with a slow light sweep while lists
