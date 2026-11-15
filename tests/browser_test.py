@@ -695,6 +695,43 @@ def main():
             ipage.wait_for_function("!document.getElementById('sidebar').classList.contains('icons-stagger')", timeout=10000)
             check("icons load stagger finishes once",
                   not ipage.evaluate("document.getElementById('sidebar').classList.contains('icons-stagger')"))
+            # Continuous idle motion: the same timeout that ends
+            # the wave adds .icons-always, and every icon keeps
+            # moving forever — infinite iteration, its own cycle
+            # length (2.2-4.5s) and its own phase, so the icons
+            # never move in sync. The active icon keeps its
+            # breathe as its continuous motion; hovering an icon
+            # still plays its hover motion (hover wins over idle
+            # and, on the active icon, over the breathe).
+            ipage.wait_for_function("document.getElementById('sidebar').classList.contains('icons-always')", timeout=10000)
+            check("icons continuous class appears after wave",
+                  ipage.evaluate("document.getElementById('sidebar').classList.contains('icons-always')"))
+            check("icons continuous all infinite",
+                  ipage.evaluate("""() => {
+                      const icons = [...document.querySelectorAll('.sidebar .nav-ic')];
+                      return icons.length === 30 && icons.every(i =>
+                          getComputedStyle(i).animationIterationCount === 'infinite'); }"""))
+            check("icons continuous cycles vary",
+                  ipage.evaluate("""() => {
+                      const icons = [...document.querySelectorAll('.sidebar .nav-ic')];
+                      const durs = icons.map(i => parseFloat(getComputedStyle(i).animationDuration));
+                      return icons.length === 30 && new Set(durs).size === 30
+                          && durs.every(d => d >= 2.2 && d <= 4.5); }"""))
+            check("icons continuous phases vary",
+                  ipage.evaluate("""() => {
+                      const icons = [...document.querySelectorAll('.sidebar .nav-ic')];
+                      const delays = icons.map(i => parseFloat(getComputedStyle(i).animationDelay));
+                      return icons.length === 30 && new Set(delays).size === 30; }"""))
+            check("icons continuous idle uses idle keyframes",
+                  ipage.evaluate("getComputedStyle(document.querySelector('button[data-section=\"tasks\"] .nav-ic')).animationName") == "navBounceIdle")
+            check("icons continuous active icon breathes",
+                  ipage.evaluate("getComputedStyle(document.querySelector('button[data-section=\"overview\"].active .nav-ic')).animationName") == "navIcActive")
+            ipage.hover("button[data-section='tasks']")
+            check("icons continuous hover still works",
+                  ipage.evaluate("getComputedStyle(document.querySelector('button[data-section=\"tasks\"] .nav-ic')).animationName") == "navBounce")
+            ipage.hover("button[data-section='overview']")
+            check("icons continuous hover wins on active icon",
+                  ipage.evaluate("getComputedStyle(document.querySelector('button[data-section=\"overview\"].active .nav-ic')).animationName") == "navTilt")
             ipage.click("button[data-section='tasks']")
             ipage.wait_for_function("document.querySelector('section.active')?.id === 'tasks'")
             ipage.wait_for_timeout(500)
@@ -721,6 +758,12 @@ def main():
                       const delays = icons.map(i => parseFloat(i.style.getPropertyValue('--ic-delay')));
                       return document.getElementById('sidebar').classList.contains('icons-stagger')
                           && icons.length === 30 && delays.every(d => !isNaN(d)); }"""))
+            # Mobile: the wave hands over to the continuous idle
+            # motion the same way as on desktop.
+            dpage.wait_for_function("document.getElementById('sidebar').classList.contains('icons-always')", timeout=10000)
+            check("icons mobile continuous after drawer wave",
+                  dpage.evaluate("document.getElementById('sidebar').classList.contains('icons-always')")
+                  and dpage.evaluate("getComputedStyle(document.querySelector('.sidebar .nav-ic')).animationIterationCount") == "infinite")
             dpage.close()
             # Done checkmark: completing a fresh task pops a green
             # checkmark into its status cell.
@@ -1354,6 +1397,11 @@ def main():
             check("icons reduced motion no stagger",
                   not rpage.evaluate("document.getElementById('sidebar').classList.contains('icons-stagger')")
                   and rpage.evaluate("document.querySelector('.sidebar .nav-ic').style.getPropertyValue('--ic-delay')") == "")
+            # Icons: no continuous motion either — the class is
+            # never added and no per-icon cycle is set.
+            check("icons reduced motion no continuous",
+                  not rpage.evaluate("document.getElementById('sidebar').classList.contains('icons-always')")
+                  and rpage.evaluate("document.querySelector('.sidebar .nav-ic').style.getPropertyValue('--ic-cycle')") == "")
             MockGemini.delay = 2.0
             rpage.click("button[data-section='ai-daily']")
             rpage.wait_for_function("document.querySelector('section.active')?.id === 'ai-daily'")
