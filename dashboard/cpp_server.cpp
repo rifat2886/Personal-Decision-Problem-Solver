@@ -43,7 +43,8 @@
 // - Sessions are in-memory random tokens (random_device plus a
 //   counter), never passwords, never written to a file, and never
 //   returned except at login.
-// - Static serving is limited to index.html, style.css, app.js.
+// - Static serving is limited to index.html, style.css, app.js,
+//   animate.min.css (vendored Animate.css, linked in index.html).
 //   Data files (users.txt, etc.) are never served as static files.
 // - Request bodies are capped at 1 MiB; oversized bodies are rejected.
 // - No command execution, no SQL, no user input passed to a shell.
@@ -3737,11 +3738,12 @@ static void serveStatic(SocketFd fd, const string& path) {
     if (path == "/" || path == "/index.html") name = "index.html";
     else if (path == "/style.css") name = "style.css";
     else if (path == "/app.js") name = "app.js";
+    else if (path == "/animate.min.css") name = "animate.min.css";
     else { sendErr(fd, 404, "Not found."); return; }
     ifstream in(joinPath(g_staticDir, name), ios::binary);
     if (!in) { sendErr(fd, 404, "File not found."); return; }
     string body((istreambuf_iterator<char>(in)), istreambuf_iterator<char>());
-    string ctype = name == "index.html" ? "text/html" : name == "style.css" ? "text/css" : "application/javascript";
+    string ctype = name == "index.html" ? "text/html" : (name == "style.css" || name == "animate.min.css") ? "text/css" : "application/javascript";
     sendResponse(fd, 200, ctype, body);
 }
 
