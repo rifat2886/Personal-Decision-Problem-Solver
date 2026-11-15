@@ -279,6 +279,153 @@ def main():
                   "BrowserMaths" not in page.evaluate("document.getElementById('spList').textContent")
                   and "BrowserPhysics" in page.evaluate("document.getElementById('spList').textContent"))
 
+            # Dashboard graphics: seed richer real data, then check
+            # every chart renders from it (never sample data).
+            # Second task, completed: 1 done + 1 pending of 2.
+            page.click("button[data-section='tasks']")
+            page.fill("#taskTitle", "BrowserTask2")
+            page.fill("#taskUrgency", "5")
+            page.fill("#taskImportance", "5")
+            page.fill("#taskDeadline", "2026-11-25")
+            page.click("#taskAddBtn")
+            page.wait_for_function("document.getElementById('taskList').textContent.includes('BrowserTask2')")
+            page.locator("#taskList button.btn-primary").nth(1).click()
+            page.wait_for_function("document.getElementById('taskList').textContent.includes('Completed')")
+            # Transactions: income 5100 total (100 + 5000), expense
+            # 1500 (Food 1200, Transport 300), remaining 3600.
+            page.click("button[data-section='finance']")
+            for typ, cat, amt in [("income", "Salary", "5000"),
+                                  ("expense", "Food", "1200"),
+                                  ("expense", "Transport", "300")]:
+                page.fill("#txDate", "2026-11-15")
+                page.select_option("#txType", typ)
+                page.fill("#txCategory", cat)
+                page.fill("#txAmount", amt)
+                page.fill("#txNote", "Graphics")
+                page.click("#txBtn")
+                page.wait_for_function(f"document.getElementById('txList').textContent.includes('{cat}')")
+            # Savings: add 250 to BrowserGoal -> 250/1000 = 25%.
+            page.click("button[data-section='savings']")
+            page.fill("#svAddName", "BrowserGoal")
+            page.fill("#svAddAmount", "250")
+            page.click("#svAddBtn")
+            page.wait_for_function("document.getElementById('svAddMsg').textContent.includes('250')")
+            # Habits: RingHabit on yesterday and 2 days ago -> 3 of
+            # the last 7 days, streak 3, 3 active days in 30.
+            page.click("button[data-section='habits']")
+            page.fill("#hbName", "RingHabit")
+            page.fill("#hbDate", (date.today() - timedelta(days=1)).isoformat())
+            page.click("#hbBtn")
+            page.wait_for_function("document.getElementById('hbRingCaption').textContent.includes('2 active days')")
+            page.fill("#hbName", "RingHabit")
+            page.fill("#hbDate", (date.today() - timedelta(days=2)).isoformat())
+            page.click("#hbBtn")
+            page.wait_for_function("document.getElementById('hbRingCaption').textContent.includes('3 active days')")
+            # Study: small plan, tick day 1 -> 1/5 (20%) + 3 revisions.
+            page.click("button[data-section='study']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'study'")
+            page.fill("#spSubject", "BrowserArt")
+            page.fill("#spDays", "2")
+            page.fill("#spHours", "1")
+            page.click("#spBtn")
+            page.wait_for_function("document.getElementById('spList').textContent.includes('BrowserArt')")
+            page.locator("#spList .sp-plan", has_text="BrowserArt").locator("input[type=checkbox]").first.check()
+            page.wait_for_function("document.getElementById('spList').textContent.includes('1/5 (20%)')")
+
+            # Overview graphics: donut, task bars, trend.
+            page.click("button[data-section='overview']")
+            page.wait_for_function("document.getElementById('ovDonut').textContent.includes('3600.00')", timeout=10000)
+            page.wait_for_timeout(700)  # chart animations (0.5s) settle
+            ovd = page.evaluate("document.getElementById('ovDonut').textContent")
+            check("graphics donut remaining 3600.00", "3600.00" in ovd, ovd[:200])
+            check("graphics donut spent 29%", "29%" in ovd, ovd[:200])
+            check("graphics donut svg present", page.locator("#ovDonut svg").count() == 1)
+            check("graphics donut tooltip titles", page.locator("#ovDonut title").count() == 2)
+            ovt = page.evaluate("document.getElementById('ovTasks').textContent")
+            check("graphics task bars 1/2 done and pending", ovt.count("1 / 2") == 2, ovt[:200])
+            check("graphics task KPI top score 40", "40" in ovt and "BrowserTask" in ovt, ovt[:200])
+            check("graphics task KPI deadline 2026-11-20", "2026-11-20" in ovt, ovt[:200])
+            check("graphics task bar fill renders",
+                  page.evaluate("document.querySelector('#ovTasks .gx-fill').getBoundingClientRect().width") > 0)
+            check("graphics trend 12 points", page.locator("#ovTrend circle").count() == 12,
+                  str(page.locator("#ovTrend circle").count()))
+            check("graphics trend Nov income title",
+                  "Nov 26: income 5100.00" in page.evaluate("document.getElementById('ovTrend').innerHTML"))
+            check("graphics trend 11 axis labels", page.locator("#ovTrend text").count() == 11,
+                  str(page.locator("#ovTrend text").count()))
+
+            # Expense categories (Budget).
+            page.click("button[data-section='budget']")
+            page.wait_for_function("document.getElementById('budCats').textContent.includes('Food')", timeout=10000)
+            cats = page.evaluate("document.getElementById('budCats').textContent")
+            check("graphics category Food 80%", "Food" in cats and "80%" in cats, cats[:200])
+            check("graphics category Transport 20%", "Transport" in cats and "20%" in cats, cats[:200])
+            check("graphics category bars 2", page.locator("#budCats .gx-bar-row").count() == 2)
+            check("graphics category tooltips", page.locator("#budCats [data-tip]").count() == 2)
+
+            # Habit week bars + heatmap.
+            page.click("button[data-section='habits']")
+            page.wait_for_function("document.getElementById('hbWeek').textContent.includes('3 / 7 days')", timeout=10000)
+            check("graphics week 7 bars", page.locator("#hbWeek .gx-week .col").count() == 7)
+            check("graphics week 3/7 days", "3 / 7 days" in page.evaluate("document.getElementById('hbWeek').textContent"))
+            check("graphics week streak 3", "streak: 3 day(s)" in page.evaluate("document.getElementById('hbWeek').textContent"))
+            check("graphics heatmap 30 cells", page.locator("#hbHeat .gx-heat-cell").count() == 30)
+            check("graphics heatmap 3 done", page.locator("#hbHeat .gx-heat-cell.on").count() == 3)
+            check("graphics heatmap tooltips", page.locator("#hbHeat [data-tip]").count() == 30)
+
+            # Savings ring.
+            page.click("button[data-section='savings']")
+            page.wait_for_function("document.getElementById('svRings').textContent.includes('25%')", timeout=10000)
+            check("graphics savings ring 25%",
+                  page.evaluate("document.querySelector('#svRings .gx-ring-item').dataset.pct") == "25")
+            check("graphics savings ring goal name",
+                  "BrowserGoal" in page.evaluate("document.getElementById('svRings').textContent"))
+
+            # Study progress bar + timeline.
+            page.click("button[data-section='study']")
+            page.wait_for_function("document.getElementById('spList').textContent.includes('1/5 (20%)')", timeout=10000)
+            page.wait_for_timeout(700)
+            check("graphics study progress bars 2", page.locator("#spList .gx-progress").count() == 2)
+            check("graphics study progress bar 20%",
+                  page.evaluate("""() => {
+                      const plans = [...document.querySelectorAll('#spList .sp-plan')];
+                      const art = plans.find(p => p.textContent.includes('BrowserArt'));
+                      return art ? art.querySelector('.gx-progress > div').style.width : ''; }""") == "20%")
+            check("graphics study timeline 10 cells", page.locator("#spList .gx-timeline .cell").count() == 10,
+                  str(page.locator("#spList .gx-timeline .cell").count()))
+            check("graphics study timeline 1 done", page.locator("#spList .gx-timeline .cell.done").count() == 1)
+            check("graphics study timeline 3 revision", page.locator("#spList .gx-timeline .cell.rev").count() == 3)
+            check("graphics study timeline today cell", page.locator("#spList .gx-timeline .cell.today").count() >= 1)
+
+            # Graphics empty states: a fresh user with no data at all.
+            epage = browser.new_page()
+            epage.goto(base + "/", timeout=15000)
+            epage.click("button[data-section='auth']")
+            epage.fill("#regUser", "emptyuser")
+            epage.fill("#regPass", "Empty1234")
+            epage.fill("#regPassConfirm", "Empty1234")
+            epage.click("#regBtn")
+            epage.wait_for_function("document.querySelector('#regMsg').textContent.includes('Registered')")
+            epage.fill("#loginUser", "emptyuser")
+            epage.fill("#loginPass", "Empty1234")
+            epage.click("#loginBtn")
+            epage.wait_for_function("document.querySelector('section.active').id === 'overview'")
+            epage.wait_for_function("document.getElementById('ovDonut').textContent.length > 0", timeout=10000)
+            check("graphics empty donut", "No transactions yet" in epage.evaluate("document.getElementById('ovDonut').textContent"))
+            check("graphics empty task bars", "No tasks yet" in epage.evaluate("document.getElementById('ovTasks').textContent"))
+            check("graphics empty trend", "No transactions in the last 6 months" in epage.evaluate("document.getElementById('ovTrend').textContent"))
+            epage.click("button[data-section='budget']")
+            epage.wait_for_function("document.getElementById('budCats').textContent.length > 0", timeout=10000)
+            check("graphics empty categories", "No expenses yet" in epage.evaluate("document.getElementById('budCats').textContent"))
+            epage.click("button[data-section='savings']")
+            epage.wait_for_function("document.getElementById('svRings').textContent.length > 0", timeout=10000)
+            check("graphics empty savings rings", "No savings goals yet" in epage.evaluate("document.getElementById('svRings').textContent"))
+            epage.click("button[data-section='habits']")
+            epage.wait_for_function("document.getElementById('hbWeek').textContent.includes('0 / 7 days')", timeout=10000)
+            check("graphics empty week 0/7", "0 / 7 days" in epage.evaluate("document.getElementById('hbWeek').textContent"))
+            check("graphics empty heatmap 30 cells", epage.locator("#hbHeat .gx-heat-cell").count() == 30)
+            epage.close()
+
             # AI Daily Decision (Phase 3.1): client-side validation,
             # mock-Gemini success, newline sanitization, 503 and 400.
             page.click("button[data-section='ai-daily']")
@@ -753,8 +900,10 @@ def main():
             page.select_option("#aiHistoryFilter", "all")
             page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 11")
             check("ai-history filter all shows 11", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 11)
-            # Delete one entry via the UI (confirm dialog auto-accepted).
-            page.on("dialog", lambda d: d.accept())
+            # Delete one entry via the UI (confirm dialog auto-accepted
+            # by the handler registered before the study-plan delete
+            # above — registering a second one made Playwright raise
+            # "Cannot accept dialog which is already handled").
             page.locator(".ai-history-entry .btn-danger").first.click()
             page.wait_for_function("document.querySelectorAll('.ai-history-entry').length === 10")
             check("ai-history delete removes entry", page.evaluate("document.querySelectorAll('.ai-history-entry').length") == 10)

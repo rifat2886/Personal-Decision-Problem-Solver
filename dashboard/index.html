@@ -150,6 +150,21 @@
       </div>
     </div>
     <div class="grid cards" id="overviewCards"></div>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Budget donut (real totals)</h3>
+        <div id="ovDonut"></div>
+      </div>
+      <div class="card">
+        <h3>Task status</h3>
+        <div id="ovTasks"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Monthly trend — last 6 months</h3>
+      <div id="ovTrend"></div>
+      <p class="muted">Income vs expenses from your saved transactions. Months with no transactions show 0.</p>
+    </div>
     <div class="card">
       <h3>Finance chart (real totals)</h3>
       <div id="ovChart"></div>
@@ -285,6 +300,10 @@
       <button class="btn btn-primary" id="budBtn">Decide</button>
       <div id="budMsg"></div>
     </div>
+    <div class="card">
+      <h3>Expense by category (from your transactions)</h3>
+      <div id="budCats"></div>
+    </div>
   </section>
 
   <section id="finance">
@@ -322,6 +341,7 @@
       <button class="btn btn-primary" id="svAddBtn">Add savings</button>
       <div id="svAddMsg"></div>
     </div>
+    <div class="card"><div id="svRings"></div></div>
     <div class="card"><div id="svList"></div></div>
     <div class="card">
       <h3>Savings Goal Calculator (menu 39)</h3>
@@ -385,6 +405,15 @@
         <div class="ring-center"><span id="hbRingPct">0%</span></div>
       </div>
       <p class="muted ring-caption" id="hbRingCaption">No habit records yet.</p>
+    </div>
+    <div class="card">
+      <h3>Last 7 days</h3>
+      <div id="hbWeek"></div>
+    </div>
+    <div class="card">
+      <h3>Last 30 days — activity</h3>
+      <div id="hbHeat"></div>
+      <p class="muted">One square per day, oldest first. A filled square means at least one habit was completed that day.</p>
     </div>
     <div class="card">
       <label>Habit name <input id="hbName"></label>

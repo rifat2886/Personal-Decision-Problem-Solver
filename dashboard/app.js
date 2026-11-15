@@ -180,6 +180,7 @@ function showSection(name) {
   if (name === "taskstatus") loadStatusList();
   if (name === "deadlines") loadDeadlines();
   if (name === "finance") loadTransactions();
+  if (name === "budget") loadBudgetCategories();
   if (name === "study") loadStudyPlans();
   if (name === "savings") loadSavings();
   if (name === "habits") loadHabits();
@@ -318,6 +319,16 @@ async function loadOverview() {
       { label: "Expense", value: o.expense, cls: "expense" },
       { label: "Savings saved", value: o.savingsSaved, cls: "savings" }],
       Math.max(o.income, o.expense, o.savingsSaved, 1));
+    // Dashboard graphics: donut, task bars and trend from the same
+    // real data (tasks + transactions fetched once here).
+    const ovTasks = await api("/api/tasks");
+    const ovTxs = await api("/api/transactions");
+    const ovIncome = ovTxs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
+    const ovExpense = ovTxs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+    el("ovDonut").innerHTML = gxDonutHtml(ovIncome, ovExpense);
+    el("ovTasks").innerHTML = gxTaskBarsHtml(ovTasks);
+    el("ovTrend").innerHTML = gxTrendHtml(ovTxs);
+    gxAnimateIn(el("ovDonut")); gxAnimateIn(el("ovTasks")); gxAnimateIn(el("ovTrend"));
     const decisions = await api("/api/decisions");
     el("overviewDecisions").innerHTML = decisions.length ? "<table><tr><th>ID</th><th>Date</th><th>Type</th><th>Priority</th><th>Title</th><th></th></tr>" +
       decisions.slice(-20).reverse().map(d =>
@@ -1216,6 +1227,15 @@ el("prBtn").addEventListener("click", async () => {
 });
 
 // -- budget ---------------------------------------------------------
+// Expense-by-category bars (Budget section): from the user's real
+// transactions, re-rendered whenever the section opens.
+async function loadBudgetCategories() {
+  try {
+    const txs = await api("/api/transactions");
+    el("budCats").innerHTML = gxCategoryBarsHtml(txs);
+    gxAnimateIn(el("budCats"));
+  } catch (e) { showMsg("globalMsg", e.message, false); }
+}
 el("budBtn").addEventListener("click", async () => {
   try {
     const r = await api("/api/budget?income=" + encodeURIComponent(el("budIncome").value) +
@@ -1295,6 +1315,8 @@ async function loadSavings() {
     el("svList").innerHTML = goals.length ? "<table><tr><th>Goal</th><th>Target</th><th>Saved</th><th>Remaining</th><th></th></tr>" +
       goals.map(g => `<tr><td>${esc(g.name)}</td><td>${g.target}</td><td>${g.saved}</td><td>${(g.target - g.saved).toFixed(2)}</td><td><button class="btn btn-secondary" onclick="editGoal(${g.id})">Edit</button></td></tr>`).join("") + "</table>"
       : "<div class='empty'>No savings goals yet.</div>";
+    el("svRings").innerHTML = gxSavingsRingsHtml(goals);
+    gxAnimateIn(el("svRings"));
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
 function editGoal(id) {
@@ -1373,6 +1395,14 @@ async function loadHabits() {
     el("hbRingCaption").textContent = habits.length
       ? active.size + " active day" + (active.size === 1 ? "" : "s") + " in the last 30 days"
       : "No habit records yet — mark a habit done to start your ring.";
+    // Dashboard graphics: 7-day bars + 30-day heatmap from the same
+    // active-day set. The streak uses the full log (allDates), not
+    // the 30-day window, so a streak longer than 30 days is honest.
+    const allDates = new Set();
+    habits.forEach(h => h.dates.forEach(d => allDates.add(d)));
+    el("hbWeek").innerHTML = gxWeekHtml(active, allDates);
+    el("hbHeat").innerHTML = gxHeatHtml(active);
+    gxAnimateIn(el("hbWeek"));
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
 el("hbBtn").addEventListener("click", async () => {
@@ -1498,10 +1528,12 @@ async function loadStudyPlans() {
       }).join("");
       return `<div class="sp-plan"><h3>${esc(p.subject)}</h3>` +
         `<p>${esc(first)} &ndash; ${esc(last)} &middot; ${p.hoursPerDay} hour(s)/day &middot; Progress: ${p.doneDays}/${p.totalDays} (${p.progressPct}%)</p>` +
+        gxStudyProgressHtml(p) +
         exam +
         `<table><tr><th>Done</th><th>Date</th><th>Day</th><th>Topic</th><th>Hours</th></tr>${rows}</table>` +
         `<div class="actions"><button class="btn btn-danger" onclick="deleteStudyPlan(${p.id})">Delete plan</button></div></div>`;
     }).join("");
+    gxAnimateIn(el("spList"));
   } catch (e) { showMsg("spMsg", e.message, false); }
 }
 async function tickStudyDay(planId, dayId, done) {
@@ -1612,6 +1644,177 @@ el("heroRegBtn").addEventListener("click", () => showSection("auth"));
 function chartHtml(rows, max) {
   if (!rows.length) return "<div class='empty'>No data yet.</div>";
   return rows.map(r => `<div class="chart-bar"><span class="label">${esc(r.label)}</span><span class="bar ${r.cls || ""}" style="width:${max > 0 ? Math.round(r.value / max * 100) : 0}%"></span><span class="value">${r.value.toFixed(2)}</span></div>`).join("");
+}
+
+// -- dashboard graphics (real data only, pure SVG/CSS, no library) --
+// Every gx* helper renders from data the section loaders already
+// fetched — never sample or hard-coded values. Empty data renders
+// an .empty message, never a broken chart (a zero-income budget is
+// 0%, a missing target is 0%). Animated elements render at 0 and
+// animate to their real value on the next frame: gxAnimateIn
+// applies the target values stored in data-* attributes, and the
+// CSS transitions (0.5s) do the animation. Tooltips are pure CSS
+// ([data-tip]) on HTML elements and native <title> inside SVG.
+function gxDateKey(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function gxAnimateIn(root) {
+  if (!root) return;
+  requestAnimationFrame(() => {
+    root.querySelectorAll(".gx-fill[data-w]").forEach(b => { b.style.width = b.dataset.w + "%"; });
+    root.querySelectorAll(".gx-progress > div[data-w]").forEach(b => { b.style.width = b.dataset.w + "%"; });
+    root.querySelectorAll(".gx-week .b[data-h]").forEach(b => { b.style.height = b.dataset.h + "%"; });
+    root.querySelectorAll(".gx-donut-spent[data-len]").forEach(c => { c.setAttribute("stroke-dasharray", c.dataset.len + " 339.29"); });
+    root.querySelectorAll(".gx-donut-left[data-len]").forEach(c => {
+      c.setAttribute("stroke-dasharray", c.dataset.len + " 339.29");
+      c.setAttribute("stroke-dashoffset", c.dataset.off);
+    });
+    root.querySelectorAll(".ring-fill[data-off]").forEach(c => { c.style.strokeDashoffset = c.dataset.off; });
+  });
+}
+// Consecutive-day streak across ALL of the user's habits, from the
+// full log (not the 30-day window): walk back from today, or from
+// yesterday when today has no completion yet.
+function gxStreak(allDates) {
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  if (!allDates.has(gxDateKey(d))) d.setDate(d.getDate() - 1);
+  let s = 0;
+  while (allDates.has(gxDateKey(d))) { s++; d.setDate(d.getDate() - 1); }
+  return s;
+}
+// Budget donut (Overview): spent vs remaining of total income.
+// r=54, circumference 339.29. Overspend fills the whole ring pink
+// and the negative remaining shows in red.
+function gxDonutHtml(income, expense) {
+  if (income <= 0 && expense <= 0) return "<div class='empty'>No transactions yet. Add one from Income / Expense.</div>";
+  const C = 2 * Math.PI * 54;
+  const remaining = income - expense;
+  const spentFrac = income > 0 ? Math.min(expense / income, 1) : 1;
+  const spentLen = (C * spentFrac).toFixed(2);
+  const leftLen = (C - C * spentFrac).toFixed(2);
+  const spentPct = income > 0 ? Math.min(Math.round(expense / income * 100), 100) : 100;
+  const leftPct = Math.max(0, 100 - spentPct);
+  const neg = remaining < 0 ? " style=\"fill:var(--danger)\"" : "";
+  return `<div class="gx-donut-row gx-fade"><svg class="gx-donut" width="140" height="140" viewBox="0 0 140 140" role="img" aria-label="Budget donut: spent ${spentPct}% of income"><g transform="rotate(-90 70 70)"><circle class="gx-donut-track" cx="70" cy="70" r="54" /><circle class="gx-donut-spent" cx="70" cy="70" r="54" stroke-dasharray="0 339.29" data-len="${spentLen}"><title>Spent: ${expense.toFixed(2)} (${spentPct}%)</title></circle><circle class="gx-donut-left" cx="70" cy="70" r="54" stroke-dasharray="0 339.29" data-len="${leftLen}" data-off="${(-C * spentFrac).toFixed(2)}"><title>Remaining: ${remaining.toFixed(2)} (${leftPct}%)</title></circle></g><text x="70" y="66" text-anchor="middle" font-size="18" class="gx-donut-center"${neg}>${remaining.toFixed(2)}</text><text x="70" y="86" text-anchor="middle" font-size="12" class="gx-donut-sub">remaining</text></svg><div><div class="gx-big">${income.toFixed(2)}</div><div class="muted">total income</div><ul class="gx-legend"><li data-tip="Spent: ${expense.toFixed(2)}"><span class="gx-dot spent"></span>Spent: ${expense.toFixed(2)} (${spentPct}%)</li><li data-tip="Remaining: ${remaining.toFixed(2)}"><span class="gx-dot left"></span>Remaining: ${remaining.toFixed(2)} (${leftPct}%)</li></ul></div></div>`;
+}
+// Task status bars (Overview): done vs pending, plus KPI tiles for
+// the top-scoring task and the nearest open deadline.
+function gxTaskBarsHtml(tasks) {
+  if (!tasks.length) return "<div class='empty'>No tasks yet. Add your first task from Task Management.</div>";
+  const done = tasks.filter(t => t.status === "Completed").length;
+  const pending = tasks.length - done;
+  const donePct = Math.round(done / tasks.length * 100);
+  const pendPct = 100 - donePct;
+  let top = null;
+  tasks.forEach(t => { if (!top || t.score > top.score) top = t; });
+  const dated = tasks.filter(t => t.deadline && t.status !== "Completed").sort((a, b) => a.deadline.localeCompare(b.deadline));
+  const next = dated.length ? dated[0] : null;
+  return `<div class="gx-fade"><div class="gx-bar-row" data-tip="Completed: ${done} of ${tasks.length} tasks"><span class="lbl">Done</span><span class="gx-track"><span class="gx-fill green" data-w="${donePct}" style="width:0%"></span></span><span class="val">${done} / ${tasks.length}</span></div><div class="gx-bar-row" data-tip="Pending: ${pending} of ${tasks.length} tasks"><span class="lbl">Pending</span><span class="gx-track"><span class="gx-fill amber" data-w="${pendPct}" style="width:0%"></span></span><span class="val">${pending} / ${tasks.length}</span></div><div class="gx-kpi-row"><div class="gx-kpi"><div class="n">${top.score}</div><div class="l">Top score — ${esc(top.title)}</div></div><div class="gx-kpi"><div class="n">${next ? esc(next.deadline) : "—"}</div><div class="l">${next ? "Nearest deadline — " + esc(next.title) : "No upcoming deadline"}</div></div></div></div>`;
+}
+// Monthly trend (Overview): income vs expense lines over the last
+// 6 calendar months, months with no data at 0. Pure SVG, viewBox
+// 0 0 600 240, plot area x 48..576, y 16..196.
+function gxTrendHtml(txs) {
+  const now = new Date();
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ key: d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"),
+      label: d.toLocaleString("en-US", { month: "short" }) + " " + String(d.getFullYear()).slice(2) });
+  }
+  const sums = {};
+  months.forEach(m => { sums[m.key] = { income: 0, expense: 0 }; });
+  let any = false;
+  txs.forEach(t => {
+    const k = (t.date || "").slice(0, 7);
+    if (sums[k]) { any = true; if (t.type === "income") sums[k].income += t.amount; else sums[k].expense += t.amount; }
+  });
+  if (!any) return "<div class='empty'>No transactions in the last 6 months.</div>";
+  const max = Math.max(1, ...months.map(m => Math.max(sums[m.key].income, sums[m.key].expense)));
+  const x = i => 48 + i * 105.6;
+  const y = v => 196 - (v / max) * 180;
+  const pts = months.map((m, i) => ({ xi: x(i), yi: y(sums[m.key].income), ye: y(sums[m.key].expense) }));
+  const line = key => pts.map(p => p.xi + "," + p[key]).join(" ");
+  const area = key => `M48,196 L${line(key)} L576,196 Z`;
+  let grid = "";
+  [0, 0.25, 0.5, 0.75, 1].forEach(f => {
+    grid += `<line class="gridline" x1="48" y1="${y(max * f)}" x2="576" y2="${y(max * f)}" /><text x="44" y="${y(max * f) + 4}" text-anchor="end">${(max * f).toFixed(0)}</text>`;
+  });
+  let labels = "";
+  months.forEach((m, i) => { labels += `<text x="${x(i)}" y="216" text-anchor="middle">${esc(m.label)}</text>`; });
+  let dots = "";
+  months.forEach((m, i) => {
+    dots += `<circle class="pt-inc" cx="${x(i)}" cy="${y(sums[m.key].income)}" r="4"><title>${esc(m.label)}: income ${sums[m.key].income.toFixed(2)}</title></circle>`;
+    dots += `<circle class="pt-exp" cx="${x(i)}" cy="${y(sums[m.key].expense)}" r="4"><title>${esc(m.label)}: expense ${sums[m.key].expense.toFixed(2)}</title></circle>`;
+  });
+  return `<div class="gx-fade"><svg class="gx-trend" viewBox="0 0 600 240" role="img" aria-label="Monthly income vs expense trend, last 6 months">${grid}${labels}<path class="area-inc" d="${area("yi")}" /><path class="area-exp" d="${area("ye")}" /><polyline class="line-inc" points="${line("yi")}" /><polyline class="line-exp" points="${line("ye")}" />${dots}</svg><ul class="gx-legend"><li><span class="gx-dot inc"></span>Income</li><li><span class="gx-dot exp"></span>Expense</li></ul></div>`;
+}
+// Expense by category (Budget): one horizontal bar per category,
+// sorted by amount, % of total spending.
+function gxCategoryBarsHtml(txs) {
+  const byCat = {};
+  let total = 0;
+  txs.forEach(t => {
+    if (t.type !== "expense") return;
+    total += t.amount;
+    byCat[t.category] = (byCat[t.category] || 0) + t.amount;
+  });
+  if (total <= 0) return "<div class='empty'>No expenses yet. Add one from Income / Expense.</div>";
+  const cats = Object.keys(byCat).sort((a, b) => byCat[b] - byCat[a]);
+  return `<div class="gx-fade">` + cats.map(c => {
+    const pct = Math.round(byCat[c] / total * 100);
+    return `<div class="gx-bar-row" data-tip="${esc(c)}: ${byCat[c].toFixed(2)} (${pct}% of spending)"><span class="lbl">${esc(c)}</span><span class="gx-track"><span class="gx-fill" data-w="${pct}" style="width:0%"></span></span><span class="val">${byCat[c].toFixed(2)} · ${pct}%</span></div>`;
+  }).join("") + `</div>`;
+}
+// 7-day habit bars (Habit Tracker): one bar per day in the last 7
+// days, from the same active-day set as the 30-day ring.
+function gxWeekHtml(active, allDates) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const key = gxDateKey(d);
+    days.push({ key, label: d.toLocaleString("en-US", { weekday: "short" }), done: active.has(key) });
+  }
+  const doneCount = days.filter(d => d.done).length;
+  const cols = days.map(d => `<div class="col"><div class="b${d.done ? "" : " off"}" data-h="${d.done ? 78 : 18}" style="height:0%" data-tip="${d.key}: ${d.done ? "done" : "no record"}"></div><span class="d">${d.label}</span></div>`).join("");
+  return `<div class="gx-fade"><div class="gx-week">${cols}</div><p style="margin:12px 0 0"><span class="gx-pill">${doneCount} / 7 days</span> <span class="muted">· current streak: ${gxStreak(allDates)} day(s)</span></p></div>`;
+}
+// 30-day heatmap (Habit Tracker): GitHub-style grid, 7 per row,
+// oldest first, from the same active-day set as the ring.
+function gxHeatHtml(active) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let cells = "";
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const key = gxDateKey(d);
+    cells += `<div class="gx-heat-cell${active.has(key) ? " on" : ""}${i === 0 ? " today" : ""}" data-tip="${key}: ${active.has(key) ? "done" : "no record"}"></div>`;
+  }
+  return `<div class="gx-heat gx-fade">${cells}</div><p class="muted" style="margin:10px 0 0">${active.size} active day${active.size === 1 ? "" : "s"} in the last 30 days${active.size ? "" : " — mark a habit done to start"}.</p>`;
+}
+// Per-goal savings rings (Savings): saved/target %, same ring
+// pattern as the habit ring (r=40, circumference 251.33). The
+// centre shows the true % (over 100% when saved exceeds target);
+// the ring fill itself caps at 100%.
+function gxSavingsRingsHtml(goals) {
+  if (!goals.length) return "<div class='empty'>No savings goals yet.</div>";
+  return `<div class="gx-rings gx-fade">` + goals.map(g => {
+    const pct = g.target > 0 ? Math.round(g.saved / g.target * 100) : 0;
+    const off = (2 * Math.PI * 40 * (1 - Math.min(pct, 100) / 100)).toFixed(2);
+    return `<div class="gx-ring-item" data-goal="${esc(g.name)}" data-pct="${pct}"><div class="gx-ring-sm"><svg viewBox="0 0 96 96" role="img" aria-label="Savings ring for ${esc(g.name)}: ${pct}%"><defs><linearGradient id="svGrad${g.id}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" class="ring-stop-a" /><stop offset="100%" class="ring-stop-b" /></linearGradient></defs><circle class="ring-track" cx="48" cy="48" r="40" /><circle class="ring-fill" cx="48" cy="48" r="40" style="stroke: url(#svGrad${g.id})" data-off="${off}" /></svg><div class="ring-center"><span>${pct}%</span></div></div><div><div><b>${esc(g.name)}</b></div><div class="muted">${g.saved.toFixed(2)} / ${g.target.toFixed(2)} saved</div></div></div>`;
+  }).join("") + `</div>`;
+}
+// Study plan progress bar + day timeline strip (Study Planner):
+// one cell per schedule day — done (filled), revision (pink
+// border), today (outline). Rendered inside loadStudyPlans.
+function gxStudyProgressHtml(p) {
+  const todayKey = gxDateKey(new Date());
+  const cells = p.schedule.map(d => {
+    const label = d.kind === "revision" ? "Revision" : ("Day " + d.dayIndex);
+    const cls = "cell" + (d.done ? " done" : "") + (d.kind === "revision" ? " rev" : "") + (d.date === todayKey ? " today" : "");
+    return `<div class="${cls}" data-tip="${esc(d.date)} · ${label} · ${esc(d.topic)} · ${d.done ? "done" : "not done"}"></div>`;
+  }).join("");
+  return `<div class="gx-progress"><div data-w="${p.progressPct}" style="width:0%"></div></div><div class="gx-timeline">${cells}</div>`;
 }
 async function loadAnalytics() {
   try {
