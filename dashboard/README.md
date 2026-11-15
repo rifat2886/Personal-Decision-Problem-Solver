@@ -331,3 +331,66 @@ This round added the dashboard/API coverage that was missing before:
 Console lock fixes in this round (no data-format changes): registration and password change now hold the users.txt lock for the whole flow, and the daily summary append holds the daily_report.txt lock. The C++ server change-password endpoint already locked users.txt.
 
 Known minor inconsistencies (not hidden): the C++ server writes decision records with today's date while the console writes "-"; both are valid in the id|date|type|priority|title format and Search/Filter/Sort read both. The Python fallback writes transaction amounts as e.g. 5000.0 where the C++ server writes 5000; both parse to the same amount. The Python fallback still does not join the flock/LockFileEx protocol, so the no-corruption guarantee applies to the C++ server + console, not to concurrent Python-server + console use.
+
+## Dashboard animations (Animate.css, vendored)
+
+The dashboard's motion comes from **Animate.css 4.1.1**
+(`animate-css/animate.css`, ~83,000 GitHub stars — the most-starred
+animation repo), vendored as `dashboard/animate.min.css` and linked
+from `index.html` with a local relative path. There is no CDN: the
+file is served from this repo, so the dashboard works offline on
+localhost, per the standing no-CDN rule. License: Hippocratic
+License 2.1 (see the header comment in the file for the source URL
+and commit).
+
+What is animated, and how:
+
+- **Section switching** — a short fade + small rise (0.38s,
+  `animSectionIn` in `style.css`); the animation restarts on every
+  navigation because `display:none` takes the section out of the
+  render tree.
+- **Cards** — staggered rise-in with deliberately uneven delays
+  (`ANIM_DELAYS` in `app.js`: 0, 70, 130, 210, 280, 360, 420,
+  500ms), applied by `staggerCards` on every section switch and at
+  render time for the Overview stat cards.
+- **List rows** — opacity-only staggered fade (`anim-row`; table
+  rows cannot be transformed in most browsers).
+- **Buttons** — hover lift, press scale (0.97), and a 0.45s pulse
+  on primary-button clicks (`animate__pulse`, one delegated
+  listener in `app.js`).
+- **Messages** — success slides in; errors shake (`animate__shakeX`).
+  A failed login or registration also shakes the auth card.
+- **AI replies** — typing effect (`typeInto` in `app.js`): the
+  reply appears in word-sized chunks over ~2s with a blinking
+  caret; the final text is byte-identical to the server reply
+  (line breaks included). While the call is in flight, three
+  bouncing dots say "AI is thinking…".
+- **Numbers** — count-up (~750ms, ease-out cubic) on the Overview
+  stat values, the budget donut centre, the top-score KPI tile,
+  the savings ring centres and the habit ring % (from its previous
+  value). Mark a habit and the % rises with a `heartBeat` on the ring.
+- **Savings goal at 100%+** — the ring pulses twice and a
+  "Goal reached!" badge appears.
+- **Sidebar** — the active item's accent bar grows from the middle
+  of the button's left edge; hovering a button slides it 3px right.
+- **Landing hero** — eyebrow, headline, subtext, buttons and note
+  arrive one after another.
+- **Loading** — skeleton rows with a slow light sweep while lists
+  load (replacing the old "Loading…" text in the six list loaders).
+
+Entrances use small hand-tuned keyframes in `style.css`, not
+Animate.css's `fadeInUp`, because that class slides a full element
+height — far too much for a whole section or card. Animate.css
+supplies the punchy moments only: shake, pulse, heartBeat, fadeIn.
+
+**Accessibility:** everything honors `prefers-reduced-motion` —
+the CSS kill-switch at the end of `style.css` collapses every
+animation and transition to an instant snap, and the JS helpers
+(`typeInto`, `countUp`, `replayAnim`) check `matchMedia` directly
+and skip the animation. The browser tests cover this with a
+reduced-motion page.
+
+**Deliberately not done:** the delete confirmations use the native
+`window.confirm()` dialog, which cannot be animated. Replacing it
+with a custom zoom-in modal would change four delete flows and
+their tests, so it was left out of this batch.

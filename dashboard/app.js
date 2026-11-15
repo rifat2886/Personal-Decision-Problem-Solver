@@ -29,14 +29,157 @@ function showMsg(id, text, ok) {
   const box = el(id);
   if (!box) return;
   const cls = ok ? "msg-ok" : "msg-err";
-  if (id === "globalMsg") { box.innerHTML = `<div class="msg ${cls}"></div>`; box.firstChild.textContent = text; return; }
+  if (id === "globalMsg") { box.innerHTML = `<div class="msg ${cls}"></div>`; box.firstChild.textContent = text; replayAnim(box.firstChild, "animate__fadeIn", 350); return; }
   box.className = "msg " + cls;
   box.textContent = text;
+  // Success slides in; errors shake instead — only one animation
+  // at a time, because two animations both driving `transform`
+  // would fight and the shake would lose. The slide-in class is
+  // re-applied fresh each time (replay pattern) so repeat
+  // messages animate again.
+  if (ok) {
+    box.classList.remove("anim-msg-in");
+    void box.offsetWidth;
+    box.classList.add("anim-msg-in");
+  } else {
+    replayAnim(box, "animate__shakeX", 500);
+  }
 }
 
 function clearMsg(id) {
   const box = el(id);
   if (box) { box.className = ""; box.textContent = ""; box.innerHTML = ""; }
+}
+
+// -- motion (dashboard animations) ----------------------------------
+// Animate.css 4.1.1 is vendored as dashboard/animate.min.css and
+// linked in index.html (never a CDN). The helpers below wire it
+// up, plus the hand-tuned JS effects (typing, count-up). Every
+// helper checks REDUCED_MOTION first: with the OS "reduce
+// motion" setting on, nothing animates — content appears at its
+// final state at once. The CSS kill-switch in style.css covers
+// the stylesheet side of the same promise.
+// Delays are deliberately uneven (0, 70, 130, 210, 280, 360, 420,
+// 500ms): a fixed 50ms step looks machine-made; varied gaps read
+// as a hand dealing cards.
+const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const ANIM_DELAYS = [0, 70, 130, 210, 280, 360, 420, 500];
+
+// Restart one Animate.css animation on an element: remove the
+// classes, force a reflow, add them back. The classes are left in
+// place afterwards (a finished animation has no visual effect),
+// which also keeps the applied animation observable for tests.
+// ms overrides the library's 1s default via its own CSS variable.
+function replayAnim(elm, cls, ms) {
+  if (!elm || REDUCED_MOTION) return;
+  elm.classList.remove("animate__animated", cls);
+  void elm.offsetWidth; // reflow: restarting the same animation
+  if (ms) elm.style.setProperty("--animate-duration", (ms / 1000) + "s");
+  elm.classList.add("animate__animated", cls);
+}
+
+// Stagger a section's cards: first 8 cards get anim-card with
+// varied delays; later cards animate with no delay. Called from
+// showSection on every navigation (the animation restarts because
+// display:none took the section out of the render tree). The
+// classes are applied even under reduced motion — the CSS
+// kill-switch collapses them to an instant snap, which is the
+// behaviour the browser test checks.
+function staggerCards(section) {
+  if (!section) return;
+  section.querySelectorAll(".card").forEach((card, i) => {
+    card.classList.add("anim-card");
+    card.style.setProperty("--anim-delay", (i < ANIM_DELAYS.length ? ANIM_DELAYS[i] : 0) + "ms");
+  });
+}
+
+// Stagger list rows (table rows or history entries): opacity-only
+// fade, first 10 rows staggered, the rest plain. Called after a
+// list renders. Table rows cannot be transformed, so anim-row is
+// opacity-only by design (see style.css). As with staggerCards,
+// the classes are applied even under reduced motion and the CSS
+// kill-switch collapses them.
+function staggerRows(container, selector) {
+  if (!container) return;
+  container.querySelectorAll(selector).forEach((row, i) => {
+    if (i >= 10) return;
+    row.classList.add("anim-row");
+    row.style.setProperty("--anim-delay", ANIM_DELAYS[i % ANIM_DELAYS.length] + "ms");
+  });
+}
+
+// AI reply typing: reveal the text in word-sized chunks so it
+// reads like someone typing, not a wall appearing at once. The
+// split keeps each chunk's trailing whitespace attached, so the
+// final textContent is byte-identical to the reply (line breaks
+// included). Long replies type faster (bigger chunks) so the
+// whole effect finishes in about 2 seconds. The blinking caret
+// comes from the .typing class in style.css. Reduced motion:
+// the full text appears at once, no caret.
+function stopTyping(elm) {
+  if (elm && elm._pdpsTypeTimer) { clearInterval(elm._pdpsTypeTimer); elm._pdpsTypeTimer = null; }
+  if (elm) elm.classList.remove("typing");
+}
+function typeInto(elm, text) {
+  if (!elm) return;
+  stopTyping(elm);
+  const full = String(text || "");
+  if (REDUCED_MOTION || !full) { elm.textContent = full; return; }
+  const chunks = full.split(/(?<=\s)/);
+  const perTick = Math.max(1, Math.ceil(chunks.length / 120));
+  let shown = 0;
+  elm.textContent = "";
+  elm.classList.add("typing");
+  elm._pdpsTypeTimer = setInterval(() => {
+    shown += perTick;
+    if (shown >= chunks.length) {
+      stopTyping(elm);
+      elm.textContent = full;
+      return;
+    }
+    elm.textContent = chunks.slice(0, shown).join("");
+  }, 16);
+}
+
+// Count-up: animate a number from `from` (default 0) to its
+// target over ~750ms with an ease-out cubic, so it lands softly.
+// Used for Overview stat values, the donut centre and the
+// savings ring centres via [data-countup] attributes (see
+// runCountUps), and for the habit ring % from its previous value.
+// Reduced motion: the final value is written at once.
+function countUp(elm, target, decimals, suffix, from) {
+  const fmt = v => v.toFixed(decimals) + (suffix || "");
+  if (!elm) return;
+  if (REDUCED_MOTION) { elm.textContent = fmt(target); return; }
+  const startVal = (typeof from === "number" && isFinite(from)) ? from : 0;
+  const start = performance.now(), dur = 750;
+  const step = now => {
+    const t = Math.min((now - start) / dur, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    elm.textContent = fmt(startVal + (target - startVal) * eased);
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function runCountUps(root) {
+  if (!root) return;
+  root.querySelectorAll("[data-countup]").forEach(elm => {
+    countUp(elm, parseFloat(elm.dataset.countup) || 0,
+      parseInt(elm.dataset.decimals || "0", 10), elm.dataset.suffix || "");
+  });
+}
+
+// AI "thinking" indicator: three bouncing dots + label (styled
+// in style.css). Replaces the old plain "Thinking…" text.
+function aiThinkingHtml() {
+  return '<div class="ai-thinking" role="status"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>AI is thinking…</span></div>';
+}
+
+// Skeleton loading rows: grey bars with a slow light sweep, used
+// while a list loads (see style.css). Three rows read as "a list
+// is coming"; the last one is shorter, like a real list's tail.
+function skeletonHtml() {
+  return '<div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row short"></div>';
 }
 
 // Theme: light/dark, saved in this browser only (localStorage).
@@ -173,6 +316,11 @@ function showSection(name) {
   if (!isLoggedIn && !PUBLIC_SECTIONS.includes(name)) name = "auth";
   document.querySelectorAll("section").forEach(s => s.classList.toggle("active", s.id === name));
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.section === name));
+  // Cards in the newly shown section stagger in (anim-card); the
+  // section itself slides in via CSS (section.active). Called
+  // synchronously here, before the browser paints, so the
+  // animation starts from the first frame.
+  staggerCards(el(name));
   setNav(false);
   if (name === "overview") { loadOverview(); updateAiWelcome(); }
   if (name === "history") loadHistory();
@@ -193,6 +341,19 @@ function showSection(name) {
 
 document.querySelectorAll("nav button").forEach(b => {
   b.addEventListener("click", () => showSection(b.dataset.section));
+});
+
+// Primary buttons pulse briefly on click (0.45s) — a visible
+// "I heard you" before the page reacts. One delegated listener
+// covers every primary button, including ones rendered later
+// (task Complete, AI Ask buttons). No disabled check is needed:
+// a button that was already disabled never fires the event at
+// all, while the AI buttons disable themselves inside their own
+// click handler (which runs before this bubble-phase listener)
+// and must still pulse.
+document.addEventListener("click", e => {
+  const b = e.target.closest ? e.target.closest(".btn-primary") : null;
+  if (b) replayAnim(b, "animate__pulse", 450);
 });
 
 // AI welcome card (Overview): fills in the logged-in username from
@@ -231,7 +392,11 @@ el("loginBtn").addEventListener("click", async () => {
     setAuthState(true, data.username + " (" + data.role + ")");
     showMsg("loginMsg", "Login successful.", true);
     showSection("overview");
-  } catch (e) { showMsg("loginMsg", e.message, false); }
+  } catch (e) {
+    showMsg("loginMsg", e.message, false);
+    // A failed login shakes the login card — the error cannot be missed.
+    replayAnim(el("loginBtn").closest(".card"), "animate__shakeX", 500);
+  }
 });
 
 el("regBtn").addEventListener("click", async () => {
@@ -241,13 +406,17 @@ el("regBtn").addEventListener("click", async () => {
     // twice and the server rejects a mismatch (400).
     if (el("regPass").value !== el("regPassConfirm").value) {
       showMsg("regMsg", "Passwords do not match.", false);
+      replayAnim(el("regBtn").closest(".card"), "animate__shakeX", 500);
       return;
     }
     const data = await api("/api/register", { method: "POST", body: JSON.stringify({
       username: el("regUser").value.trim(), password: el("regPass").value,
       confirm_password: el("regPassConfirm").value }) });
     showMsg("regMsg", "Registered as " + data.username + " (" + data.role + "). Please log in.", true);
-  } catch (e) { showMsg("regMsg", e.message, false); }
+  } catch (e) {
+    showMsg("regMsg", e.message, false);
+    replayAnim(el("regBtn").closest(".card"), "animate__shakeX", 500);
+  }
 });
 
 // -- Google Sign-In (Phase 3) -------------------------------------
@@ -305,15 +474,25 @@ async function initGoogleSignIn() {
 
 // -- overview -------------------------------------------------------
 async function loadOverview() {
-  el("overviewCards").innerHTML = '<div class="loading">Loading overview…</div>';
+  el("overviewCards").innerHTML = skeletonHtml();
   try {
     const o = await api("/api/overview");
-    el("overviewCards").innerHTML = [
-      ["Decisions", o.decisions, "records in decisions.txt"], ["Tasks", o.tasks + " (" + o.tasksPending + " pending)", "in tasks.txt"],
-      ["Balance", o.balance.toFixed(2), "income minus expense"], ["Income", o.income.toFixed(2), "total income"],
-      ["Expense", o.expense.toFixed(2), "total expense"],
-      ["Savings", o.savingsSaved.toFixed(2) + " / " + o.savingsTarget.toFixed(2), o.savingsGoals + " goal(s)"]
-    ].map(([k, v, sub]) => `<div class="stat"><div class="label">${k}</div><div class="value">${v}</div><div class="sub">${sub}</div></div>`).join("");
+    // Stat values count up from 0 (runCountUps via gxAnimateIn
+    // below); the number after the count is the suffix text, so
+    // "5 (2 pending)" and "250.00 / 1000.00" keep their shape.
+    const stats = [
+      { label: "Decisions", target: o.decisions, decimals: 0, suffix: "", sub: "records in decisions.txt" },
+      { label: "Tasks", target: o.tasks, decimals: 0, suffix: " (" + o.tasksPending + " pending)", sub: "in tasks.txt" },
+      { label: "Balance", target: o.balance, decimals: 2, suffix: "", sub: "income minus expense" },
+      { label: "Income", target: o.income, decimals: 2, suffix: "", sub: "total income" },
+      { label: "Expense", target: o.expense, decimals: 2, suffix: "", sub: "total expense" },
+      { label: "Savings", target: o.savingsSaved, decimals: 2, suffix: " / " + o.savingsTarget.toFixed(2), sub: o.savingsGoals + " goal(s)" }
+    ];
+    el("overviewCards").innerHTML = stats.map((s, i) =>
+      `<div class="stat anim-card" style="--anim-delay:${ANIM_DELAYS[i]}ms"><div class="label">${s.label}</div>` +
+      `<div class="value" data-countup="${s.target}" data-decimals="${s.decimals}" data-suffix="${esc(s.suffix)}">0${s.decimals ? ".00" : ""}${esc(s.suffix)}</div>` +
+      `<div class="sub">${s.sub}</div></div>`).join("");
+    gxAnimateIn(el("overviewCards"));
     el("ovChart").innerHTML = chartHtml([
       { label: "Income", value: o.income, cls: "" },
       { label: "Expense", value: o.expense, cls: "expense" },
@@ -335,6 +514,7 @@ async function loadOverview() {
         `<tr><td>${esc(d.id)}</td><td>${esc(d.date)}</td><td>${esc(d.type)}</td><td>${d.priority}</td><td>${esc(d.title)}</td>` +
         `<td><button class="btn btn-danger" onclick="deleteDecision(${d.id})">Delete</button></td></tr>`).join("") + "</table>"
       : "<div class='empty'>No decisions yet. Create one from Daily Decision, Tasks, or Priority.</div>";
+    staggerRows(el("overviewDecisions"), "tr");
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
 
@@ -437,6 +617,7 @@ el("aiDailyBtn").addEventListener("click", async () => {
   const replyBox = el("aiDailyReply");
   clearMsg("aiDailyMsg");
   clearMsg("aiDailyWarn");
+  stopTyping(replyBox);
   replyBox.innerHTML = "";
   // Client-side validation mirrors the server, so the user gets an
   // immediate error instead of a round trip that would fail anyway.
@@ -463,10 +644,10 @@ el("aiDailyBtn").addEventListener("click", async () => {
   btn.disabled = true;
   const oldText = btn.textContent;
   btn.textContent = "Thinking…";
-  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  replyBox.innerHTML = aiThinkingHtml();
   try {
     const r = await api("/api/ai/daily-decision", { method: "POST", body: JSON.stringify(body) });
-    replyBox.innerHTML = esc(r.reply || "");
+    typeInto(replyBox, r.reply || "");
     let msg = "AI suggestion received.";
     if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
     showMsg("aiDailyMsg", msg, true);
@@ -524,6 +705,7 @@ el("aiTaskBtn").addEventListener("click", async () => {
   const replyBox = el("aiTaskReply");
   clearMsg("aiTaskMsg");
   clearMsg("aiTaskWarn");
+  stopTyping(replyBox);
   replyBox.innerHTML = "";
   // Client-side validation mirrors the server, so the user gets an
   // immediate error instead of a round trip that would fail anyway.
@@ -565,10 +747,10 @@ el("aiTaskBtn").addEventListener("click", async () => {
   btn.disabled = true;
   const oldText = btn.textContent;
   btn.textContent = "Thinking…";
-  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  replyBox.innerHTML = aiThinkingHtml();
   try {
     const r = await api("/api/ai/task-analyzer", { method: "POST", body: JSON.stringify(body) });
-    replyBox.innerHTML = esc(r.reply || "");
+    typeInto(replyBox, r.reply || "");
     let msg = "AI analysis received.";
     if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
     showMsg("aiTaskMsg", msg, true);
@@ -658,6 +840,7 @@ el("aiStudyBtn").addEventListener("click", async () => {
   const replyBox = el("aiStudyReply");
   clearMsg("aiStudyMsg");
   clearMsg("aiStudyWarn");
+  stopTyping(replyBox);
   replyBox.innerHTML = "";
   // Client-side validation mirrors the server, so the user gets an
   // immediate error instead of a round trip that would fail anyway.
@@ -704,10 +887,10 @@ el("aiStudyBtn").addEventListener("click", async () => {
   btn.disabled = true;
   const oldText = btn.textContent;
   btn.textContent = "Thinking…";
-  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  replyBox.innerHTML = aiThinkingHtml();
   try {
     const r = await api("/api/ai/study-planner", { method: "POST", body: JSON.stringify(body) });
-    replyBox.innerHTML = esc(r.reply || "");
+    typeInto(replyBox, r.reply || "");
     let msg = "AI study plan received (" + deduped.length + (deduped.length === 1 ? " subject" : " subjects") + ").";
     if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
     showMsg("aiStudyMsg", msg, true);
@@ -758,6 +941,7 @@ el("aiProblemBtn").addEventListener("click", async () => {
   const replyBox = el("aiProblemReply");
   clearMsg("aiProblemMsg");
   clearMsg("aiProblemWarn");
+  stopTyping(replyBox);
   replyBox.innerHTML = "";
   // Client-side validation mirrors the server, so the user gets an
   // immediate error instead of a round trip that would fail anyway.
@@ -771,10 +955,10 @@ el("aiProblemBtn").addEventListener("click", async () => {
   btn.disabled = true;
   const oldText = btn.textContent;
   btn.textContent = "Thinking…";
-  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  replyBox.innerHTML = aiThinkingHtml();
   try {
     const r = await api("/api/ai/problem-solver", { method: "POST", body: JSON.stringify(body) });
-    replyBox.innerHTML = esc(r.reply || "");
+    typeInto(replyBox, r.reply || "");
     let msg = "AI solution received.";
     if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
     showMsg("aiProblemMsg", msg, true);
@@ -862,6 +1046,7 @@ el("aiBudgetBtn").addEventListener("click", async () => {
   const replyBox = el("aiBudgetReply");
   clearMsg("aiBudgetMsg");
   clearMsg("aiBudgetWarn");
+  stopTyping(replyBox);
   replyBox.innerHTML = "";
   // Client-side validation mirrors the server, so the user gets an
   // immediate error instead of a round trip that would fail anyway.
@@ -946,10 +1131,10 @@ el("aiBudgetBtn").addEventListener("click", async () => {
   btn.disabled = true;
   const oldText = btn.textContent;
   btn.textContent = "Thinking…";
-  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  replyBox.innerHTML = aiThinkingHtml();
   try {
     const r = await api("/api/ai/budget", { method: "POST", body: JSON.stringify(body) });
-    replyBox.innerHTML = esc(r.reply || "");
+    typeInto(replyBox, r.reply || "");
     let msg = "AI budget review received.";
     if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
     showMsg("aiBudgetMsg", msg, true);
@@ -1030,6 +1215,7 @@ el("aiHabitBtn").addEventListener("click", async () => {
   const replyBox = el("aiHabitReply");
   clearMsg("aiHabitMsg");
   clearMsg("aiHabitWarn");
+  stopTyping(replyBox);
   replyBox.innerHTML = "";
   // Client-side validation mirrors the server, so the user gets an
   // immediate error instead of a round trip that would fail anyway.
@@ -1071,10 +1257,10 @@ el("aiHabitBtn").addEventListener("click", async () => {
   btn.disabled = true;
   const oldText = btn.textContent;
   btn.textContent = "Thinking…";
-  replyBox.innerHTML = '<div class="loading">Thinking…</div>';
+  replyBox.innerHTML = aiThinkingHtml();
   try {
     const r = await api("/api/ai/habit", { method: "POST", body: JSON.stringify(body) });
-    replyBox.innerHTML = esc(r.reply || "");
+    typeInto(replyBox, r.reply || "");
     let msg = "AI habit advice received.";
     if (typeof r.history_id === "number") msg += " (history #" + r.history_id + ")";
     showMsg("aiHabitMsg", msg, true);
@@ -1118,7 +1304,7 @@ async function loadAiHistory() {
   const list = el("aiHistoryList");
   const filter = el("aiHistoryFilter");
   clearMsg("aiHistoryMsg");
-  list.innerHTML = '<div class="loading">Loading AI history…</div>';
+  list.innerHTML = skeletonHtml();
   filter.disabled = true;
   try {
     const data = await api("/api/ai/history?limit=50");
@@ -1153,6 +1339,7 @@ function renderAiHistory() {
     `<div class="muted">You asked:</div><div class="ai-reply">${esc(e.prompt || "")}</div>` +
     `<div class="muted">AI answered:</div><div class="ai-reply">${esc(e.response || "")}</div></div>`
   ).join("");
+  staggerRows(list, ".ai-history-entry");
 }
 async function deleteAiHistory(id) {
   if (!window.confirm("Delete this AI history entry?")) return;
@@ -1188,7 +1375,7 @@ el("aiHistoryRefreshBtn").addEventListener("click", loadAiHistory);
 
 // -- tasks ----------------------------------------------------------
 async function loadTasks() {
-  el("taskList").innerHTML = '<div class="loading">Loading tasks…</div>';
+  el("taskList").innerHTML = skeletonHtml();
   try {
     const tasks = await api("/api/tasks");
     el("taskList").innerHTML = tasks.length ? "<table><tr><th>Title</th><th>Score</th><th>Deadline</th><th>Status</th><th></th></tr>" +
@@ -1196,6 +1383,7 @@ async function loadTasks() {
         `<button class="btn btn-primary" onclick="setTaskStatus(${t.id},'Completed')">Complete</button>` +
         `<button class="btn btn-danger" onclick="deleteTask(${t.id})">Delete</button></td></tr>`).join("") + "</table>"
       : "<div class='empty'>No tasks yet. Add your first task above.</div>";
+    staggerRows(el("taskList"), "tr");
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
 async function setTaskStatus(id, status) {
@@ -1260,6 +1448,7 @@ async function loadTransactions() {
       (txs.length ? "<table><tr><th>Date</th><th>Type</th><th>Category</th><th>Amount</th><th>Note</th><th></th></tr>" +
         txs.map(t => `<tr><td>${esc(t.date)}</td><td>${esc(t.type)}</td><td>${esc(t.category)}</td><td>${t.amount}</td><td>${esc(t.note)}</td><td><button class="btn btn-secondary" onclick="editTransaction(${t.id})">Edit</button> <button class="btn btn-danger" onclick="deleteTransaction(${t.id})">Delete</button></td></tr>`).join("") + "</table>"
         : "<div class='empty'>No transactions yet.</div>");
+    staggerRows(el("txList"), "tr");
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
 async function deleteTransaction(id) {
@@ -1315,6 +1504,7 @@ async function loadSavings() {
     el("svList").innerHTML = goals.length ? "<table><tr><th>Goal</th><th>Target</th><th>Saved</th><th>Remaining</th><th></th></tr>" +
       goals.map(g => `<tr><td>${esc(g.name)}</td><td>${g.target}</td><td>${g.saved}</td><td>${(g.target - g.saved).toFixed(2)}</td><td><button class="btn btn-secondary" onclick="editGoal(${g.id})">Edit</button></td></tr>`).join("") + "</table>"
       : "<div class='empty'>No savings goals yet.</div>";
+    staggerRows(el("svList"), "tr");
     el("svRings").innerHTML = gxSavingsRingsHtml(goals);
     gxAnimateIn(el("svRings"));
   } catch (e) { showMsg("globalMsg", e.message, false); }
@@ -1368,12 +1558,16 @@ el("svAddBtn").addEventListener("click", async () => {
 });
 
 // -- habits ---------------------------------------------------------
+// Previous habit-ring % (for the count-up start and the
+// heartbeat: the ring only celebrates when the % has risen).
+let lastHbPct = 0;
 async function loadHabits() {
   try {
     const habits = await api("/api/habits");
     el("hbList").innerHTML = habits.length ? "<table><tr><th>Habit</th><th>Recorded dates</th></tr>" +
       habits.map(h => `<tr><td>${esc(h.habit)}</td><td>${esc(h.dates.join(", "))}</td></tr>`).join("") + "</table>"
       : "<div class='empty'>No habit records yet.</div>";
+    staggerRows(el("hbList"), "tr");
     // Habit ring (Panze style): overall completion over the last 30
     // days, from the SAME data as the table above — distinct dates
     // with at least one completion across all of this user's habits,
@@ -1391,7 +1585,12 @@ async function loadHabits() {
     const pct = Math.round(active.size * 100 / 30);
     const fill = el("hbRingFill");
     if (fill) fill.style.strokeDashoffset = String(2 * Math.PI * 52 * (1 - pct / 100));
-    el("hbRingPct").textContent = pct + "%";
+    // The % counts up from its previous value, and when it has
+    // risen the ring gives one happy heartbeat.
+    countUp(el("hbRingPct"), pct, 0, "%", lastHbPct);
+    const ringWrap = fill ? fill.closest(".ring-wrap") : null;
+    if (ringWrap && pct > lastHbPct && pct > 0) replayAnim(ringWrap, "animate__heartBeat", 900);
+    lastHbPct = pct;
     el("hbRingCaption").textContent = habits.length
       ? active.size + " active day" + (active.size === 1 ? "" : "s") + " in the last 30 days"
       : "No habit records yet — mark a habit done to start your ring.";
@@ -1435,7 +1634,7 @@ el("repWeekBtn").addEventListener("click", () => showReport("/api/reports?week_e
 // -- new sections ---------------------------------------------------
 // Search & History: same decisions.txt, filtered by keyword/type.
 async function loadHistory() {
-  el("histList").innerHTML = '<div class="loading">Searching history…</div>';
+  el("histList").innerHTML = skeletonHtml();
   try {
     const q = new URLSearchParams({ search: el("histSearch").value.trim(), type: el("histType").value });
     let ds = await api("/api/decisions?" + q.toString());
@@ -1444,6 +1643,7 @@ async function loadHistory() {
     el("histList").innerHTML = ds.length ? "<table><tr><th>ID</th><th>Date</th><th>Type</th><th>Priority</th><th>Title</th></tr>" +
       ds.map(d => `<tr><td>${esc(d.id)}</td><td>${esc(d.date)}</td><td>${esc(d.type)}</td><td>${d.priority}</td><td>${esc(d.title)}</td></tr>`).join("") + "</table>"
       : "<div class='empty'>No matching decisions. Try a different keyword, or create a decision first.</div>";
+    staggerRows(el("histList"), "tr");
     showMsg("histMsg", ds.length + " matching decision(s).", true);
   } catch (e) { showMsg("histMsg", e.message, false); }
 }
@@ -1452,19 +1652,20 @@ el("histBtn").addEventListener("click", loadHistory);
 // Task Status: same tasks.txt, status dropdown mirrors task_status.cpp.
 async function loadStatusList() {
   const box = el("statusList"); if (!box) return;
-  box.innerHTML = '<div class="loading">Loading task statuses…</div>';
+  box.innerHTML = skeletonHtml();
   try {
     const tasks = await api("/api/tasks");
     box.innerHTML = tasks.length ? "<table><tr><th>Title</th><th>Score</th><th>Deadline</th><th>Status</th></tr>" +
       tasks.map(t => `<tr><td>${esc(t.title)}</td><td>${t.score}</td><td>${esc(t.deadline || "Not set")}</td><td><select onchange="setTaskStatus(${t.id}, this.value)">` +
         ["Pending", "In Progress", "Completed"].map(s => `<option value="${s}"${s === t.status ? " selected" : ""}>${s}</option>`).join("") + "</select></td></tr>").join("") + "</table>"
       : "<div class='empty'>No tasks yet. Add a task in Task Management first.</div>";
+    staggerRows(box, "tr");
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
 
 // Deadline Alerts: mirrors deadline_alert.cpp.
 async function loadDeadlines() {
-  el("dlList").innerHTML = '<div class="loading">Checking deadlines…</div>';
+  el("dlList").innerHTML = skeletonHtml();
   try {
     const today = el("dlDate").value;
     const ds = await api("/api/deadlines" + (today ? "?today=" + encodeURIComponent(today) : ""));
@@ -1472,6 +1673,7 @@ async function loadDeadlines() {
     el("dlList").innerHTML = ds.length ? "<table><tr><th>Title</th><th>Deadline</th><th>Status</th><th>Alert</th></tr>" +
       ds.map(d => `<tr><td>${esc(d.title)}</td><td>${esc(d.deadline || "Not set")}</td><td>${esc(d.status)}</td><td><span class="badge ${badge(d.alert)}">${esc(d.alert)}</span></td></tr>`).join("") + "</table>"
       : "<div class='empty'>No open tasks with deadlines. Completed tasks are skipped, as in the C++ module.</div>";
+    staggerRows(el("dlList"), "tr");
     showMsg("dlMsg", ds.length + " open task(s) checked.", true);
   } catch (e) { showMsg("dlMsg", e.message, false); }
 }
@@ -1670,6 +1872,9 @@ function gxAnimateIn(root) {
       c.setAttribute("stroke-dashoffset", c.dataset.off);
     });
     root.querySelectorAll(".ring-fill[data-off]").forEach(c => { c.style.strokeDashoffset = c.dataset.off; });
+    // Count-up numbers (Overview stats, donut centre, KPI tiles,
+    // savings ring centres) start from 0 on the same frame.
+    runCountUps(root);
   });
 }
 // Consecutive-day streak across ALL of the user's habits, from the
@@ -1695,7 +1900,7 @@ function gxDonutHtml(income, expense) {
   const spentPct = income > 0 ? Math.min(Math.round(expense / income * 100), 100) : 100;
   const leftPct = Math.max(0, 100 - spentPct);
   const neg = remaining < 0 ? " style=\"fill:var(--danger)\"" : "";
-  return `<div class="gx-donut-row gx-fade"><svg class="gx-donut" width="140" height="140" viewBox="0 0 140 140" role="img" aria-label="Budget donut: spent ${spentPct}% of income"><g transform="rotate(-90 70 70)"><circle class="gx-donut-track" cx="70" cy="70" r="54" /><circle class="gx-donut-spent" cx="70" cy="70" r="54" stroke-dasharray="0 339.29" data-len="${spentLen}"><title>Spent: ${expense.toFixed(2)} (${spentPct}%)</title></circle><circle class="gx-donut-left" cx="70" cy="70" r="54" stroke-dasharray="0 339.29" data-len="${leftLen}" data-off="${(-C * spentFrac).toFixed(2)}"><title>Remaining: ${remaining.toFixed(2)} (${leftPct}%)</title></circle></g><text x="70" y="66" text-anchor="middle" font-size="18" class="gx-donut-center"${neg}>${remaining.toFixed(2)}</text><text x="70" y="86" text-anchor="middle" font-size="12" class="gx-donut-sub">remaining</text></svg><div><div class="gx-big">${income.toFixed(2)}</div><div class="muted">total income</div><ul class="gx-legend"><li data-tip="Spent: ${expense.toFixed(2)}"><span class="gx-dot spent"></span>Spent: ${expense.toFixed(2)} (${spentPct}%)</li><li data-tip="Remaining: ${remaining.toFixed(2)}"><span class="gx-dot left"></span>Remaining: ${remaining.toFixed(2)} (${leftPct}%)</li></ul></div></div>`;
+  return `<div class="gx-donut-row gx-fade"><svg class="gx-donut" width="140" height="140" viewBox="0 0 140 140" role="img" aria-label="Budget donut: spent ${spentPct}% of income"><g transform="rotate(-90 70 70)"><circle class="gx-donut-track" cx="70" cy="70" r="54" /><circle class="gx-donut-spent" cx="70" cy="70" r="54" stroke-dasharray="0 339.29" data-len="${spentLen}"><title>Spent: ${expense.toFixed(2)} (${spentPct}%)</title></circle><circle class="gx-donut-left" cx="70" cy="70" r="54" stroke-dasharray="0 339.29" data-len="${leftLen}" data-off="${(-C * spentFrac).toFixed(2)}"><title>Remaining: ${remaining.toFixed(2)} (${leftPct}%)</title></circle></g><text x="70" y="66" text-anchor="middle" font-size="18" class="gx-donut-center"${neg} data-countup="${remaining}" data-decimals="2">0.00</text><text x="70" y="86" text-anchor="middle" font-size="12" class="gx-donut-sub">remaining</text></svg><div><div class="gx-big">${income.toFixed(2)}</div><div class="muted">total income</div><ul class="gx-legend"><li data-tip="Spent: ${expense.toFixed(2)}"><span class="gx-dot spent"></span>Spent: ${expense.toFixed(2)} (${spentPct}%)</li><li data-tip="Remaining: ${remaining.toFixed(2)}"><span class="gx-dot left"></span>Remaining: ${remaining.toFixed(2)} (${leftPct}%)</li></ul></div></div>`;
 }
 // Task status bars (Overview): done vs pending, plus KPI tiles for
 // the top-scoring task and the nearest open deadline.
@@ -1709,7 +1914,7 @@ function gxTaskBarsHtml(tasks) {
   tasks.forEach(t => { if (!top || t.score > top.score) top = t; });
   const dated = tasks.filter(t => t.deadline && t.status !== "Completed").sort((a, b) => a.deadline.localeCompare(b.deadline));
   const next = dated.length ? dated[0] : null;
-  return `<div class="gx-fade"><div class="gx-bar-row" data-tip="Completed: ${done} of ${tasks.length} tasks"><span class="lbl">Done</span><span class="gx-track"><span class="gx-fill green" data-w="${donePct}" style="width:0%"></span></span><span class="val">${done} / ${tasks.length}</span></div><div class="gx-bar-row" data-tip="Pending: ${pending} of ${tasks.length} tasks"><span class="lbl">Pending</span><span class="gx-track"><span class="gx-fill amber" data-w="${pendPct}" style="width:0%"></span></span><span class="val">${pending} / ${tasks.length}</span></div><div class="gx-kpi-row"><div class="gx-kpi"><div class="n">${top.score}</div><div class="l">Top score — ${esc(top.title)}</div></div><div class="gx-kpi"><div class="n">${next ? esc(next.deadline) : "—"}</div><div class="l">${next ? "Nearest deadline — " + esc(next.title) : "No upcoming deadline"}</div></div></div></div>`;
+  return `<div class="gx-fade"><div class="gx-bar-row" data-tip="Completed: ${done} of ${tasks.length} tasks"><span class="lbl">Done</span><span class="gx-track"><span class="gx-fill green" data-w="${donePct}" style="width:0%"></span></span><span class="val">${done} / ${tasks.length}</span></div><div class="gx-bar-row" data-tip="Pending: ${pending} of ${tasks.length} tasks"><span class="lbl">Pending</span><span class="gx-track"><span class="gx-fill amber" data-w="${pendPct}" style="width:0%"></span></span><span class="val">${pending} / ${tasks.length}</span></div><div class="gx-kpi-row"><div class="gx-kpi"><div class="n" data-countup="${top.score}">0</div><div class="l">Top score — ${esc(top.title)}</div></div><div class="gx-kpi"><div class="n">${next ? esc(next.deadline) : "—"}</div><div class="l">${next ? "Nearest deadline — " + esc(next.title) : "No upcoming deadline"}</div></div></div></div>`;
 }
 // Monthly trend (Overview): income vs expense lines over the last
 // 6 calendar months, months with no data at 0. Pure SVG, viewBox
@@ -1801,7 +2006,10 @@ function gxSavingsRingsHtml(goals) {
   return `<div class="gx-rings gx-fade">` + goals.map(g => {
     const pct = g.target > 0 ? Math.round(g.saved / g.target * 100) : 0;
     const off = (2 * Math.PI * 40 * (1 - Math.min(pct, 100) / 100)).toFixed(2);
-    return `<div class="gx-ring-item" data-goal="${esc(g.name)}" data-pct="${pct}"><div class="gx-ring-sm"><svg viewBox="0 0 96 96" role="img" aria-label="Savings ring for ${esc(g.name)}: ${pct}%"><defs><linearGradient id="svGrad${g.id}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" class="ring-stop-a" /><stop offset="100%" class="ring-stop-b" /></linearGradient></defs><circle class="ring-track" cx="48" cy="48" r="40" /><circle class="ring-fill" cx="48" cy="48" r="40" style="stroke: url(#svGrad${g.id})" data-off="${off}" /></svg><div class="ring-center"><span>${pct}%</span></div></div><div><div><b>${esc(g.name)}</b></div><div class="muted">${g.saved.toFixed(2)} / ${g.target.toFixed(2)} saved</div></div></div>`;
+    // A goal at 100%+ celebrates: the ring pulses twice (CSS
+    // .goal-complete) and a "Goal reached!" badge appears.
+    const complete = pct >= 100;
+    return `<div class="gx-ring-item${complete ? " goal-complete" : ""}" data-goal="${esc(g.name)}" data-pct="${pct}"><div class="gx-ring-sm"><svg viewBox="0 0 96 96" role="img" aria-label="Savings ring for ${esc(g.name)}: ${pct}%"><defs><linearGradient id="svGrad${g.id}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" class="ring-stop-a" /><stop offset="100%" class="ring-stop-b" /></linearGradient></defs><circle class="ring-track" cx="48" cy="48" r="40" /><circle class="ring-fill" cx="48" cy="48" r="40" style="stroke: url(#svGrad${g.id})" data-off="${off}" /></svg><div class="ring-center"><span data-countup="${pct}" data-suffix="%">0%</span></div></div><div><div><b>${esc(g.name)}</b>${complete ? ' <span class="badge badge-ok">Goal reached!</span>' : ""}</div><div class="muted">${g.saved.toFixed(2)} / ${g.target.toFixed(2)} saved</div></div></div>`;
   }).join("") + `</div>`;
 }
 // Study plan progress bar + day timeline strip (Study Planner):

@@ -426,6 +426,107 @@ def main():
             check("graphics empty heatmap 30 cells", epage.locator("#hbHeat .gx-heat-cell").count() == 30)
             epage.close()
 
+            # Dashboard animations: vendored Animate.css, section
+            # entrances, staggered cards, count-up numbers, error
+            # shake, goal-complete pulse, sidebar indicator.
+            # Animate.css is served locally (never a CDN) and is
+            # the real library: base class and keyframes exist.
+            anim_css = page.request.get(base + "/animate.min.css")
+            check("anim css served locally", anim_css.status == 200, str(anim_css.status))
+            anim_body = anim_css.text()
+            check("anim css is the real library",
+                  ".animate__animated" in anim_body and "@keyframes bounce" in anim_body
+                  and "@keyframes shakeX" in anim_body)
+            check("anim css linked in page",
+                  page.evaluate("!!document.querySelector('link[href=\"animate.min.css\"]')"))
+            check("anim no cdn stylesheet",
+                  page.evaluate("[...document.querySelectorAll('link[rel=\"stylesheet\"]')].every(l => { const h = l.getAttribute('href') || ''; return !h.startsWith('http') && !h.startsWith('//'); })"))
+            # Section switch applies the entrance animation.
+            page.click("button[data-section='overview']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'overview'")
+            check("anim section entrance",
+                  page.evaluate("getComputedStyle(document.querySelector('section#overview')).animationName") == "animSectionIn")
+            # Cards stagger in with varied delays (at least 3
+            # distinct delays across the 6 stat cards).
+            page.wait_for_function("document.getElementById('ovDonut').textContent.includes('3600.00')", timeout=10000)
+            # Count-ups run 0.75s; wait for the donut centre to land
+            # (the stat/KPI count-ups start in the same frame batch,
+            # so they are done by then too) instead of a fixed wait.
+            page.wait_for_function("document.querySelector('#ovDonut .gx-donut-center').textContent === '3600.00'", timeout=10000)
+            check("anim overview stat cards staggered",
+                  page.evaluate("""() => {
+                      const cards = [...document.querySelectorAll('#overviewCards .stat')];
+                      const delays = cards.map(c => c.style.getPropertyValue('--anim-delay'));
+                      return cards.length === 6 && cards.every(c => c.classList.contains('anim-card'))
+                          && new Set(delays).size >= 3; }"""))
+            # Count-up reaches the real targets (income 5100,
+            # expense 1500, balance 3600; top task score 40).
+            check("anim count-up balance reaches 3600.00",
+                  page.evaluate("[...document.querySelectorAll('#overviewCards .stat .value')][2].textContent") == "3600.00")
+            check("anim count-up donut centre reaches 3600.00",
+                  page.evaluate("document.querySelector('#ovDonut .gx-donut-center').textContent") == "3600.00")
+            check("anim count-up top score reaches 40",
+                  page.evaluate("document.querySelector('#ovTasks .gx-kpi .n').textContent") == "40")
+            # Error shake: the AI daily empty-input error is
+            # client-side (no API call), so it cannot disturb the
+            # failed-request accounting at the end of this test.
+            page.click("button[data-section='ai-daily']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'ai-daily'")
+            page.click("#aiDailyBtn")
+            page.wait_for_function("document.getElementById('aiDailyMsg').textContent.length > 0")
+            check("anim error message shakes",
+                  page.evaluate("document.getElementById('aiDailyMsg').classList.contains('animate__shakeX')"))
+            # Success slide-in: a valid priority calculation.
+            page.click("button[data-section='priority']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'priority'")
+            page.fill("#prUrgency", "8")
+            page.fill("#prImportance", "9")
+            page.click("#prBtn")
+            page.wait_for_function("document.getElementById('prMsg').textContent.includes('Priority Score')")
+            check("anim success message slides in",
+                  page.evaluate("document.getElementById('prMsg').classList.contains('anim-msg-in')"))
+            # Button hover transition includes transform (lift), and
+            # a primary button keeps its gradient on hover (the
+            # generic .btn:hover pale background must not wash it
+            # white — white text on white).
+            check("anim button hover transition",
+                  "transform" in page.evaluate("getComputedStyle(document.querySelector('#prBtn')).transition"))
+            page.hover("#prBtn")
+            check("anim primary button keeps gradient on hover",
+                  "linear-gradient" in page.evaluate("getComputedStyle(document.querySelector('#prBtn')).backgroundImage"))
+            # Sidebar active indicator: the ::before bar is fully
+            # grown (scaleY 1) on the active button.
+            page.wait_for_timeout(400)  # indicator slide (0.28s) settles
+            check("anim sidebar active indicator",
+                  page.evaluate("""() => {
+                      const b = document.querySelector('nav button[data-section="priority"].active');
+                      if (!b) return false;
+                      return getComputedStyle(b, '::before').transform === 'matrix(1, 0, 0, 1, 0, 0)'; }"""))
+            # Goal-complete pulse: a goal saved in full gets the
+            # celebration class and badge.
+            page.click("button[data-section='savings']")
+            page.fill("#svName", "FullGoal")
+            page.fill("#svTarget", "100")
+            page.click("#svBtn")
+            page.wait_for_function("document.getElementById('svMsg').textContent.includes('Goal added')")
+            page.fill("#svAddName", "FullGoal")
+            page.fill("#svAddAmount", "100")
+            page.click("#svAddBtn")
+            page.wait_for_function("document.getElementById('svAddMsg').textContent.includes('100')")
+            page.wait_for_function("document.querySelector('#svRings .gx-ring-item[data-goal=\"FullGoal\"]') !== null")
+            check("anim goal-complete class",
+                  page.evaluate("document.querySelector('#svRings .gx-ring-item[data-goal=\"FullGoal\"]').classList.contains('goal-complete')"))
+            check("anim goal-complete badge",
+                  "Goal reached!" in page.evaluate("document.querySelector('#svRings .gx-ring-item[data-goal=\"FullGoal\"]').textContent"))
+            # Staggered list rows: task rows fade in with varied delays.
+            page.click("button[data-section='tasks']")
+            page.wait_for_function("document.getElementById('taskList').textContent.includes('BrowserTask')")
+            check("anim task rows staggered",
+                  page.evaluate("""() => {
+                      const rows = [...document.querySelectorAll('#taskList tr.anim-row')];
+                      const delays = rows.map(r => r.style.getPropertyValue('--anim-delay'));
+                      return rows.length >= 2 && new Set(delays).size >= 2; }"""))
+
             # AI Daily Decision (Phase 3.1): client-side validation,
             # mock-Gemini success, newline sanitization, 503 and 400.
             page.click("button[data-section='ai-daily']")
@@ -462,9 +563,14 @@ def main():
             page.locator("#aiDailyOptions .ai-opt-input").nth(1).fill("physics")
             page.fill("#aiDailyInput", "Should I study maths\nor physics tonight?")
             page.click("#aiDailyBtn")
-            page.wait_for_function("document.getElementById('aiDailyReply').textContent.includes('Mocked AI reply.')")
+            page.wait_for_function("document.getElementById('aiDailyReply').textContent.includes('Second line of the reply.')")
             check("ai-daily mock reply shown", "Mocked AI reply." in page.content())
             check("ai-daily mock reply keeps line breaks", "Second line of the reply." in page.content())
+            # Typing effect: the reply box ends up with the FULL
+            # reply text, byte-identical (line break included) —
+            # the wait above already waited for the last line.
+            check("anim typing renders full reply",
+                  page.evaluate("document.getElementById('aiDailyReply').textContent") == "Mocked AI reply.\nSecond line of the reply.")
             check("ai-daily history id shown", "history #" in page.evaluate("document.getElementById('aiDailyMsg').textContent"))
             check("ai-daily no history-save warning", page.evaluate("document.getElementById('aiDailyWarn').textContent") == "")
             sent = MockGemini.requests[-1] if MockGemini.requests else ""
@@ -546,7 +652,7 @@ def main():
             page.select_option("#aiTaskStatus", "in-progress")
             page.fill("#aiTaskDesc", "Prepare the final\nreport for the project")
             page.click("#aiTaskBtn")
-            page.wait_for_function("document.getElementById('aiTaskReply').textContent.includes('Mocked AI reply.')")
+            page.wait_for_function("document.getElementById('aiTaskReply').textContent.includes('Second line of the reply.')")
             check("ai-task mock reply shown", "Mocked AI reply." in page.content())
             check("ai-task history id shown", "history #" in page.evaluate("document.getElementById('aiTaskMsg').textContent"))
             check("ai-task no history-save warning", page.evaluate("document.getElementById('aiTaskWarn').textContent") == "")
@@ -627,7 +733,7 @@ def main():
             page.fill("#aiStudyExam", future)
             page.fill("#aiStudyDesc", "Plan my revision\nfor the exam")
             page.click("#aiStudyBtn")
-            page.wait_for_function("document.getElementById('aiStudyReply').textContent.includes('Mocked AI reply.')")
+            page.wait_for_function("document.getElementById('aiStudyReply').textContent.includes('Second line of the reply.')")
             check("ai-study mock reply shown", "Mocked AI reply." in page.content())
             check("ai-study history id shown", "history #" in page.evaluate("document.getElementById('aiStudyMsg').textContent"))
             check("ai-study 2 unique subjects shown", "(2 subjects)" in page.evaluate("document.getElementById('aiStudyMsg').textContent"))
@@ -687,7 +793,7 @@ def main():
             # success message shows the history id, no warning.
             page.fill("#aiProblemDesc", "অ" * 4000)
             page.click("#aiProblemBtn")
-            page.wait_for_function("document.getElementById('aiProblemReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            page.wait_for_function("document.getElementById('aiProblemReply').textContent.includes('Second line of the reply.')", timeout=15000)
             check("ai-problem Bengali 4000 chars mock reply shown", "Mocked AI reply." in page.content())
             check("ai-problem history id shown", "history #" in page.evaluate("document.getElementById('aiProblemMsg').textContent"))
             check("ai-problem no history-save warning", page.evaluate("document.getElementById('aiProblemWarn').textContent") == "")
@@ -695,7 +801,7 @@ def main():
             # mock with newlines as spaces.
             page.fill("#aiProblemDesc", "Fix the printer\nin my office")
             page.click("#aiProblemBtn")
-            page.wait_for_function("document.getElementById('aiProblemReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            page.wait_for_function("document.getElementById('aiProblemReply').textContent.includes('Second line of the reply.')", timeout=15000)
             check("ai-problem mock reply shown", "Mocked AI reply." in page.content())
             sent = MockGemini.requests[-1] if MockGemini.requests else ""
             check("ai-problem newline sent as space", "printer in my office" in sent and "printerin" not in sent, sent[:200])
@@ -738,7 +844,7 @@ def main():
             # the server computes "Total income: 0.00" from it.
             page.fill("#aiBudgetIncome", "0")
             page.click("#aiBudgetBtn")
-            page.wait_for_function("document.getElementById('aiBudgetReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            page.wait_for_function("document.getElementById('aiBudgetReply').textContent.includes('Second line of the reply.')", timeout=15000)
             check("ai-budget income 0 mock reply shown", "Mocked AI reply." in page.content())
             check("ai-budget history id shown", "history #" in page.evaluate("document.getElementById('aiBudgetMsg').textContent"))
             check("ai-budget no history-save warning", page.evaluate("document.getElementById('aiBudgetWarn').textContent") == "")
@@ -749,7 +855,7 @@ def main():
             page.locator("#aiBudgetExpenses .ai-exp-category").nth(0).fill("Food")
             page.locator("#aiBudgetExpenses .ai-exp-amount").nth(0).fill("1200")
             page.click("#aiBudgetBtn")
-            page.wait_for_function("document.getElementById('aiBudgetReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            page.wait_for_function("document.getElementById('aiBudgetReply').textContent.includes('Second line of the reply.')", timeout=15000)
             check("ai-budget expense mock reply shown", "Mocked AI reply." in page.content())
             sent = MockGemini.requests[-1] if MockGemini.requests else ""
             check("ai-budget expense reaches mock", "Food: 1200.00" in sent, sent[:300])
@@ -759,7 +865,7 @@ def main():
             page.fill("#aiBudgetGoalTarget", "100000")
             page.fill("#aiBudgetGoalSaved", "25000")
             page.click("#aiBudgetBtn")
-            page.wait_for_function("document.getElementById('aiBudgetReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            page.wait_for_function("document.getElementById('aiBudgetReply').textContent.includes('Second line of the reply.')", timeout=15000)
             check("ai-budget goal mock reply shown", "Mocked AI reply." in page.content())
             sent = MockGemini.requests[-1] if MockGemini.requests else ""
             check("ai-budget goal reaches mock", "Laptop (target 100000.00, saved 25000.00)" in sent, sent[:300])
@@ -822,7 +928,7 @@ def main():
             page.fill("#aiHabitName", "Morning run")
             page.fill("#aiHabitTarget", "30")
             page.click("#aiHabitBtn")
-            page.wait_for_function("document.getElementById('aiHabitReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            page.wait_for_function("document.getElementById('aiHabitReply').textContent.includes('Second line of the reply.')", timeout=15000)
             check("ai-habit mock reply shown", "Mocked AI reply." in page.content())
             check("ai-habit history id shown", "history #" in page.evaluate("document.getElementById('aiHabitMsg').textContent"))
             check("ai-habit no history-save warning", page.evaluate("document.getElementById('aiHabitWarn').textContent") == "")
@@ -831,7 +937,7 @@ def main():
             # Weekly frequency: the mock sees weekly figures.
             page.select_option("#aiHabitFrequency", "weekly")
             page.click("#aiHabitBtn")
-            page.wait_for_function("document.getElementById('aiHabitReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            page.wait_for_function("document.getElementById('aiHabitReply').textContent.includes('Second line of the reply.')", timeout=15000)
             check("ai-habit weekly mock reply shown", "Mocked AI reply." in page.content())
             sent = MockGemini.requests[-1] if MockGemini.requests else ""
             check("ai-habit weekly reaches mock", all(x in sent for x in ("Frequency: weekly", "Current streak: 0 weeks", "8-week completion rate")), sent[:300])
@@ -840,7 +946,7 @@ def main():
             page.select_option("#aiHabitFrequency", "daily")
             page.fill("#aiHabitToday", date.today().isoformat())
             page.click("#aiHabitBtn")
-            page.wait_for_function("document.getElementById('aiHabitReply').textContent.includes('Mocked AI reply.')", timeout=15000)
+            page.wait_for_function("document.getElementById('aiHabitReply').textContent.includes('Second line of the reply.')", timeout=15000)
             check("ai-habit today mock reply shown", "Mocked AI reply." in page.content())
             sent = MockGemini.requests[-1] if MockGemini.requests else ""
             check("ai-habit today reaches mock", ("Reference date: " + date.today().isoformat()) in sent, sent[:300])
@@ -972,6 +1078,23 @@ def main():
                 "fetch('/api/overview').then(r => r.status)")
             check("unauthenticated overview 401", status == 401, str(status))
             ctx.close()
+
+            # Reduced motion: a fresh page with the OS setting on —
+            # every animation collapses to an instant snap (the
+            # CSS kill-switch), and the page detects the setting.
+            rpage = browser.new_page(reduced_motion="reduce")
+            rpage.goto(base + "/", timeout=15000)
+            rpage.wait_for_function("document.querySelector('section.active')?.id === 'landing'")
+            check("anim reduced motion detected",
+                  rpage.evaluate("matchMedia('(prefers-reduced-motion: reduce)').matches") is True)
+            # Chromium serializes the collapsed 0.01ms duration as
+            # "1e-05s", so compare numerically (a normal entrance
+            # is 0.38s) instead of matching the string.
+            check("anim reduced motion collapses section entrance",
+                  rpage.evaluate("parseFloat(getComputedStyle(document.querySelector('section#landing')).animationDuration)") <= 0.001)
+            check("anim reduced motion collapses card entrance",
+                  rpage.evaluate("parseFloat(getComputedStyle(document.querySelector('#landing .card')).animationDuration)") <= 0.001)
+            rpage.close()
 
             # Chromium logs a console error for every failed fetch,
             # including the twelve intentional AI error calls (a 503 UI
