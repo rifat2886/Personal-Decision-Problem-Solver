@@ -126,3 +126,35 @@ CREATE TABLE IF NOT EXISTS ai_history (
     response   TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+-- Study plans (Study Planner upgrade): one row per saved plan.
+-- start_date is the server date the plan starts on; exam_date is
+-- '' for a regular plan and the exam date for a countdown plan
+-- (days are then computed from the server clock). topics is a JSON
+-- array string of the countdown topics, '' for a regular plan.
+CREATE TABLE IF NOT EXISTS study_plans (
+    id            SERIAL PRIMARY KEY,
+    subject       TEXT NOT NULL,
+    start_date    TEXT NOT NULL,
+    days          INTEGER NOT NULL,
+    hours_per_day INTEGER NOT NULL,
+    exam_date     TEXT NOT NULL DEFAULT '',
+    topics        TEXT NOT NULL DEFAULT '',
+    owner         TEXT
+);
+
+-- Study plan days: one row per scheduled day of a plan.
+-- kind is 'study' (a planned study day, day_index 1-based) or
+-- 'revision' (a Smart Revision entry auto-scheduled +1/+3/+7 days
+-- after a study day is ticked done; day_index 0). done is 0/1.
+CREATE TABLE IF NOT EXISTS study_plan_days (
+    id        SERIAL PRIMARY KEY,
+    plan_id   INTEGER NOT NULL,
+    day_date  TEXT NOT NULL,
+    day_index INTEGER NOT NULL,
+    topic     TEXT NOT NULL,
+    hours     INTEGER NOT NULL,
+    kind      TEXT NOT NULL,
+    done      INTEGER NOT NULL DEFAULT 0,
+    owner     TEXT
+);

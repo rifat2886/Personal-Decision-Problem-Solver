@@ -180,6 +180,7 @@ function showSection(name) {
   if (name === "taskstatus") loadStatusList();
   if (name === "deadlines") loadDeadlines();
   if (name === "finance") loadTransactions();
+  if (name === "study") loadStudyPlans();
   if (name === "savings") loadSavings();
   if (name === "habits") loadHabits();
   if (name === "ai-history") loadAiHistory();
@@ -1455,14 +1456,106 @@ el("exBtn").addEventListener("click", async () => {
   } catch (e) { showMsg("exMsg", e.message, false); }
 });
 
-// Study Planner: mirrors study_planner.cpp (calculated, not saved).
+// Study Planner: saved plans with per-day progress, Exam Countdown
+// plans, and Smart Revision (+1/+3/+7 days). The old calculate-only
+// POST /api/study-planner still exists server-side (the console
+// module mirrors it), but the dashboard now uses /api/study-plans.
+const SP_MAX_TOPICS = 10;
+function spTopicCount() { return document.querySelectorAll("#spTopics .ai-opt-row").length; }
+function spSyncAddTopicBtn() {
+  el("spAddTopic").disabled = spTopicCount() >= SP_MAX_TOPICS;
+}
+function addSpTopicRow() {
+  if (spTopicCount() >= SP_MAX_TOPICS) return;
+  const div = document.createElement("div");
+  div.className = "ai-opt-row";
+  div.innerHTML = `<input placeholder="Topic" class="ai-opt-input"><button type="button" class="btn btn-secondary ai-opt-remove">Remove</button>`;
+  div.querySelector(".ai-opt-remove").addEventListener("click", () => { div.remove(); spSyncAddTopicBtn(); });
+  el("spTopics").appendChild(div);
+  spSyncAddTopicBtn();
+}
+addSpTopicRow();
+el("spAddTopic").addEventListener("click", addSpTopicRow);
+
+async function loadStudyPlans() {
+  try {
+    const plans = await api("/api/study-plans");
+    if (!plans.length) {
+      el("spList").innerHTML = "<div class='empty'>No study plans yet. Create one above.</div>";
+      return;
+    }
+    // Fetch each plan's full schedule (plans are few; the list
+    // endpoint returns summaries without day rows).
+    const full = [];
+    for (const p of plans) full.push(await api("/api/study-plans/" + p.id));
+    el("spList").innerHTML = full.map(p => {
+      const first = p.schedule.length ? p.schedule[0].date : p.startDate;
+      const last = p.schedule.length ? p.schedule[p.schedule.length - 1].date : p.startDate;
+      const exam = p.examDate ? `<p><b>Exam:</b> ${esc(p.examDate)} (countdown plan)</p>` : "";
+      const rows = p.schedule.map(d => {
+        const label = d.kind === "revision" ? "Revision" : ("Day " + d.dayIndex);
+        return `<tr><td><input type="checkbox" ${d.done ? "checked" : ""} onchange="tickStudyDay(${p.id}, ${d.id}, this.checked)"></td><td>${esc(d.date)}</td><td>${label}</td><td>${esc(d.topic)}</td><td>${d.hours} hour(s)</td></tr>`;
+      }).join("");
+      return `<div class="sp-plan"><h3>${esc(p.subject)}</h3>` +
+        `<p>${esc(first)} &ndash; ${esc(last)} &middot; ${p.hoursPerDay} hour(s)/day &middot; Progress: ${p.doneDays}/${p.totalDays} (${p.progressPct}%)</p>` +
+        exam +
+        `<table><tr><th>Done</th><th>Date</th><th>Day</th><th>Topic</th><th>Hours</th></tr>${rows}</table>` +
+        `<div class="actions"><button class="btn btn-danger" onclick="deleteStudyPlan(${p.id})">Delete plan</button></div></div>`;
+    }).join("");
+  } catch (e) { showMsg("spMsg", e.message, false); }
+}
+async function tickStudyDay(planId, dayId, done) {
+  try {
+    await api("/api/study-plans/" + planId + "/days/" + dayId, { method: "PATCH", body: JSON.stringify({ done }) });
+    loadStudyPlans();
+  } catch (e) { showMsg("spMsg", e.message, false); loadStudyPlans(); }
+}
+window.tickStudyDay = tickStudyDay;
+async function deleteStudyPlan(id) {
+  if (!window.confirm("Delete this study plan and all its days?")) return;
+  try { await api("/api/study-plans/" + id, { method: "DELETE" }); loadStudyPlans(); }
+  catch (e) { showMsg("spMsg", e.message, false); }
+}
+window.deleteStudyPlan = deleteStudyPlan;
 el("spBtn").addEventListener("click", async () => {
   try {
-    const r = await api("/api/study-planner", { method: "POST", body: JSON.stringify({
-      subject: el("spSubject").value.trim(), days: +el("spDays").value, hours: +el("spHours").value }) });
-    showMsg("spMsg", "Total planned hours: " + r.totalHours + " (" + r.days + " days x " + r.hoursPerDay + " hour(s) per day).", true);
-    el("spList").innerHTML = "<table><tr><th>Day</th><th>Plan</th></tr>" +
-      r.plan.map(p => `<tr><td>${p.day}</td><td>${esc(p.text)}</td></tr>`).join("") + "</table>";
+    // Client-side validation mirrors the server, so the user gets
+    // an immediate error instead of a round trip that would fail
+    // anyway. The exam date itself is NOT checked here: the server
+    // clock decides what "future" means (near midnight the user's
+    // local date and the server date can differ by a day).
+    const subject = aiDailySanitize(el("spSubject").value.trim());
+    const hours = el("spHours").value === "" ? NaN : Number(el("spHours").value);
+    if (!subject || [...subject].length > 200 || !Number.isInteger(hours) || hours < 1 || hours > 24) {
+      showMsg("spMsg", "A plan needs a subject (up to 200 characters) and hours 1-24.", false);
+      return;
+    }
+    const examDate = el("spExamDate").value;
+    const body = { subject, hours };
+    if (examDate) {
+      const topics = [];
+      let topicTooLong = false;
+      document.querySelectorAll("#spTopics .ai-opt-input").forEach(inp => {
+        const v = aiDailySanitize(inp.value.trim());
+        if (v) { if ([...v].length > 100) topicTooLong = true; else if (!topics.includes(v)) topics.push(v); }
+      });
+      if (topicTooLong) { showMsg("spMsg", "Each topic must be 1-100 characters.", false); return; }
+      if (!topics.length) { showMsg("spMsg", "A countdown plan needs 1-10 topics.", false); return; }
+      body.examDate = examDate;
+      body.topics = topics;
+    } else {
+      const days = el("spDays").value === "" ? NaN : Number(el("spDays").value);
+      if (!Number.isInteger(days) || days < 1 || days > 365) {
+        showMsg("spMsg", "Days must be 1-365.", false);
+        return;
+      }
+      body.days = days;
+    }
+    const r = await api("/api/study-plans", { method: "POST", body: JSON.stringify(body) });
+    showMsg("spMsg", "Plan saved: " + r.subject + " (" + r.totalDays + " days, " + (r.days * r.hoursPerDay) + " total hours).", true);
+    el("spSubject").value = ""; el("spDays").value = ""; el("spHours").value = ""; el("spExamDate").value = "";
+    document.querySelectorAll("#spTopics .ai-opt-input").forEach(inp => { inp.value = ""; });
+    loadStudyPlans();
   } catch (e) { showMsg("spMsg", e.message, false); }
 });
 

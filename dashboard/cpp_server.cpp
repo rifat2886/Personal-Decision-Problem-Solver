@@ -322,6 +322,26 @@ static bool jsonBoolField(const string& body, const string& key) {
     p++; while (p < body.size() && (body[p] == ' ' || body[p] == '\t')) p++;
     return body.compare(p, 4, "true") == 0;
 }
+// Parse a strict JSON boolean: the key must be present and the
+// value must be the literal true or false (jsonBoolField above
+// cannot tell a missing key from false). The key is located like
+// jsonStrictIntField does, so a quoted key inside a user-supplied
+// string value cannot match.
+static bool jsonStrictBoolField(const string& body, const string& key, bool& out) {
+    string pat = "\"" + key + "\"";
+    size_t from = 0, p = string::npos;
+    while (true) {
+        size_t cand = body.find(pat, from); if (cand == string::npos) return false;
+        size_t q = cand + pat.size();
+        while (q < body.size() && (body[q] == ' ' || body[q] == '\t')) q++;
+        if (q < body.size() && body[q] == ':') { p = q + 1; break; }
+        from = cand + 1;
+    }
+    while (p < body.size() && (body[p] == ' ' || body[p] == '\t')) p++;
+    if (body.compare(p, 4, "true") == 0) { out = true; return true; }
+    if (body.compare(p, 5, "false") == 0) { out = false; return true; }
+    return false;
+}
 // True when "key": appears as a JSON object key (not inside a
 // string value): the quoted key must be followed by ':' (after
 // optional whitespace). Plain body.find() would also match the
@@ -832,6 +852,12 @@ struct Decision { string id, date, type, title, owner; int priority = 0; };
 struct Tx { long long id = 0; string date, type, category, note, owner; double amount = 0; };
 struct Goal { long long id = 0; string name, owner; double target = 0, saved = 0; };
 struct Task { string id, title, deadline, status, owner; int urgency = 0, importance = 0; int score() const { return urgency * 2 + importance * 3; } };
+// Study Planner upgrade: a saved plan and its scheduled days.
+// topicsJson is a JSON array string of the countdown topics ('' for
+// a regular plan). A StudyDay's kind is "study" (dayIndex 1-based)
+// or "revision" (Smart Revision, dayIndex 0).
+struct StudyPlan { long long id = 0; string subject, startDate, examDate, topicsJson, owner; int days = 0, hoursPerDay = 0; };
+struct StudyDay { long long id = 0, planId = 0; string date, topic, kind, owner; int dayIndex = 0, hours = 0, done = 0; };
 
 static bool loadUsers(map<string, pair<string, string>>& users, string& err) {
     // C1/C2 fix (2026-11-10): the user store can fail to load (dead
@@ -1296,6 +1322,110 @@ static void saveGoals(const vector<Goal>& goals) {
     vector<string> lines;
     for (auto& g : goals) lines.push_back(sanitize(g.name) + "|" + fmtNumRaw(g.target) + "|" + fmtNumRaw(g.saved) + "|" + sanitize(g.owner));
     writeLines(joinPath(g_dataDir, "savings_goals.txt"), lines);
+}
+// ---- Study Planner upgrade: saved plans + per-day progress ----
+// Txt formats (the plan id differs from transactions/savings on
+// purpose):
+//   study_plans.txt:     id|subject|start_date|days|hours|exam_date|topics_json|owner
+//   study_plan_days.txt: plan_id|day_date|day_index|topic|hours|kind|done|owner
+// The plan id is stored EXPLICITLY in the txt line (monotonically
+// increasing, never reused) because day rows reference it: with a
+// 1-based line index, deleting a plan would renumber later plans
+// and orphan their days. Day ids are 1-based line indices in
+// study_plan_days.txt (nothing references a day id except the UI,
+// which always re-reads the plan after a change).
+static string topicsJsonEncode(const vector<string>& topics) {
+    string out = "[";
+    for (size_t i = 0; i < topics.size(); i++) { if (i) out += ","; out += jsonStr(topics[i]); }
+    return out + "]";
+}
+static bool topicsJsonDecode(const string& raw, vector<string>& topics) {
+    topics.clear();
+    if (raw.empty()) return true;
+    vector<string> items;
+    if (!jsonArrayElements(raw, items)) return false;
+    for (auto& it : items) { string s; if (!budgetString(it, s)) return false; topics.push_back(s); }
+    return true;
+}
+// Which topic(s) a day of a countdown plan covers: topics are
+// spread over the days in contiguous blocks, so every day has at
+// least one topic and every topic is covered at least once (days
+// hold several topics when there are more topics than days).
+static string topicsForDay(int dayIdx1, int totalDays, const vector<string>& topics) {
+    if (topics.empty() || totalDays < 1) return "";
+    int t = (int)topics.size();
+    int start = (dayIdx1 - 1) * t / totalDays;
+    int end = dayIdx1 * t / totalDays;
+    if (end <= start) return topics[(size_t)start];
+    string out;
+    for (int i = start; i < end; i++) { if (i > start) out += ", "; out += topics[(size_t)i]; }
+    return out;
+}
+static vector<StudyPlan> loadStudyPlans() {
+    if (pgMode()) {
+        vector<StudyPlan> out; vector<pgstore::Row> rows; string err;
+        if (!pgstore::pgQuery("SELECT id, subject, start_date, days, hours_per_day, exam_date, topics, owner FROM study_plans ORDER BY id", {}, rows, err)) return out;
+        for (auto& r : rows) { StudyPlan p; try { p.id = stoll(r[0].text); p.days = stoi(r[3].text); p.hoursPerDay = stoi(r[4].text); } catch (...) { continue; } p.subject = r[1].text; p.startDate = r[2].text; p.examDate = r[5].text; p.topicsJson = r[6].text; p.owner = r[7].isNull ? "" : r[7].text; out.push_back(p); }
+        return out;
+    }
+    vector<StudyPlan> out;
+    auto lines = readLines(joinPath(g_dataDir, "study_plans.txt"));
+    for (auto& ln : lines) {
+        auto parts = splitPipe(ln); if (parts.size() < 7) continue;
+        try { StudyPlan p; p.id = stoll(parts[0]); p.subject = parts[1]; p.startDate = parts[2]; p.days = stoi(parts[3]); p.hoursPerDay = stoi(parts[4]); p.examDate = parts[5]; p.topicsJson = parts[6]; p.owner = parts.size() >= 8 ? parts[7] : ""; out.push_back(p); } catch (...) {}
+    }
+    return out;
+}
+static vector<StudyDay> loadStudyDays() {
+    if (pgMode()) {
+        vector<StudyDay> out; vector<pgstore::Row> rows; string err;
+        if (!pgstore::pgQuery("SELECT id, plan_id, day_date, day_index, topic, hours, kind, done, owner FROM study_plan_days ORDER BY id", {}, rows, err)) return out;
+        for (auto& r : rows) { StudyDay d; try { d.id = stoll(r[0].text); d.planId = stoll(r[1].text); d.dayIndex = stoi(r[3].text); d.hours = stoi(r[5].text); d.done = stoi(r[7].text); } catch (...) { continue; } d.date = r[2].text; d.topic = r[4].text; d.kind = r[6].text; d.owner = r[8].isNull ? "" : r[8].text; out.push_back(d); }
+        return out;
+    }
+    vector<StudyDay> out;
+    auto lines = readLines(joinPath(g_dataDir, "study_plan_days.txt"));
+    for (size_t i = 0; i < lines.size(); i++) {
+        auto parts = splitPipe(lines[i]); if (parts.size() < 7) continue;
+        try { StudyDay d; d.id = (long long)i + 1; d.planId = stoll(parts[0]); d.date = parts[1]; d.dayIndex = stoi(parts[2]); d.topic = parts[3]; d.hours = stoi(parts[4]); d.kind = parts[5]; d.done = stoi(parts[6]); d.owner = parts.size() >= 8 ? parts[7] : ""; out.push_back(d); } catch (...) {}
+    }
+    return out;
+}
+static string studyDayJson(const StudyDay& d) {
+    return "{\"id\":" + to_string(d.id) + ",\"planId\":" + to_string(d.planId) + ",\"date\":" + jsonStr(d.date) +
+           ",\"dayIndex\":" + to_string(d.dayIndex) + ",\"topic\":" + jsonStr(d.topic) + ",\"hours\":" + to_string(d.hours) +
+           ",\"kind\":" + jsonStr(d.kind) + ",\"done\":" + (d.done ? "true" : "false") + "}";
+}
+static string studyPlanJson(const StudyPlan& p, const vector<StudyDay>& allDays, bool includeDays) {
+    vector<StudyDay> mine;
+    for (auto& d : allDays) if (d.planId == p.id) mine.push_back(d);
+    sort(mine.begin(), mine.end(), [](const StudyDay& a, const StudyDay& b) {
+        if (a.date != b.date) return a.date < b.date;
+        if (a.kind != b.kind) return a.kind == "study";
+        return a.id < b.id; });
+    int done = 0; for (auto& d : mine) if (d.done) done++;
+    int total = (int)mine.size();
+    int pct = total ? (done * 100 + total / 2) / total : 0;
+    vector<string> topics; topicsJsonDecode(p.topicsJson, topics);
+    string out = "{\"id\":" + to_string(p.id) + ",\"subject\":" + jsonStr(p.subject) + ",\"startDate\":" + jsonStr(p.startDate) +
+                 ",\"days\":" + to_string(p.days) + ",\"hoursPerDay\":" + to_string(p.hoursPerDay) + ",\"examDate\":" + jsonStr(p.examDate) +
+                 ",\"topics\":" + topicsJsonEncode(topics) + ",\"totalDays\":" + to_string(total) + ",\"doneDays\":" + to_string(done) +
+                 ",\"progressPct\":" + to_string(pct);
+    if (includeDays) {
+        out += ",\"schedule\":[";
+        for (size_t i = 0; i < mine.size(); i++) { if (i) out += ","; out += studyDayJson(mine[i]); }
+        out += "]";
+    }
+    return out + "}";
+}
+// Smart Revision dates for a study day: +1, +3, +7 days (spaced
+// repetition). Computed from the study day's own date, so a tick
+// on any day schedules its revisions from that day.
+static vector<string> revisionDatesFor(const string& studyDate) {
+    vector<string> out;
+    int base = daysFromCivilStr(studyDate);
+    for (int off : {1, 3, 7}) out.push_back(dateFromDays(base + off));
+    return out;
 }
 static vector<Task> loadTasks() {
     if (pgMode()) {
@@ -3149,6 +3279,247 @@ static void handleApi(SocketFd fd, const Request& req, const string& path, const
         ostringstream os; os << "{\"subject\":" << jsonStr(subject) << ",\"days\":" << days << ",\"hoursPerDay\":" << hours << ",\"totalHours\":" << (days * hours) << ",\"plan\":[";
         for (long long d = 1; d <= days; d++) { if (d > 1) os << ","; os << "{\"day\":" << d << ",\"text\":" << jsonStr("Day " + to_string(d) + ": " + subject + " - " + to_string(hours) + " hour(s)") << "}"; }
         return sendJson(fd, 200, os.str() + "]}");
+    }
+    // ---- Study Planner upgrade: saved plans + per-day progress ----
+    // GET /api/study-plans: the requester's plans (summaries with
+    // progress counts, no day rows). POST creates a plan and its
+    // day rows; GET /api/study-plans/:id returns one plan with its
+    // full schedule; PATCH .../days/:dayId ticks a day done/undone
+    // (Smart Revision rows are reconciled); DELETE removes a plan
+    // and its days. Cross-user access is always 404, never 403.
+    if (path == "/api/study-plans" && method == "GET") {
+        auto plans = loadStudyPlans(); auto days = loadStudyDays();
+        string out = "["; bool first = true;
+        for (auto& p : plans) { if (!ownerVisible(p.owner, user)) continue; if (!first) out += ","; first = false; out += studyPlanJson(p, days, false); }
+        return sendJson(fd, 200, out + "]");
+    }
+    if (path == "/api/study-plans" && method == "POST") {
+        string subject, examDate;
+        long long days = -1, hours = -1;
+        vector<string> topics;
+        jsonStringField(req.body, "subject", subject);
+        jsonStringField(req.body, "examDate", examDate);
+        bool hasTopics = jsonStringArrayField(req.body, "topics", topics);
+        jsonStrictIntField(req.body, "days", days);
+        jsonStrictIntField(req.body, "hours", hours);
+        subject = trimStr(subject); examDate = trimStr(examDate);
+        if (subject.empty() || utf8CodePoints(subject) > 200 || hours < 1 || hours > 24)
+            return sendErr(fd, 400, "A plan needs a subject (up to 200 characters) and hours 1-24.");
+        bool countdown = !examDate.empty();
+        int totalDays = 0;
+        if (countdown) {
+            // Exam Countdown Plan: days are computed BACKWARD from
+            // the exam date over the remaining days, from the server
+            // clock fresh on every request (same pattern as 2.3's
+            // daysLeft and the 2.2 date fix) — never hard-coded.
+            // The last study day is the day before the exam.
+            if (!validDate(examDate)) return sendErr(fd, 400, "Exam date must be a real date (YYYY-MM-DD).");
+            int left = daysFromCivilStr(examDate) - daysFromCivilStr(todayStr());
+            if (left < 0) return sendErr(fd, 400, "Exam date is in the past.");
+            if (left == 0) return sendErr(fd, 400, "The exam is today — no days left to plan.");
+            if (left > 365) return sendErr(fd, 400, "Exam is more than a year away — at most 365 days can be planned.");
+            if (!hasTopics || topics.empty() || topics.size() > 10)
+                return sendErr(fd, 400, "A countdown plan needs 1-10 topics.");
+            vector<string> clean;
+            for (auto& t : topics) { string c = trimStr(t); if (c.empty() || utf8CodePoints(c) > 100) return sendErr(fd, 400, "Each topic must be 1-100 characters."); bool dup = false; for (auto& k : clean) if (k == c) dup = true; if (!dup) clean.push_back(c); }
+            topics = clean;
+            totalDays = left;
+        } else {
+            if (days < 1 || days > 365) return sendErr(fd, 400, "Days must be 1-365.");
+            totalDays = (int)days;
+            topics.clear();
+        }
+        StudyPlan p; p.subject = subject; p.startDate = todayStr(); p.days = totalDays; p.hoursPerDay = (int)hours;
+        p.examDate = countdown ? examDate : ""; p.topicsJson = countdown ? topicsJsonEncode(topics) : ""; p.owner = user;
+        string err;
+        if (pgMode()) {
+            vector<pgstore::Row> rows;
+            if (!pgstore::pgExec("BEGIN", {}, err)) return sendErr(fd, 500, "Could not save the plan. Please try again later.");
+            bool ok = pgstore::pgQuery("INSERT INTO study_plans (subject, start_date, days, hours_per_day, exam_date, topics, owner) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id",
+                                       {sanitize(p.subject), p.startDate, to_string(p.days), to_string(p.hoursPerDay), p.examDate, p.topicsJson, user}, rows, err) && !rows.empty();
+            if (ok) { try { p.id = stoll(rows[0][0].text); } catch (...) { ok = false; } }
+            int base = daysFromCivilStr(p.startDate);
+            for (int i = 1; ok && i <= totalDays; i++) {
+                string topic = countdown ? topicsForDay(i, totalDays, topics) : subject;
+                ok = pgstore::pgExec("INSERT INTO study_plan_days (plan_id, day_date, day_index, topic, hours, kind, done, owner) VALUES ($1,$2,$3,$4,$5,'study',0,$6)",
+                                     {to_string(p.id), dateFromDays(base + i - 1), to_string(i), sanitize(topic), to_string(p.hoursPerDay), user}, err);
+            }
+            if (!ok) { pgstore::pgExec("ROLLBACK", {}, err); return sendErr(fd, 500, "Could not save the plan. Please try again later."); }
+            pgstore::pgExec("COMMIT", {}, err);
+        } else {
+            long long nextId = 1;
+            { FileLock lock("study_plans.txt");
+              auto existing = loadStudyPlans();
+              for (auto& e : existing) if (e.id >= nextId) nextId = e.id + 1;
+              p.id = nextId;
+              if (!appendLine(joinPath(g_dataDir, "study_plans.txt"), to_string(p.id) + "|" + sanitize(p.subject) + "|" + p.startDate + "|" + to_string(p.days) + "|" + to_string(p.hoursPerDay) + "|" + p.examDate + "|" + p.topicsJson + "|" + user))
+                  return sendErr(fd, 500, "Could not save the plan. Please try again later."); }
+            int base = daysFromCivilStr(p.startDate);
+            FileLock lock2("study_plan_days.txt");
+            for (int i = 1; i <= totalDays; i++) {
+                string topic = countdown ? topicsForDay(i, totalDays, topics) : subject;
+                if (!appendLine(joinPath(g_dataDir, "study_plan_days.txt"), to_string(p.id) + "|" + dateFromDays(base + i - 1) + "|" + to_string(i) + "|" + sanitize(topic) + "|" + to_string(p.hoursPerDay) + "|study|0|" + user))
+                    return sendErr(fd, 500, "Could not save the plan. Please try again later.");
+            }
+        }
+        return sendJson(fd, 201, studyPlanJson(p, loadStudyDays(), true));
+    }
+    if (path.rfind("/api/study-plans/", 0) == 0 && method == "GET") {
+        string idStr = path.substr(string("/api/study-plans/").size());
+        long long id = 0; bool numeric = !idStr.empty();
+        for (char c : idStr) if (!isdigit((unsigned char)c)) numeric = false;
+        if (numeric) { try { id = stoll(idStr); } catch (...) { numeric = false; } }
+        if (!numeric || id < 1) return sendErr(fd, 404, "Plan not found.");
+        auto plans = loadStudyPlans();
+        for (auto& p : plans) if (p.id == id && ownerVisible(p.owner, user))
+            return sendJson(fd, 200, studyPlanJson(p, loadStudyDays(), true));
+        return sendErr(fd, 404, "Plan not found.");
+    }
+    if (path.rfind("/api/study-plans/", 0) == 0 && method == "PATCH") {
+        // /api/study-plans/:id/days/:dayId — tick a day done/undone.
+        string rest = path.substr(string("/api/study-plans/").size());
+        size_t slash = rest.find("/days/");
+        if (slash == string::npos) return sendErr(fd, 404, "Plan not found.");
+        string planStr = rest.substr(0, slash), dayStr = rest.substr(slash + 6);
+        long long planId = 0, dayId = 0; bool numeric = !planStr.empty() && !dayStr.empty();
+        for (char c : planStr) if (!isdigit((unsigned char)c)) numeric = false;
+        for (char c : dayStr) if (!isdigit((unsigned char)c)) numeric = false;
+        if (numeric) { try { planId = stoll(planStr); dayId = stoll(dayStr); } catch (...) { numeric = false; } }
+        if (!numeric || planId < 1 || dayId < 1) return sendErr(fd, 404, "Plan not found.");
+        bool done = false;
+        if (!jsonStrictBoolField(req.body, "done", done)) return sendErr(fd, 400, "Need done true or false.");
+        auto plans = loadStudyPlans();
+        const StudyPlan* plan = nullptr;
+        for (auto& p : plans) if (p.id == planId && ownerVisible(p.owner, user)) plan = &p;
+        if (!plan) return sendErr(fd, 404, "Plan not found.");
+        auto days = loadStudyDays();
+        const StudyDay* day = nullptr;
+        for (auto& d : days) if (d.id == dayId && d.planId == planId && ownerVisible(d.owner, user)) day = &d;
+        if (!day) return sendErr(fd, 404, "Day not found.");
+        StudyDay upd = *day;
+        if ((upd.done ? true : false) == done) {
+            // Idempotent re-tick: nothing changes, report the
+            // current state (revisions are already in sync).
+            return sendJson(fd, 200, "{\"day\":" + studyDayJson(upd) + ",\"plan\":" + studyPlanJson(*plan, days, false) + "}");
+        }
+        upd.done = done ? 1 : 0;
+        string err;
+        if (pgMode()) {
+            if (!pgstore::pgExec("UPDATE study_plan_days SET done = $1 WHERE id = $2 AND COALESCE(owner, '') = $3",
+                                 {done ? "1" : "0", to_string(dayId), upd.owner}, err))
+                return sendErr(fd, 500, "Could not update the day. Please try again later.");
+        } else {
+            FileLock lock("study_plan_days.txt");
+            auto lines = readLines(joinPath(g_dataDir, "study_plan_days.txt"));
+            if (dayId > (long long)lines.size()) return sendErr(fd, 404, "Day not found.");
+            auto parts = splitPipe(lines[(size_t)dayId - 1]);
+            if (parts.size() < 7) return sendErr(fd, 404, "Day not found.");
+            // Re-validate from the line itself: the id is a line
+            // index, so confirm this line is the day we looked up
+            // (same plan, same owner) before rewriting it.
+            long long linePlan = 0; try { linePlan = stoll(parts[0]); } catch (...) { return sendErr(fd, 404, "Day not found."); }
+            string lineOwner = parts.size() >= 8 ? parts[7] : "";
+            if (linePlan != planId || !ownerVisible(lineOwner, user)) return sendErr(fd, 404, "Day not found.");
+            parts[6] = done ? "1" : "0";
+            string rebuilt; for (size_t i = 0; i < parts.size(); i++) { if (i) rebuilt += "|"; rebuilt += parts[i]; }
+            lines[(size_t)dayId - 1] = rebuilt;
+            if (!writeLines(joinPath(g_dataDir, "study_plan_days.txt"), lines))
+                return sendErr(fd, 500, "Could not update the day. Please try again later.");
+        }
+        // Smart Revision reconciliation: only study-day ticks change
+        // the revision set. Recompute the desired revisions for the
+        // whole plan from its done study days, then add missing rows
+        // and drop undone rows no longer wanted. Done revision rows
+        // are always kept (completed work stays on record), and a
+        // revision shared by two learned days survives while either
+        // parent is still done.
+        if (upd.kind == "study") {
+            auto cur = loadStudyDays();
+            vector<StudyDay> mine;
+            for (auto& d : cur) if (d.planId == planId) mine.push_back(d);
+            // Desired (date, topic) revision pairs from done study days.
+            vector<pair<string, string>> desired;
+            for (auto& d : mine) if (d.kind == "study" && d.done)
+                for (auto& rd : revisionDatesFor(d.date)) {
+                    bool dup = false; for (auto& w : desired) if (w.first == rd && w.second == d.topic) dup = true;
+                    if (!dup) desired.push_back({rd, d.topic});
+                }
+            if (pgMode()) {
+                for (auto& w : desired) {
+                    bool exists = false;
+                    for (auto& d : mine) if (d.kind == "revision" && d.date == w.first && d.topic == w.second) exists = true;
+                    if (!exists) pgstore::pgExec("INSERT INTO study_plan_days (plan_id, day_date, day_index, topic, hours, kind, done, owner) VALUES ($1,$2,0,$3,$4,'revision',0,$5)",
+                                                 {to_string(planId), w.first, sanitize(w.second), to_string(plan->hoursPerDay), user}, err);
+                }
+                for (auto& d : mine) {
+                    if (d.kind != "revision" || d.done) continue;
+                    bool wanted = false; for (auto& w : desired) if (w.first == d.date && w.second == d.topic) wanted = true;
+                    if (!wanted) pgstore::pgExec("DELETE FROM study_plan_days WHERE id = $1 AND COALESCE(owner, '') = $2", {to_string(d.id), d.owner}, err);
+                }
+            } else {
+                FileLock lock("study_plan_days.txt");
+                auto lines = readLines(joinPath(g_dataDir, "study_plan_days.txt"));
+                vector<string> kept;
+                for (size_t i = 0; i < lines.size(); i++) {
+                    auto parts = splitPipe(lines[i]);
+                    bool drop = false;
+                    if (parts.size() >= 7) {
+                        try {
+                            long long pid = stoll(parts[0]);
+                            if (pid == planId && parts[5] == "revision" && stoi(parts[6]) == 0) {
+                                bool wanted = false; for (auto& w : desired) if (w.first == parts[1] && w.second == parts[3]) wanted = true;
+                                if (!wanted) drop = true;
+                            }
+                        } catch (...) {}
+                    }
+                    if (!drop) kept.push_back(lines[i]);
+                }
+                if (!writeLines(joinPath(g_dataDir, "study_plan_days.txt"), kept))
+                    return sendErr(fd, 500, "Could not update the day. Please try again later.");
+                for (auto& w : desired) {
+                    bool exists = false;
+                    for (auto& d : mine) if (d.kind == "revision" && d.date == w.first && d.topic == w.second) exists = true;
+                    if (!exists) appendLine(joinPath(g_dataDir, "study_plan_days.txt"), to_string(planId) + "|" + w.first + "|0|" + sanitize(w.second) + "|" + to_string(plan->hoursPerDay) + "|revision|0|" + user);
+                }
+            }
+        }
+        // Re-read: the txt rewrite can shift day ids, so find the
+        // ticked day by its stable key (plan, date, kind, topic).
+        auto fresh = loadStudyDays();
+        StudyDay out = upd;
+        for (auto& d : fresh) if (d.planId == planId && d.date == upd.date && d.kind == upd.kind && d.topic == upd.topic) out = d;
+        return sendJson(fd, 200, "{\"day\":" + studyDayJson(out) + ",\"plan\":" + studyPlanJson(*plan, fresh, false) + "}");
+    }
+    if (path.rfind("/api/study-plans/", 0) == 0 && method == "DELETE") {
+        string idStr = path.substr(string("/api/study-plans/").size());
+        long long id = 0; bool numeric = !idStr.empty();
+        for (char c : idStr) if (!isdigit((unsigned char)c)) numeric = false;
+        if (numeric) { try { id = stoll(idStr); } catch (...) { numeric = false; } }
+        if (!numeric || id < 1) return sendErr(fd, 404, "Plan not found.");
+        auto plans = loadStudyPlans();
+        const StudyPlan* found = nullptr;
+        for (auto& p : plans) if (p.id == id && ownerVisible(p.owner, user)) found = &p;
+        if (!found) return sendErr(fd, 404, "Plan not found.");
+        StudyPlan gone = *found; auto days = loadStudyDays(); string err;
+        if (pgMode()) {
+            if (!pgstore::pgExec("DELETE FROM study_plan_days WHERE plan_id = $1 AND COALESCE(owner, '') = $2", {to_string(id), gone.owner}, err) ||
+                !pgstore::pgExec("DELETE FROM study_plans WHERE id = $1 AND COALESCE(owner, '') = $2", {to_string(id), gone.owner}, err))
+                return sendErr(fd, 500, "Could not delete the plan. Please try again later.");
+        } else {
+            { FileLock lock("study_plan_days.txt");
+              auto lines = readLines(joinPath(g_dataDir, "study_plan_days.txt"));
+              vector<string> kept;
+              for (auto& ln : lines) { auto parts = splitPipe(ln); bool drop = false; if (parts.size() >= 1) { try { if (stoll(parts[0]) == id) drop = true; } catch (...) {} } if (!drop) kept.push_back(ln); }
+              if (!writeLines(joinPath(g_dataDir, "study_plan_days.txt"), kept))
+                  return sendErr(fd, 500, "Could not delete the plan. Please try again later."); }
+            FileLock lock("study_plans.txt");
+            auto lines = readLines(joinPath(g_dataDir, "study_plans.txt"));
+            vector<string> kept;
+            for (auto& ln : lines) { auto parts = splitPipe(ln); bool drop = false; if (parts.size() >= 1) { try { if (stoll(parts[0]) == id) drop = true; } catch (...) {} } if (!drop) kept.push_back(ln); }
+            if (!writeLines(joinPath(g_dataDir, "study_plans.txt"), kept))
+                return sendErr(fd, 500, "Could not delete the plan. Please try again later.");
+        }
+        return sendJson(fd, 200, studyPlanJson(gone, days, false));
     }
     if (path == "/api/time-allocation" && method == "POST") {
         // Mirrors time_allocation.cpp: each 0-24, total, remaining or warning.

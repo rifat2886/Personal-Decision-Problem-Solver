@@ -336,12 +336,18 @@
 
   <section id="study">
     <h2>Study Planner</h2>
-    <p class="muted">Same plan as the C++ Study Planner: one line per day, total hours = days × hours per day. This plan is calculated, not saved — like the console module.</p>
+    <p class="muted">Create a plan and it is saved — tick each day done as you go. Add an exam date for a countdown plan: the days are counted back from the exam and your topics are spread over them (the Days field is then ignored). Tick a study day done and Smart Revision schedules that topic again after 1, 3 and 7 days.</p>
     <div class="card">
       <label>Subject <input id="spSubject" placeholder="Mathematics"></label>
       <label>Number of days (1–365) <input id="spDays" type="number" min="1" max="365"></label>
       <label>Study hours per day (1–24) <input id="spHours" type="number" min="1" max="24"></label>
-      <button class="btn btn-primary" id="spBtn">Create plan</button>
+      <label>Exam date (optional — countdown plan) <input id="spExamDate" type="date"></label>
+      <label>Topics (for a countdown plan, 1–10)</label>
+      <div id="spTopics"></div>
+      <div class="actions">
+        <button class="btn btn-secondary" id="spAddTopic">Add topic</button>
+        <button class="btn btn-primary" id="spBtn">Create plan</button>
+      </div>
       <div id="spMsg"></div>
     </div>
     <div class="card"><div id="spList"></div></div>

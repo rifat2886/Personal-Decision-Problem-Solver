@@ -13,6 +13,7 @@ Usage:
 Exit code 0 = all checks passed, 1 = at least one check failed.
 """
 import argparse
+import datetime
 import json
 import os
 import shutil
@@ -273,6 +274,57 @@ def main():
         status, body = req(port, "GET", "/api/savings", token=t)
         check("goal PATCH victim untouched", status == 200 and any(
             x.get("id") == edit_goal and x.get("target") == 6500 for x in body), str(body)[:200])
+        # Study Planner upgrade: saved plans, countdown, Smart Revision.
+        # Created BEFORE the restart so persistence is verified after it.
+        today = datetime.date.today()
+        status, body = req(port, "POST", "/api/study-plans", token=t,
+                           body={"subject": "ApiMaths", "days": 3, "hours": 2})
+        check("study plan create regular", status == 201 and body.get("totalDays") == 3
+              and [d.get("dayIndex") for d in body.get("schedule", [])] == [1, 2, 3]
+              and body["schedule"][0]["date"] == today.isoformat()
+              and body["schedule"][2]["date"] == (today + datetime.timedelta(days=2)).isoformat(),
+              str(body)[:300])
+        sp_plan = body.get("id")
+        sp_day1 = body["schedule"][0]["id"] if body.get("schedule") else None
+        exam5 = (today + datetime.timedelta(days=5)).isoformat()
+        status, body = req(port, "POST", "/api/study-plans", token=t,
+                           body={"subject": "ApiPhysics", "hours": 3, "examDate": exam5,
+                                 "topics": ["Algebra", "Geometry"]})
+        check("study plan countdown", status == 201 and body.get("days") == 5
+              and body.get("examDate") == exam5
+              and body["schedule"][-1]["date"] < exam5
+              and "Algebra" in [d.get("topic") for d in body.get("schedule", [])]
+              and "Geometry" in [d.get("topic") for d in body.get("schedule", [])],
+              str(body)[:300])
+        sp_countdown = body.get("id")
+        status, body = req(port, "PATCH", f"/api/study-plans/{sp_plan}/days/{sp_day1}", token=t,
+                           body={"done": True})
+        check("study plan tick day done", status == 200 and body.get("day", {}).get("done") is True, str(body)[:200])
+        status, body = req(port, "GET", f"/api/study-plans/{sp_plan}", token=t)
+        revs = [d for d in body.get("schedule", []) if d.get("kind") == "revision"]
+        check("study plan tick creates 3 revisions", status == 200 and len(revs) == 3
+              and sorted(d["date"] for d in revs) == [
+                  (today + datetime.timedelta(days=o)).isoformat() for o in (1, 3, 7)]
+              and body.get("doneDays") == 1 and body.get("totalDays") == 6
+              and body.get("progressPct") == 17, str(body)[:300])
+        sp_rev = revs[0]["id"] if revs else None
+        status, body = req(port, "PATCH", f"/api/study-plans/{sp_plan}/days/{sp_rev}", token=t,
+                           body={"done": True})
+        check("study plan tick revision done", status == 200 and body.get("day", {}).get("done") is True, str(body)[:200])
+        status, body = req(port, "PATCH", f"/api/study-plans/{sp_plan}/days/{sp_day1}", token=t,
+                           body={"done": False})
+        check("study plan untick day", status == 200 and body.get("day", {}).get("done") is False, str(body)[:200])
+        status, body = req(port, "GET", f"/api/study-plans/{sp_plan}", token=t)
+        revs = [d for d in body.get("schedule", []) if d.get("kind") == "revision"]
+        check("study plan untick drops undone revisions", status == 200 and len(revs) == 1
+              and revs[0]["done"] is True, str(body)[:300])
+        status, body = req(port, "PATCH", f"/api/study-plans/{sp_plan}/days/{sp_day1}", token=t,
+                           body={"done": True})
+        check("study plan re-tick regenerates revisions", status == 200, str(body)[:200])
+        status, body = req(port, "GET", f"/api/study-plans/{sp_plan}", token=t)
+        check("study plan revisions back after re-tick", status == 200
+              and len([d for d in body.get("schedule", []) if d.get("kind") == "revision"]) == 3
+              and body.get("doneDays") == 2 and body.get("totalDays") == 6, str(body)[:300])
         # Edits survive a server restart (the txt store is the source
         # of truth). Sessions are in-memory, so re-login after restart
         # and refresh t; later sections all use t.
@@ -293,12 +345,26 @@ def main():
                            body={"username": "olduser", "password": "OldPass123"})
         check("re-login after restart", status == 200 and "token" in body, str(body))
         t = body.get("token", t)
+        # Sessions are in-memory, so the restart also invalidated the
+        # second user's token: refresh it for the cross-user checks.
+        status, body = req(port, "POST", "/api/login",
+                           body={"username": "newuser", "password": "NewPass123"})
+        check("re-login newuser after restart", status == 200 and "token" in body, str(body))
+        token_new = body.get("token", token_new)
         status, body = req(port, "GET", "/api/transactions", token=t)
         check("tx edit persists after restart", status == 200 and any(
             x.get("id") == edit_tx and x.get("amount") == 750 for x in body), str(body)[:200])
         status, body = req(port, "GET", "/api/savings", token=t)
         check("goal edit persists after restart", status == 200 and any(
             x.get("id") == edit_goal and x.get("target") == 6500 for x in body), str(body)[:200])
+        status, body = req(port, "GET", "/api/study-plans", token=t)
+        check("study plan persists after restart", status == 200 and any(
+            x.get("id") == sp_plan and x.get("doneDays") == 2 and x.get("totalDays") == 6
+            for x in body), str(body)[:300])
+        status, body = req(port, "GET", f"/api/study-plans/{sp_plan}", token=t)
+        check("study plan revisions persist after restart", status == 200
+              and len([d for d in body.get("schedule", []) if d.get("kind") == "revision"]) == 3
+              and len([d for d in body.get("schedule", []) if d.get("done")]) == 2, str(body)[:300])
 
         status, body = req(port, "POST", "/api/habits", token=t,
                            body={"habit": "Reading", "date": "2026-11-03"})
@@ -309,6 +375,51 @@ def main():
         status, body = req(port, "POST", "/api/study-planner", token=t,
                            body={"subject": "Math", "days": 3, "hours": 2})
         check("study planner 6h", status == 200 and body.get("totalHours") == 6, str(body))
+        # Study Planner upgrade: validation, isolation, delete.
+        status, body = req(port, "POST", "/api/study-plans", token=t,
+                           body={"subject": "Past", "hours": 2, "examDate": "2020-01-01",
+                                 "topics": ["A"]})
+        check("study plan past exam 400", status == 400, str(body))
+        status, body = req(port, "POST", "/api/study-plans", token=t,
+                           body={"subject": "Today", "hours": 2,
+                                 "examDate": today.isoformat(), "topics": ["A"]})
+        check("study plan exam today 400", status == 400, str(body))
+        status, body = req(port, "POST", "/api/study-plans", token=t,
+                           body={"subject": "NoTopics", "hours": 2, "examDate": exam5})
+        check("study plan countdown needs topics 400", status == 400, str(body))
+        status, body = req(port, "POST", "/api/study-plans", token=t,
+                           body={"subject": "Zero", "days": 0, "hours": 2})
+        check("study plan days 0 400", status == 400, str(body))
+        status, body = req(port, "POST", "/api/study-plans", token=t,
+                           body={"subject": "Long", "days": 3, "hours": 25})
+        check("study plan hours 25 400", status == 400, str(body))
+        status, body = req(port, "POST", "/api/study-plans", token=t,
+                           body={"subject": "  ", "days": 3, "hours": 2})
+        check("study plan empty subject 400", status == 400, str(body))
+        status, body = req(port, "GET", f"/api/study-plans/{sp_plan}", token=token_new)
+        check("study plan cross-user get 404", status == 404, str(body))
+        status, body = req(port, "GET", "/api/study-plans", token=token_new)
+        check("study plan cross-user list empty", status == 200 and body == [], str(body)[:200])
+        status, body = req(port, "PATCH", f"/api/study-plans/{sp_plan}/days/{sp_day1}", token=token_new,
+                           body={"done": True})
+        check("study plan cross-user patch 404", status == 404, str(body))
+        status, body = req(port, "DELETE", f"/api/study-plans/{sp_plan}", token=token_new)
+        check("study plan cross-user delete 404", status == 404, str(body))
+        status, body = req(port, "PATCH", f"/api/study-plans/{sp_plan}/days/{sp_day1}", token=t,
+                           body={"done": "yes"})
+        check("study plan patch invalid done 400", status == 400, str(body))
+        status, body = req(port, "PATCH", f"/api/study-plans/{sp_plan}/days/99999", token=t,
+                           body={"done": True})
+        check("study plan patch missing day 404", status == 404, str(body))
+        status, body = req(port, "GET", "/api/study-plans/99999", token=t)
+        check("study plan get missing 404", status == 404, str(body))
+        status, body = req(port, "DELETE", f"/api/study-plans/{sp_countdown}", token=t)
+        check("study plan delete 200", status == 200 and body.get("id") == sp_countdown, str(body)[:200])
+        status, body = req(port, "GET", "/api/study-plans", token=t)
+        check("study plan gone after delete", status == 200 and all(
+            x.get("id") != sp_countdown for x in body), str(body)[:200])
+        check("study plan delete victim untouched", status == 200 and any(
+            x.get("id") == sp_plan for x in body), str(body)[:200])
         status, body = req(port, "POST", "/api/time-allocation", token=t,
                            body={"study": 7, "work": 7, "sleep": 7, "other": 0})
         check("time allocation", status == 200, str(body))
@@ -331,7 +442,8 @@ def main():
         status, body = req(port, "GET", "/")
         check("landing page 200", status == 200, str(status))
         # 5. Google Sign-In (Phase 3): separate clearly-delimited
-        # block, 6 checks on EACH server (total becomes 69).
+        # block, 6 checks on EACH server (total becomes 97 with the
+        # 27 Study Planner upgrade checks + the newuser re-login).
         # No GOOGLE_CLIENT_ID is set here, so the C++ server
         # reports sign-in disabled (config enabled=false, sign-in
         # 503) and the Python server answers 501 for Google auth
