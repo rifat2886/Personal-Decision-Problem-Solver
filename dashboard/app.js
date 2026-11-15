@@ -235,6 +235,19 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") setNav(fal
 // inline animation-delay), so hover animations never inherit
 // them; they stay set after the wave — inert, but observable
 // for tests.
+// Continuous idle motion: when the wave finishes, the icons
+// keep moving forever (the user asked for icons that move "all
+// the time"). Each icon gets its own cycle length --ic-cycle
+// (2.2-4.5s, deterministic) and its own negative phase offset
+// --ic-phase, so the 30 icons never move in sync; the negative
+// delay starts each icon mid-cycle, de-phased from the first
+// frame. The .icons-always class is added in the same timeout
+// that removes .icons-stagger, so the wave hands over cleanly
+// to the idle layer — the wave rules outrank the idle rules
+// while both classes are present (same specificity, later in
+// the stylesheet). The active icon keeps its breathe as its
+// continuous motion (see style.css). Reduced motion never
+// reaches here: the guard below returns first.
 let iconsStaggerPlayed = false;
 let iconsStaggerPending = false;
 function playIconStagger() {
@@ -243,14 +256,21 @@ function playIconStagger() {
   if (!bar) return;
   bar.querySelectorAll(".nav-ic").forEach((ic, i) => {
     ic.style.setProperty("--ic-delay", (120 + i * 55 + ((i * 37) % 23)) + "ms");
+    ic.style.setProperty("--ic-cycle", (2200 + ((i * 371) % 2300)) + "ms");
+    ic.style.setProperty("--ic-phase", "-" + (100 + ((i * 137) % 1900)) + "ms");
   });
   bar.classList.add("icons-stagger");
   iconsStaggerPlayed = true;
   iconsStaggerPending = false;
   // Last delay is ~120 + 29*55 + 22 = 1737ms; the longest variant
   // runs 0.6s. Removing the class at 2600ms hands the active icon
-  // back to its breathe and lets hover own the motion again.
-  setTimeout(() => bar.classList.remove("icons-stagger"), 2600);
+  // back to its breathe and lets hover own the motion again —
+  // and adding .icons-always at the same moment hands every icon
+  // over to the continuous idle motion.
+  setTimeout(() => {
+    bar.classList.remove("icons-stagger");
+    bar.classList.add("icons-always");
+  }, 2600);
 }
 function maybePlayIconStagger() {
   if (REDUCED_MOTION || iconsStaggerPlayed) return;

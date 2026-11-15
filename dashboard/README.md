@@ -383,7 +383,16 @@ What is animated, and how:
   motion once, staggered down the list with uneven delays
   (`playIconStagger`, `.icons-stagger` + per-icon `--ic-delay`);
   on mobile the wave waits for the first drawer open, since the
-  nav is a closed drawer at login.
+  nav is a closed drawer at login. When the wave ends, the icons
+  keep moving forever (`.icons-always` + per-icon `--ic-cycle`
+  2.2-4.5s and negative `--ic-phase`, so no two icons move in
+  sync): each icon loops its own variant with the motion
+  compressed into the first 30% of its cycle and a rest pause
+  after (`nav*Idle` keyframes reuse the exact hover-motion
+  values, only the timeline is rescaled). The active icon keeps
+  its soft breathe as its continuous motion; hovering any icon
+  still plays its hover motion. Reduced motion disables the
+  wave and the idle motion alike.
 - **Landing hero** — eyebrow, headline, subtext, buttons and note
   arrive one after another.
 - **Loading** — skeleton rows with a slow light sweep while lists
