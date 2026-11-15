@@ -209,10 +209,56 @@ function setNav(open) {
   document.body.classList.toggle("nav-open", open);
   const btn = el("menuBtn"); if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
   const bd = el("navBackdrop"); if (bd) bd.classList.toggle("show", open);
+  // Mobile: the stagger waits for the first drawer open (the nav
+  // is a closed drawer when the dashboard appears on a phone).
+  if (open && iconsStaggerPending) playIconStagger();
 }
 el("menuBtn").addEventListener("click", () => setNav(!el("sidebar").classList.contains("open")));
 const navBackdrop = el("navBackdrop"); if (navBackdrop) navBackdrop.addEventListener("click", () => setNav(false));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") setNav(false); });
+
+// Load-time icon stagger: when the dashboard first opens, every
+// sidebar icon plays its own micro-animation once, staggered down
+// the list. The user asked for this because the hover-only motion
+// was invisible on their phone (no hover on touch).
+// The sidebar is hidden until login (body.logged-out hides 28 of
+// 30 buttons), so the stagger fires when the full sidebar first
+// becomes visible — login, or a stored session restored via
+// /api/me — not at raw page load: that IS the moment the
+// dashboard "opens" for the user. On mobile the nav is a closed
+// drawer at that moment, so the stagger waits for the first
+// drawer open instead (see setNav above); later opens do not
+// replay it, and section switches never replay it.
+// Delays are deliberately uneven: a 55ms step plus a small
+// deterministic jitter (0-22ms), so the wave reads hand-made, not
+// metronomic. They ride the --ic-delay custom property (not an
+// inline animation-delay), so hover animations never inherit
+// them; they stay set after the wave — inert, but observable
+// for tests.
+let iconsStaggerPlayed = false;
+let iconsStaggerPending = false;
+function playIconStagger() {
+  if (REDUCED_MOTION || iconsStaggerPlayed) return;
+  const bar = el("sidebar");
+  if (!bar) return;
+  bar.querySelectorAll(".nav-ic").forEach((ic, i) => {
+    ic.style.setProperty("--ic-delay", (120 + i * 55 + ((i * 37) % 23)) + "ms");
+  });
+  bar.classList.add("icons-stagger");
+  iconsStaggerPlayed = true;
+  iconsStaggerPending = false;
+  // Last delay is ~120 + 29*55 + 22 = 1737ms; the longest variant
+  // runs 0.6s. Removing the class at 2600ms hands the active icon
+  // back to its breathe and lets hover own the motion again.
+  setTimeout(() => bar.classList.remove("icons-stagger"), 2600);
+}
+function maybePlayIconStagger() {
+  if (REDUCED_MOTION || iconsStaggerPlayed) return;
+  // Mobile (drawer under 720px): the sidebar is hidden behind a
+  // closed drawer, so wait for the first open.
+  if (window.matchMedia("(max-width: 720px)").matches) { iconsStaggerPending = true; return; }
+  playIconStagger();
+}
 
 function setLoggedIn(name) {
   username = name || "";
@@ -229,6 +275,10 @@ function setAuthState(loggedIn, name) {
   document.body.classList.toggle("logged-out", !loggedIn);
   setLoggedIn(name || "");
   if (!loggedIn) setNav(false);
+  // The full sidebar appears only now: play the one-time
+  // load stagger (desktop), or arm it for the first drawer
+  // open (mobile).
+  if (loggedIn) maybePlayIconStagger();
 }
 
 function clearSession() {

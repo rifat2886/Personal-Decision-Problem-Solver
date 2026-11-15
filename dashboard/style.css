@@ -662,6 +662,25 @@ textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-
 .sidebar button:hover .nav-ic[data-anim="pulse"] { animation: navPulse 0.5s var(--anim-ease); }
 .sidebar button:hover .nav-ic[data-anim="flip"] { animation: navFlip 0.55s var(--anim-ease); }
 .sidebar button.active .nav-ic { animation: navIcActive 2.6s ease-in-out infinite; }
+/* (e) Load-time icon stagger: when the dashboard first opens, every
+   sidebar icon plays its own micro-animation once, staggered down
+   the list — the user asked for this because the hover-only motion
+   was invisible on their phone (no hover on touch). app.js adds
+   .icons-stagger to the sidebar and sets a per-icon --ic-delay
+   (uneven steps, hand-made feel); the class is removed when the
+   wave finishes, so hover and the active breathe take over again.
+   The delay rides a custom property (not inline animation-delay)
+   so hover animations never inherit a stale delay. With reduced
+   motion app.js never adds the class, and the kill-switch below
+   would collapse it anyway. */
+.sidebar.icons-stagger .nav-ic[data-anim="bounce"] { animation: navBounce 0.5s var(--anim-ease); animation-delay: var(--ic-delay, 0ms); }
+.sidebar.icons-stagger .nav-ic[data-anim="wiggle"] { animation: navWiggle 0.5s var(--anim-ease); animation-delay: var(--ic-delay, 0ms); }
+.sidebar.icons-stagger .nav-ic[data-anim="spin"] { animation: navSpin 0.6s var(--anim-ease); animation-delay: var(--ic-delay, 0ms); }
+.sidebar.icons-stagger .nav-ic[data-anim="twinkle"] { animation: navTwinkle 0.5s var(--anim-ease); animation-delay: var(--ic-delay, 0ms); }
+.sidebar.icons-stagger .nav-ic[data-anim="swing"] { animation: navSwing 0.55s var(--anim-ease); animation-delay: var(--ic-delay, 0ms); }
+.sidebar.icons-stagger .nav-ic[data-anim="tilt"] { animation: navTilt 0.45s var(--anim-ease); animation-delay: var(--ic-delay, 0ms); }
+.sidebar.icons-stagger .nav-ic[data-anim="pulse"] { animation: navPulse 0.5s var(--anim-ease); animation-delay: var(--ic-delay, 0ms); }
+.sidebar.icons-stagger .nav-ic[data-anim="flip"] { animation: navFlip 0.55s var(--anim-ease); animation-delay: var(--ic-delay, 0ms); }
 @keyframes navBounce { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-4px); } 70% { transform: translateY(1px); } }
 @keyframes navWiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }
 @keyframes navSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
