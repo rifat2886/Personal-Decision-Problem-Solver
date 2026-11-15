@@ -200,6 +200,7 @@ function applyTheme(theme) {
 applyTheme(localStorage.getItem("pdps_theme") || "light");
 el("themeBtn").addEventListener("click", () => {
   applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+  gxReloadVisibleCharts();
 });
 // Mobile navigation drawer: open/close, backdrop tap and Escape all close it.
 // Desktop layout is unchanged: the drawer styles only apply under 720px.
@@ -546,9 +547,9 @@ async function loadOverview() {
     const ovTxs = await api("/api/transactions");
     const ovIncome = ovTxs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
     const ovExpense = ovTxs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-    el("ovDonut").innerHTML = gxDonutHtml(ovIncome, ovExpense);
-    el("ovTasks").innerHTML = gxTaskBarsHtml(ovTasks);
-    el("ovTrend").innerHTML = gxTrendHtml(ovTxs);
+    gxDonut(el("ovDonut"), ovIncome, ovExpense);
+    gxTaskBars(el("ovTasks"), ovTasks);
+    gxTrend(el("ovTrend"), ovTxs);
     gxAnimateIn(el("ovDonut")); gxAnimateIn(el("ovTasks")); gxAnimateIn(el("ovTrend"));
     const decisions = await api("/api/decisions");
     el("overviewDecisions").innerHTML = decisions.length ? "<table><tr><th>ID</th><th>Date</th><th>Type</th><th>Priority</th><th>Title</th><th></th></tr>" +
@@ -1497,7 +1498,7 @@ el("prBtn").addEventListener("click", async () => {
 async function loadBudgetCategories() {
   try {
     const txs = await api("/api/transactions");
-    el("budCats").innerHTML = gxCategoryBarsHtml(txs);
+    gxCategoryBars(el("budCats"), txs);
     gxAnimateIn(el("budCats"));
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
@@ -1582,7 +1583,7 @@ async function loadSavings() {
       goals.map(g => `<tr><td>${esc(g.name)}</td><td>${g.target}</td><td>${g.saved}</td><td>${(g.target - g.saved).toFixed(2)}</td><td><button class="btn btn-secondary" onclick="editGoal(${g.id})">Edit</button></td></tr>`).join("") + "</table>"
       : "<div class='empty'>No savings goals yet.</div>";
     staggerRows(el("svList"), "tr");
-    el("svRings").innerHTML = gxSavingsRingsHtml(goals);
+    gxSavingsRings(el("svRings"), goals);
     gxAnimateIn(el("svRings"));
   } catch (e) { showMsg("globalMsg", e.message, false); }
 }
@@ -1685,7 +1686,7 @@ async function loadHabits() {
     // the 30-day window, so a streak longer than 30 days is honest.
     const allDates = new Set();
     habits.forEach(h => h.dates.forEach(d => allDates.add(d)));
-    el("hbWeek").innerHTML = gxWeekHtml(active, allDates);
+    gxWeek(el("hbWeek"), active, allDates);
     el("hbHeat").innerHTML = gxHeatHtml(active);
     gxAnimateIn(el("hbWeek"));
   } catch (e) { showMsg("globalMsg", e.message, false); }
@@ -1800,6 +1801,7 @@ async function loadStudyPlans() {
   try {
     const plans = await api("/api/study-plans");
     if (!plans.length) {
+      gxDestroyIn(el("spList"));
       el("spList").innerHTML = "<div class='empty'>No study plans yet. Create one above.</div>";
       return;
     }
@@ -1807,6 +1809,7 @@ async function loadStudyPlans() {
     // endpoint returns summaries without day rows).
     const full = [];
     for (const p of plans) full.push(await api("/api/study-plans/" + p.id));
+    gxDestroyIn(el("spList"));
     el("spList").innerHTML = full.map(p => {
       const first = p.schedule.length ? p.schedule[0].date : p.startDate;
       const last = p.schedule.length ? p.schedule[p.schedule.length - 1].date : p.startDate;
@@ -1822,6 +1825,7 @@ async function loadStudyPlans() {
         `<table><tr><th>Done</th><th>Date</th><th>Day</th><th>Topic</th><th>Hours</th></tr>${rows}</table>` +
         `<div class="actions"><button class="btn btn-danger" onclick="deleteStudyPlan(${p.id})">Delete plan</button></div></div>`;
     }).join("");
+    gxMountStudyCharts(el("spList"));
     gxAnimateIn(el("spList"));
   } catch (e) { showMsg("spMsg", e.message, false); }
 }
@@ -1914,6 +1918,7 @@ async function loadSettingsBackend() {
 }
 el("setThemeBtn").addEventListener("click", () => {
   applyTheme(el("setTheme").value);
+  gxReloadVisibleCharts();
   showMsg("setThemeMsg", "Theme saved in this browser.", true);
 });
 el("cpBtn").addEventListener("click", async () => {
@@ -1935,34 +1940,130 @@ function chartHtml(rows, max) {
   return rows.map(r => `<div class="chart-bar"><span class="label">${esc(r.label)}</span><span class="bar ${r.cls || ""}" style="width:${max > 0 ? Math.round(r.value / max * 100) : 0}%"></span><span class="value">${r.value.toFixed(2)}</span></div>`).join("");
 }
 
-// -- dashboard graphics (real data only, pure SVG/CSS, no library) --
-// Every gx* helper renders from data the section loaders already
-// fetched — never sample or hard-coded values. Empty data renders
-// an .empty message, never a broken chart (a zero-income budget is
-// 0%, a missing target is 0%). Animated elements render at 0 and
-// animate to their real value on the next frame: gxAnimateIn
-// applies the target values stored in data-* attributes, and the
-// CSS transitions (0.5s) do the animation. Tooltips are pure CSS
-// ([data-tip]) on HTML elements and native <title> inside SVG.
+// -- dashboard graphics (Chart.js, vendored locally) ------------
+// Chart.js 4.6.1 is vendored as dashboard/chart.umd.min.js and
+// loaded before app.js (never a CDN). Every gx* renderer below
+// takes a container element and the section loader's already-
+// fetched data — never sample or hard-coded values — sets the
+// container's HTML (a <canvas> plus the text that belongs in the
+// DOM: legends, captions, KPI tiles) and mounts the Chart.js
+// chart. Empty data renders an .empty message, never a broken
+// chart (a zero-income budget is 0%, a missing target is 0%).
+// Charts are destroyed before their container's innerHTML is
+// replaced (gxDestroyIn), because a live chart keeps a
+// ResizeObserver on its canvas. Colours come from the theme
+// variables at render time (gxThemeColors), so a theme toggle
+// re-renders the visible section's charts (gxReloadVisibleCharts,
+// called from the theme buttons). Animation durations and
+// easings are tuned per chart — one default everywhere is
+// exactly the uniform look this batch replaces. With reduced
+// motion, Chart.js draws the final state at once. The 30-day
+// heatmap and the study day-timeline strip stay hand-built
+// CSS/SVG: Chart.js has no native heatmap, and forcing one
+// would be worse than the grid. If the vendored file ever
+// fails to load, Chart is undefined and the renderers skip the
+// canvas — the DOM text (legends, notes, tiles) still shows
+// the numbers, so no section breaks.
+if (typeof Chart !== "undefined") {
+  Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  Chart.defaults.font.size = 13;
+}
+// Theme colours, read fresh at every render so a theme toggle
+// is picked up without a page reload.
+function gxThemeColors() {
+  const s = getComputedStyle(document.documentElement);
+  const v = n => (s.getPropertyValue(n) || "").trim();
+  return {
+    text: v("--text") || "#101736",
+    muted: v("--muted") || "#6474b8",
+    border: v("--border") || "#d5daf0",
+    accent: v("--accent") || "#b05ab9",
+    primary: v("--primary") || "#215aca",
+    success: v("--success") || "#15803d",
+    danger: v("--danger") || "#b91c1c",
+    surface: v("--surface") || "#ffffff"
+  };
+}
+// "#rrggbb" + alpha -> "rgba(r, g, b, a)" for gradient stops.
+function gxHexA(hex, a) {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex || "");
+  if (!m) return "rgba(100,116,184," + a + ")";
+  const n = parseInt(m[1], 16);
+  return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+}
+// Per-chart animation: varied durations/easings per chart.
+// Reduced motion: false — Chart.js draws the final state.
+function gxAnim(duration, easing) {
+  return REDUCED_MOTION ? false : { duration, easing };
+}
+// Shared tooltip style: dark chip, rounded, exact values via
+// each chart's label callback.
+function gxTooltip(c) {
+  return {
+    backgroundColor: c.text, titleColor: c.surface, bodyColor: c.surface,
+    borderColor: c.border, borderWidth: 1, cornerRadius: 10,
+    padding: 10, boxPadding: 4, titleFont: { weight: "700" }
+  };
+}
+// Destroy every Chart.js instance inside a container before its
+// innerHTML is replaced.
+function gxDestroyIn(root) {
+  if (!root || typeof Chart === "undefined") return;
+  root.querySelectorAll("canvas").forEach(cv => {
+    const ch = Chart.getChart(cv);
+    if (ch) ch.destroy();
+  });
+}
+function gxMake(canvas, config) {
+  if (!canvas || typeof Chart === "undefined") return null;
+  const old = Chart.getChart(canvas);
+  if (old) old.destroy();
+  return new Chart(canvas, config);
+}
+// Value labels for horizontal bars: draws each bar's value at
+// its end (e.g. "1200.00 · 80%") so exact values are visible
+// without hovering. The text comes from the dataset's gxLabels
+// array (one label per bar, same order as the data).
+const gxValueLabels = {
+  id: "gxValueLabels",
+  afterDatasetsDraw(chart) {
+    const ds = chart.data.datasets[0];
+    if (!ds || !ds.gxLabels) return;
+    const c = gxThemeColors();
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.font = "600 12.5px " + Chart.defaults.font.family;
+    ctx.fillStyle = c.text;
+    ctx.textBaseline = "middle";
+    chart.getDatasetMeta(0).data.forEach((bar, i) => {
+      if (ds.gxLabels[i]) ctx.fillText(ds.gxLabels[i], bar.x + 8, bar.y);
+    });
+    ctx.restore();
+  }
+};
 function gxDateKey(d) {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
+// Count-up numbers (Overview stats, donut centre, KPI tiles,
+// savings ring centres) start from 0 on the next frame. Chart
+// animation is Chart.js's own; this only covers the DOM numbers.
 function gxAnimateIn(root) {
   if (!root) return;
-  requestAnimationFrame(() => {
-    root.querySelectorAll(".gx-fill[data-w]").forEach(b => { b.style.width = b.dataset.w + "%"; });
-    root.querySelectorAll(".gx-progress > div[data-w]").forEach(b => { b.style.width = b.dataset.w + "%"; });
-    root.querySelectorAll(".gx-week .b[data-h]").forEach(b => { b.style.height = b.dataset.h + "%"; });
-    root.querySelectorAll(".gx-donut-spent[data-len]").forEach(c => { c.setAttribute("stroke-dasharray", c.dataset.len + " 339.29"); });
-    root.querySelectorAll(".gx-donut-left[data-len]").forEach(c => {
-      c.setAttribute("stroke-dasharray", c.dataset.len + " 339.29");
-      c.setAttribute("stroke-dashoffset", c.dataset.off);
-    });
-    root.querySelectorAll(".ring-fill[data-off]").forEach(c => { c.style.strokeDashoffset = c.dataset.off; });
-    // Count-up numbers (Overview stats, donut centre, KPI tiles,
-    // savings ring centres) start from 0 on the same frame.
-    runCountUps(root);
-  });
+  requestAnimationFrame(() => runCountUps(root));
+}
+// Theme toggle re-renders the visible section's charts so their
+// colours follow the new theme (Chart.js bakes colours at
+// creation). Only the visible section reloads; every other
+// section re-renders when it is next shown.
+function gxReloadVisibleCharts() {
+  if (!isLoggedIn) return;
+  const active = document.querySelector("section.active");
+  if (!active) return;
+  if (active.id === "overview") loadOverview();
+  else if (active.id === "budget") loadBudgetCategories();
+  else if (active.id === "savings") loadSavings();
+  else if (active.id === "habits") loadHabits();
+  else if (active.id === "study") loadStudyPlans();
 }
 // Consecutive-day streak across ALL of the user's habits, from the
 // full log (not the 30-day window): walk back from today, or from
@@ -1974,39 +2075,77 @@ function gxStreak(allDates) {
   while (allDates.has(gxDateKey(d))) { s++; d.setDate(d.getDate() - 1); }
   return s;
 }
-// Budget donut (Overview): spent vs remaining of total income.
-// r=54, circumference 339.29. Overspend fills the whole ring pink
-// and the negative remaining shows in red.
-function gxDonutHtml(income, expense) {
-  if (income <= 0 && expense <= 0) return "<div class='empty'>No transactions yet. Add one from Income / Expense.</div>";
-  const C = 2 * Math.PI * 54;
+// Budget donut (Overview): spent vs remaining of total income,
+// as a Chart.js doughnut. The centre number is an HTML overlay
+// (so it counts up like before); the legend beside it carries
+// the exact values. Overspend fills the whole ring pink and the
+// negative remaining shows in red.
+function gxDonut(container, income, expense) {
+  gxDestroyIn(container);
+  if (income <= 0 && expense <= 0) {
+    container.innerHTML = "<div class='empty'>No transactions yet. Add one from Income / Expense.</div>";
+    return;
+  }
   const remaining = income - expense;
-  const spentFrac = income > 0 ? Math.min(expense / income, 1) : 1;
-  const spentLen = (C * spentFrac).toFixed(2);
-  const leftLen = (C - C * spentFrac).toFixed(2);
   const spentPct = income > 0 ? Math.min(Math.round(expense / income * 100), 100) : 100;
   const leftPct = Math.max(0, 100 - spentPct);
-  const neg = remaining < 0 ? " style=\"fill:var(--danger)\"" : "";
-  return `<div class="gx-donut-row gx-fade"><svg class="gx-donut" width="140" height="140" viewBox="0 0 140 140" role="img" aria-label="Budget donut: spent ${spentPct}% of income"><g transform="rotate(-90 70 70)"><circle class="gx-donut-track" cx="70" cy="70" r="54" /><circle class="gx-donut-spent" cx="70" cy="70" r="54" stroke-dasharray="0 339.29" data-len="${spentLen}"><title>Spent: ${expense.toFixed(2)} (${spentPct}%)</title></circle><circle class="gx-donut-left" cx="70" cy="70" r="54" stroke-dasharray="0 339.29" data-len="${leftLen}" data-off="${(-C * spentFrac).toFixed(2)}"><title>Remaining: ${remaining.toFixed(2)} (${leftPct}%)</title></circle></g><text x="70" y="66" text-anchor="middle" font-size="18" class="gx-donut-center"${neg} data-countup="${remaining}" data-decimals="2">0.00</text><text x="70" y="86" text-anchor="middle" font-size="12" class="gx-donut-sub">remaining</text></svg><div><div class="gx-big">${income.toFixed(2)}</div><div class="muted">total income</div><ul class="gx-legend"><li data-tip="Spent: ${expense.toFixed(2)}"><span class="gx-dot spent"></span>Spent: ${expense.toFixed(2)} (${spentPct}%)</li><li data-tip="Remaining: ${remaining.toFixed(2)}"><span class="gx-dot left"></span>Remaining: ${remaining.toFixed(2)} (${leftPct}%)</li></ul></div></div>`;
+  const neg = remaining < 0 ? " style=\"color:var(--danger)\"" : "";
+  container.innerHTML = `<div class="gx-donut-row gx-fade"><div class="gx-donut-wrap"><canvas id="gx-donut" role="img" aria-label="Budget donut: spent ${spentPct}% of income"></canvas><div class="gx-centre"><span class="gx-donut-center"${neg} data-countup="${remaining}" data-decimals="2">0.00</span><span class="gx-donut-sub">remaining</span></div></div><div><div class="gx-big">${income.toFixed(2)}</div><div class="muted">total income</div><ul class="gx-legend"><li><span class="gx-dot spent"></span>Spent: ${expense.toFixed(2)} (${spentPct}%)</li><li><span class="gx-dot left"></span>Remaining: ${remaining.toFixed(2)} (${leftPct}%)</li></ul></div></div>`;
+  const c = gxThemeColors();
+  const whole = income > 0 ? income : expense;
+  gxMake(container.querySelector("#gx-donut"), {
+    type: "doughnut",
+    data: { labels: ["Spent", "Remaining"], datasets: [{ data: [Math.max(expense, 0), Math.max(remaining, 0)], backgroundColor: [c.accent, c.primary], borderColor: c.surface, borderWidth: 3, hoverOffset: 6 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: "68%",
+      animation: gxAnim(900, "easeOutQuart"),
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...gxTooltip(c), callbacks: { label: ctx => " " + ctx.label + ": " + ctx.parsed.toFixed(2) + " (" + Math.round(ctx.parsed / whole * 100) + "%)" } }
+      }
+    }
+  });
 }
-// Task status bars (Overview): done vs pending, plus KPI tiles for
-// the top-scoring task and the nearest open deadline.
-function gxTaskBarsHtml(tasks) {
-  if (!tasks.length) return "<div class='empty'>No tasks yet. Add your first task from Task Management.</div>";
+// Task status bars (Overview): done vs pending as a horizontal
+// Chart.js bar chart, plus the KPI tiles for the top-scoring
+// task and the nearest open deadline. The exact counts stay in
+// DOM text under the chart.
+function gxTaskBars(container, tasks) {
+  gxDestroyIn(container);
+  if (!tasks.length) {
+    container.innerHTML = "<div class='empty'>No tasks yet. Add your first task from Task Management.</div>";
+    return;
+  }
   const done = tasks.filter(t => t.status === "Completed").length;
   const pending = tasks.length - done;
-  const donePct = Math.round(done / tasks.length * 100);
-  const pendPct = 100 - donePct;
   let top = null;
   tasks.forEach(t => { if (!top || t.score > top.score) top = t; });
   const dated = tasks.filter(t => t.deadline && t.status !== "Completed").sort((a, b) => a.deadline.localeCompare(b.deadline));
   const next = dated.length ? dated[0] : null;
-  return `<div class="gx-fade"><div class="gx-bar-row" data-tip="Completed: ${done} of ${tasks.length} tasks"><span class="lbl">Done</span><span class="gx-track"><span class="gx-fill green" data-w="${donePct}" style="width:0%"></span></span><span class="val">${done} / ${tasks.length}</span></div><div class="gx-bar-row" data-tip="Pending: ${pending} of ${tasks.length} tasks"><span class="lbl">Pending</span><span class="gx-track"><span class="gx-fill amber" data-w="${pendPct}" style="width:0%"></span></span><span class="val">${pending} / ${tasks.length}</span></div><div class="gx-kpi-row"><div class="gx-kpi"><div class="n" data-countup="${top.score}">0</div><div class="l">Top score — ${esc(top.title)}</div></div><div class="gx-kpi"><div class="n">${next ? esc(next.deadline) : "—"}</div><div class="l">${next ? "Nearest deadline — " + esc(next.title) : "No upcoming deadline"}</div></div></div></div>`;
+  container.innerHTML = `<div class="gx-fade"><div class="gx-chart-wrap gx-chart-task"><canvas id="gx-task" role="img" aria-label="Task status: ${done} done, ${pending} pending"></canvas></div><p class="gx-chart-note">Done: ${done} / ${tasks.length} · Pending: ${pending} / ${tasks.length}</p><div class="gx-kpi-row"><div class="gx-kpi"><div class="n" data-countup="${top.score}">0</div><div class="l">Top score — ${esc(top.title)}</div></div><div class="gx-kpi"><div class="n">${next ? esc(next.deadline) : "—"}</div><div class="l">${next ? "Nearest deadline — " + esc(next.title) : "No upcoming deadline"}</div></div></div></div>`;
+  const c = gxThemeColors();
+  gxMake(container.querySelector("#gx-task"), {
+    type: "bar",
+    data: { labels: ["Done", "Pending"], datasets: [{ data: [done, pending], backgroundColor: ["#22c55e", "#f59e0b"], borderRadius: 7, barThickness: 22 }] },
+    options: {
+      indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      animation: gxAnim(750, "easeOutBack"),
+      scales: {
+        x: { max: Math.max(Math.ceil(tasks.length * 1.4), 2), grid: { color: c.border }, border: { display: false }, ticks: { color: c.muted, precision: 0, stepSize: 1 } },
+        y: { grid: { display: false }, border: { display: false }, ticks: { color: c.text, font: { weight: "600" } } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...gxTooltip(c), callbacks: { label: ctx => " " + ctx.label + ": " + ctx.parsed.x + " of " + tasks.length + " tasks" } }
+      }
+    }
+  });
 }
 // Monthly trend (Overview): income vs expense lines over the last
-// 6 calendar months, months with no data at 0. Pure SVG, viewBox
-// 0 0 600 240, plot area x 48..576, y 16..196.
-function gxTrendHtml(txs) {
+// 6 calendar months, months with no data at 0. Chart.js line
+// chart with gradient area fills that fade to transparent.
+function gxTrend(container, txs) {
+  gxDestroyIn(container);
   const now = new Date();
   const months = [];
   for (let i = 5; i >= 0; i--) {
@@ -2021,29 +2160,51 @@ function gxTrendHtml(txs) {
     const k = (t.date || "").slice(0, 7);
     if (sums[k]) { any = true; if (t.type === "income") sums[k].income += t.amount; else sums[k].expense += t.amount; }
   });
-  if (!any) return "<div class='empty'>No transactions in the last 6 months.</div>";
-  const max = Math.max(1, ...months.map(m => Math.max(sums[m.key].income, sums[m.key].expense)));
-  const x = i => 48 + i * 105.6;
-  const y = v => 196 - (v / max) * 180;
-  const pts = months.map((m, i) => ({ xi: x(i), yi: y(sums[m.key].income), ye: y(sums[m.key].expense) }));
-  const line = key => pts.map(p => p.xi + "," + p[key]).join(" ");
-  const area = key => `M48,196 L${line(key)} L576,196 Z`;
-  let grid = "";
-  [0, 0.25, 0.5, 0.75, 1].forEach(f => {
-    grid += `<line class="gridline" x1="48" y1="${y(max * f)}" x2="576" y2="${y(max * f)}" /><text x="44" y="${y(max * f) + 4}" text-anchor="end">${(max * f).toFixed(0)}</text>`;
+  if (!any) {
+    container.innerHTML = "<div class='empty'>No transactions in the last 6 months.</div>";
+    return;
+  }
+  container.innerHTML = `<div class="gx-fade"><div class="gx-chart-wrap gx-chart-trend"><canvas id="gx-trend" role="img" aria-label="Monthly income vs expense trend, last 6 months"></canvas></div><ul class="gx-legend"><li><span class="gx-dot inc"></span>Income</li><li><span class="gx-dot exp"></span>Expense</li></ul></div>`;
+  const c = gxThemeColors();
+  // Area fill: solid at the line, fading to almost nothing at
+  // the bottom — a hand-tuned gradient, not a flat wash.
+  const areaFill = hex => context => {
+    const chart = context.chart;
+    if (!chart.chartArea) return gxHexA(hex, 0.10);
+    const g = chart.ctx.createLinearGradient(0, chart.chartArea.top, 0, chart.chartArea.bottom);
+    g.addColorStop(0, gxHexA(hex, 0.22));
+    g.addColorStop(1, gxHexA(hex, 0.01));
+    return g;
+  };
+  gxMake(container.querySelector("#gx-trend"), {
+    type: "line",
+    data: { labels: months.map(m => m.label), datasets: [
+      { label: "Income", data: months.map(m => sums[m.key].income), borderColor: c.success, backgroundColor: areaFill(c.success), fill: true, tension: 0.38, borderWidth: 2.5, pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: c.surface, pointBorderWidth: 2 },
+      { label: "Expense", data: months.map(m => sums[m.key].expense), borderColor: c.accent, backgroundColor: areaFill(c.accent), fill: true, tension: 0.38, borderWidth: 2.5, pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: c.surface, pointBorderWidth: 2 }
+    ] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: gxAnim(1100, "easeOutCubic"),
+      interaction: { mode: "index", intersect: false },
+      scales: {
+        x: { grid: { display: false }, border: { display: false }, ticks: { color: c.muted } },
+        y: { beginAtZero: true, grid: { color: c.border }, border: { display: false }, ticks: { color: c.muted, maxTicksLimit: 5, callback: v => v.toFixed(0) } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...gxTooltip(c), callbacks: { label: ctx => " " + ctx.dataset.label + ": " + ctx.parsed.y.toFixed(2) } }
+      }
+    }
   });
-  let labels = "";
-  months.forEach((m, i) => { labels += `<text x="${x(i)}" y="216" text-anchor="middle">${esc(m.label)}</text>`; });
-  let dots = "";
-  months.forEach((m, i) => {
-    dots += `<circle class="pt-inc" cx="${x(i)}" cy="${y(sums[m.key].income)}" r="4"><title>${esc(m.label)}: income ${sums[m.key].income.toFixed(2)}</title></circle>`;
-    dots += `<circle class="pt-exp" cx="${x(i)}" cy="${y(sums[m.key].expense)}" r="4"><title>${esc(m.label)}: expense ${sums[m.key].expense.toFixed(2)}</title></circle>`;
-  });
-  return `<div class="gx-fade"><svg class="gx-trend" viewBox="0 0 600 240" role="img" aria-label="Monthly income vs expense trend, last 6 months">${grid}${labels}<path class="area-inc" d="${area("yi")}" /><path class="area-exp" d="${area("ye")}" /><polyline class="line-inc" points="${line("yi")}" /><polyline class="line-exp" points="${line("ye")}" />${dots}</svg><ul class="gx-legend"><li><span class="gx-dot inc"></span>Income</li><li><span class="gx-dot exp"></span>Expense</li></ul></div>`;
 }
-// Expense by category (Budget): one horizontal bar per category,
-// sorted by amount, % of total spending.
-function gxCategoryBarsHtml(txs) {
+// Expense by category (Budget): one horizontal Chart.js bar per
+// category, sorted by amount, % of total spending. Each bar gets
+// its own colour from a hand-picked palette (no two neighbours
+// share one), and the gxValueLabels plugin writes the exact
+// amount + % at the end of each bar. Long category names are
+// truncated on the axis; the tooltip shows the full name.
+function gxCategoryBars(container, txs) {
+  gxDestroyIn(container);
   const byCat = {};
   let total = 0;
   txs.forEach(t => {
@@ -2051,16 +2212,43 @@ function gxCategoryBarsHtml(txs) {
     total += t.amount;
     byCat[t.category] = (byCat[t.category] || 0) + t.amount;
   });
-  if (total <= 0) return "<div class='empty'>No expenses yet. Add one from Income / Expense.</div>";
+  if (total <= 0) {
+    container.innerHTML = "<div class='empty'>No expenses yet. Add one from Income / Expense.</div>";
+    return;
+  }
   const cats = Object.keys(byCat).sort((a, b) => byCat[b] - byCat[a]);
-  return `<div class="gx-fade">` + cats.map(c => {
-    const pct = Math.round(byCat[c] / total * 100);
-    return `<div class="gx-bar-row" data-tip="${esc(c)}: ${byCat[c].toFixed(2)} (${pct}% of spending)"><span class="lbl">${esc(c)}</span><span class="gx-track"><span class="gx-fill" data-w="${pct}" style="width:0%"></span></span><span class="val">${byCat[c].toFixed(2)} · ${pct}%</span></div>`;
-  }).join("") + `</div>`;
+  container.innerHTML = `<div class="gx-fade"><div class="gx-chart-wrap" style="height:${cats.length * 44 + 16}px"><canvas id="gx-cats" role="img" aria-label="Expense by category"></canvas></div></div>`;
+  const c = gxThemeColors();
+  const palette = [c.accent, c.primary, "#22c55e", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899"];
+  gxMake(container.querySelector("#gx-cats"), {
+    type: "bar",
+    data: { labels: cats, datasets: [{ data: cats.map(x => byCat[x]), backgroundColor: cats.map((_, i) => palette[i % palette.length]), borderRadius: 7, barThickness: 22, gxLabels: cats.map(x => byCat[x].toFixed(2) + " · " + Math.round(byCat[x] / total * 100) + "%") }] },
+    options: {
+      indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      animation: gxAnim(800, "easeOutQuart"),
+      // Right padding reserves canvas room for the value labels
+      // the plugin draws at the end of each bar; the x-axis
+      // itself stays auto-scaled, so its ticks are round numbers.
+      layout: { padding: { right: 110 } },
+      scales: {
+        x: { grid: { color: c.border }, border: { display: false }, ticks: { color: c.muted, callback: v => v.toFixed(0) } },
+        y: { grid: { display: false }, border: { display: false }, ticks: { color: c.text, font: { weight: "600" }, callback: v => { const l = cats[v] || ""; return l.length > 14 ? l.slice(0, 13) + "…" : l; } } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...gxTooltip(c), callbacks: { title: items => items[0].label, label: ctx => " " + ctx.parsed.x.toFixed(2) + " (" + Math.round(ctx.parsed.x / total * 100) + "% of spending)" } }
+      }
+    },
+    plugins: [gxValueLabels]
+  });
 }
-// 7-day habit bars (Habit Tracker): one bar per day in the last 7
-// days, from the same active-day set as the 30-day ring.
-function gxWeekHtml(active, allDates) {
+// 7-day habit bars (Habit Tracker): one Chart.js bar per day in
+// the last 7 days, from the same active-day set as the 30-day
+// ring. Done days get the pink→blue gradient; quiet days are a
+// short stub in the border colour, so an empty week still reads
+// as seven days, not a missing chart.
+function gxWeek(container, active, allDates) {
+  gxDestroyIn(container);
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const days = [];
   for (let i = 6; i >= 0; i--) {
@@ -2069,8 +2257,32 @@ function gxWeekHtml(active, allDates) {
     days.push({ key, label: d.toLocaleString("en-US", { weekday: "short" }), done: active.has(key) });
   }
   const doneCount = days.filter(d => d.done).length;
-  const cols = days.map(d => `<div class="col"><div class="b${d.done ? "" : " off"}" data-h="${d.done ? 78 : 18}" style="height:0%" data-tip="${d.key}: ${d.done ? "done" : "no record"}"></div><span class="d">${d.label}</span></div>`).join("");
-  return `<div class="gx-fade"><div class="gx-week">${cols}</div><p style="margin:12px 0 0"><span class="gx-pill">${doneCount} / 7 days</span> <span class="muted">· current streak: ${gxStreak(allDates)} day(s)</span></p></div>`;
+  container.innerHTML = `<div class="gx-fade"><div class="gx-chart-wrap gx-chart-week"><canvas id="gx-week" role="img" aria-label="Habit activity, last 7 days"></canvas></div><p style="margin:12px 0 0"><span class="gx-pill">${doneCount} / 7 days</span> <span class="muted">· current streak: ${gxStreak(allDates)} day(s)</span></p></div>`;
+  const c = gxThemeColors();
+  gxMake(container.querySelector("#gx-week"), {
+    type: "bar",
+    data: { labels: days.map(d => d.label), datasets: [{ data: days.map(d => d.done ? 1 : 0.18), borderRadius: 6, barPercentage: 0.62, categoryPercentage: 0.8, backgroundColor: context => {
+      if (!days[context.dataIndex].done) return c.border;
+      const chart = context.chart;
+      if (!chart.chartArea) return c.accent;
+      const g = chart.ctx.createLinearGradient(0, chart.chartArea.top, 0, chart.chartArea.bottom);
+      g.addColorStop(0, c.accent);
+      g.addColorStop(1, c.primary);
+      return g;
+    } }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: gxAnim(650, "easeOutQuart"),
+      scales: {
+        x: { grid: { display: false }, border: { display: false }, ticks: { color: c.muted } },
+        y: { display: false, max: 1.15 }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...gxTooltip(c), callbacks: { title: items => days[items[0].dataIndex].key, label: ctx => days[ctx.dataIndex].done ? " done" : " no record" } }
+      }
+    }
+  });
 }
 // 30-day heatmap (Habit Tracker): GitHub-style grid, 7 per row,
 // oldest first, from the same active-day set as the ring.
@@ -2084,24 +2296,51 @@ function gxHeatHtml(active) {
   }
   return `<div class="gx-heat gx-fade">${cells}</div><p class="muted" style="margin:10px 0 0">${active.size} active day${active.size === 1 ? "" : "s"} in the last 30 days${active.size ? "" : " — mark a habit done to start"}.</p>`;
 }
-// Per-goal savings rings (Savings): saved/target %, same ring
-// pattern as the habit ring (r=40, circumference 251.33). The
-// centre shows the true % (over 100% when saved exceeds target);
-// the ring fill itself caps at 100%.
-function gxSavingsRingsHtml(goals) {
-  if (!goals.length) return "<div class='empty'>No savings goals yet.</div>";
-  return `<div class="gx-rings gx-fade">` + goals.map(g => {
+// Per-goal savings rings (Savings): saved/target % as a small
+// Chart.js doughnut per goal. The centre shows the true % (over
+// 100% when saved exceeds target); the ring fill itself caps at
+// 100%. A goal at 100%+ celebrates: the ring pulses twice (CSS
+// .goal-complete) and a "Goal reached!" badge appears.
+function gxSavingsRings(container, goals) {
+  gxDestroyIn(container);
+  if (!goals.length) {
+    container.innerHTML = "<div class='empty'>No savings goals yet.</div>";
+    return;
+  }
+  container.innerHTML = `<div class="gx-rings gx-fade">` + goals.map(g => {
     const pct = g.target > 0 ? Math.round(g.saved / g.target * 100) : 0;
-    const off = (2 * Math.PI * 40 * (1 - Math.min(pct, 100) / 100)).toFixed(2);
-    // A goal at 100%+ celebrates: the ring pulses twice (CSS
-    // .goal-complete) and a "Goal reached!" badge appears.
     const complete = pct >= 100;
-    return `<div class="gx-ring-item${complete ? " goal-complete" : ""}" data-goal="${esc(g.name)}" data-pct="${pct}"><div class="gx-ring-sm"><svg viewBox="0 0 96 96" role="img" aria-label="Savings ring for ${esc(g.name)}: ${pct}%"><defs><linearGradient id="svGrad${g.id}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" class="ring-stop-a" /><stop offset="100%" class="ring-stop-b" /></linearGradient></defs><circle class="ring-track" cx="48" cy="48" r="40" /><circle class="ring-fill" cx="48" cy="48" r="40" style="stroke: url(#svGrad${g.id})" data-off="${off}" /></svg><div class="ring-center"><span data-countup="${pct}" data-suffix="%">0%</span></div></div><div><div><b>${esc(g.name)}</b>${complete ? ' <span class="badge badge-ok">Goal reached!</span>' : ""}</div><div class="muted">${g.saved.toFixed(2)} / ${g.target.toFixed(2)} saved</div></div></div>`;
+    return `<div class="gx-ring-item${complete ? " goal-complete" : ""}" data-goal="${esc(g.name)}" data-pct="${pct}"><div class="gx-ring-sm"><canvas id="gx-sv-${g.id}" role="img" aria-label="Savings ring for ${esc(g.name)}: ${pct}%"></canvas><div class="gx-centre gx-centre-sm"><span data-countup="${pct}" data-suffix="%">0%</span></div></div><div><div><b>${esc(g.name)}</b>${complete ? ' <span class="badge badge-ok">Goal reached!</span>' : ""}</div><div class="muted">${g.saved.toFixed(2)} / ${g.target.toFixed(2)} saved</div></div></div>`;
   }).join("") + `</div>`;
+  const c = gxThemeColors();
+  goals.forEach(g => {
+    const canvas = container.querySelector("#gx-sv-" + g.id);
+    if (!canvas) return;
+    // A goal with no target yet shows an empty ring (never a
+    // full one): there is nothing to measure against.
+    const showSaved = g.target > 0 ? Math.max(g.saved, 0) : 0;
+    const showLeft = g.target > 0 ? Math.max(g.target - g.saved, 0) : 1;
+    gxMake(canvas, {
+      type: "doughnut",
+      data: { labels: ["Saved", "To go"], datasets: [{ data: [showSaved, showLeft], backgroundColor: [c.primary, c.border], borderColor: c.surface, borderWidth: 2, hoverOffset: 4 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: "74%",
+        animation: gxAnim(700, "easeOutQuart"),
+        plugins: {
+          legend: { display: false },
+          tooltip: { ...gxTooltip(c), callbacks: { label: ctx => " " + ctx.label + ": " + ctx.parsed.toFixed(2) } }
+        }
+      }
+    });
+  });
 }
 // Study plan progress bar + day timeline strip (Study Planner):
-// one cell per schedule day — done (filled), revision (pink
-// border), today (outline). Rendered inside loadStudyPlans.
+// the progress bar is a single Chart.js bar (mounted by
+// gxMountStudyCharts after the plan list renders, because the
+// canvas only exists once the HTML is in the page); the day
+// timeline strip stays hand-built CSS — one cell per schedule
+// day: done (filled), revision (pink border), today (outline).
+// Rendered inside loadStudyPlans.
 function gxStudyProgressHtml(p) {
   const todayKey = gxDateKey(new Date());
   const cells = p.schedule.map(d => {
@@ -2109,7 +2348,34 @@ function gxStudyProgressHtml(p) {
     const cls = "cell" + (d.done ? " done" : "") + (d.kind === "revision" ? " rev" : "") + (d.date === todayKey ? " today" : "");
     return `<div class="${cls}" data-tip="${esc(d.date)} · ${label} · ${esc(d.topic)} · ${d.done ? "done" : "not done"}"></div>`;
   }).join("");
-  return `<div class="gx-progress"><div data-w="${p.progressPct}" style="width:0%"></div></div><div class="gx-timeline">${cells}</div>`;
+  return `<div class="gx-chart-wrap gx-chart-study"><canvas class="gx-study-canvas" data-pct="${p.progressPct}" role="img" aria-label="Study progress: ${p.progressPct}%"></canvas></div><div class="gx-timeline">${cells}</div>`;
+}
+function gxMountStudyCharts(root) {
+  if (!root || typeof Chart === "undefined") return;
+  const c = gxThemeColors();
+  root.querySelectorAll(".gx-study-canvas").forEach(canvas => {
+    const pct = parseFloat(canvas.dataset.pct) || 0;
+    gxMake(canvas, {
+      type: "bar",
+      data: { labels: ["Progress"], datasets: [{ data: [pct], borderRadius: 7, barThickness: 14, backgroundColor: context => {
+        const chart = context.chart;
+        if (!chart.chartArea) return c.accent;
+        const g = chart.ctx.createLinearGradient(0, 0, chart.chartArea.right, 0);
+        g.addColorStop(0, c.accent);
+        g.addColorStop(1, c.primary);
+        return g;
+      } }] },
+      options: {
+        indexAxis: "y", responsive: true, maintainAspectRatio: false,
+        animation: gxAnim(600, "easeOutQuart"),
+        scales: { x: { display: false, max: 100 }, y: { display: false } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { ...gxTooltip(c), callbacks: { label: () => " Progress: " + pct + "%" } }
+        }
+      }
+    });
+  });
 }
 async function loadAnalytics() {
   try {

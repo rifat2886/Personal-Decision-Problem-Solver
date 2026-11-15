@@ -678,6 +678,11 @@
 </main>
 </div>
 
+<!-- Chart.js 4.6.1, vendored locally (dashboard/chart.umd.min.js) —
+     never a CDN, so the dashboard works offline. Must load before
+     app.js: the chart renderers use the global Chart. See the header
+     comment in that file for the source URL and license. -->
+<script src="chart.umd.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

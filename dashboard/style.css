@@ -27,6 +27,24 @@
   --warn: #92400e;
   --warn-soft: #fef3c7;
   --radius: 22px;
+  /* Design tokens (shadcn-inspired scale, implemented in plain
+     CSS — shadcn/ui itself is React + Tailwind and is never
+     installed here; see the shadcn-design-reference skill).
+     Spacing, radii and focus states, so components share one
+     rhythm instead of ad-hoc pixel values. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-full: 999px;
+  --border-strong: #c3c9e8;
+  --focus-ring: 0 0 0 3px rgba(33, 90, 202, 0.35);
   --shadow: 0 2px 8px rgba(9, 19, 92, 0.06), 0 12px 32px rgba(9, 19, 92, 0.08);
   --sidebar-w: 248px;
   --topbar-h: 64px;
@@ -55,6 +73,8 @@
   --danger-soft: #450a0a;
   --warn: #fbbf24;
   --warn-soft: #422006;
+  --border-strong: #3a4560;
+  --focus-ring: 0 0 0 3px rgba(249, 115, 22, 0.4);
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 * { box-sizing: border-box; }
@@ -126,7 +146,7 @@ a { color: var(--primary); }
 .sidebar button {
   display: block; width: 100%; text-align: left;
   padding: 9px 12px; margin: 2px 0;
-  border: 0; border-radius: 9px; cursor: pointer;
+  border: 0; border-radius: var(--radius-sm); cursor: pointer;
   background: transparent; color: var(--text); font-size: 15px;
   position: relative;
   transition: background 0.2s ease, transform 0.2s var(--anim-ease);
@@ -152,30 +172,33 @@ section.active { display: block; animation: animSectionIn 0.38s var(--anim-ease)
 h2 { margin: 4px 0 6px; font-size: 26px; letter-spacing: -0.3px; }
 h3 { margin: 0 0 12px; font-size: 17px; }
 .muted { color: var(--muted); margin: 0 0 16px; max-width: 760px; }
-.reg-hint { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin: 0 0 14px; font-size: 14px; line-height: 1.5; }
+.reg-hint { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin: 0 0 14px; font-size: 14px; line-height: 1.5; }
 
 /* ---- cards, grids, forms ---- */
 .card {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); box-shadow: var(--shadow);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow);
   padding: 20px; margin: 0 0 16px;
 }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin: 0 0 16px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .grid-2 .card { margin-bottom: 0; }
-.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow); }
 .stat .label { color: var(--muted); font-size: 13.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .stat .value { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; margin: 2px 0; color: var(--primary); }
 .stat .sub { color: var(--muted); font-size: 13.5px; }
 label { display: block; margin: 0 0 12px; font-weight: 600; font-size: 14.5px; }
 input, select {
   display: block; width: 100%; margin-top: 5px; padding: 10px 12px;
-  border: 1px solid var(--border); border-radius: 16px;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
   background: var(--surface); color: var(--text);
 }
-input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: var(--primary); }
+/* One consistent focus ring everywhere (shadcn-style): a soft
+   halo plus the primary border, instead of a bare outline. */
+input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: var(--focus-ring); }
+.btn:focus-visible, .sidebar button:focus-visible, .iconbtn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .btn {
-  border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: var(--radius-full); cursor: pointer;
   padding: 10px 16px; font-weight: 650; background: var(--surface); color: var(--text);
   transition: background 0.18s ease, filter 0.18s ease, transform 0.18s var(--anim-ease), box-shadow 0.18s ease;
 }
@@ -209,11 +232,11 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.6; cursor: not-a
 .hidden { display: none !important; }
 
 /* ---- messages and states ---- */
-.msg, #globalMsg > div { border-radius: 16px; padding: 11px 14px; margin: 12px 0 0; font-size: 15px; }
+.msg, #globalMsg > div { border-radius: var(--radius-md); padding: 11px 14px; margin: 12px 0 0; font-size: 15px; }
 .msg-ok, #globalMsg > .ok { background: var(--success-soft); color: var(--success); border: 1px solid var(--success); }
 .msg-err, #globalMsg > .err { background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger); }
 .msg-warn { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn); }
-.empty { color: var(--muted); padding: 18px 4px; text-align: center; border: 1px dashed var(--border); border-radius: 16px; }
+.empty { color: var(--muted); padding: 18px 4px; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius-md); }
 .loading { color: var(--muted); padding: 12px 4px; }
 .loading::after { content: ""; display: inline-block; width: 14px; height: 14px; margin-left: 8px; vertical-align: -2px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -223,13 +246,14 @@ table { width: 100%; border-collapse: collapse; font-size: 15px; }
 th { text-align: left; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; }
 th, td { padding: 9px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
 tr:last-child td { border-bottom: 0; }
-.badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: var(--primary-soft); color: var(--primary); }
+tbody tr:hover { background: var(--surface-2); }
+.badge { display: inline-block; padding: 2px 9px; border-radius: var(--radius-full); font-size: 12.5px; font-weight: 700; background: var(--primary-soft); color: var(--primary); }
 .badge-ok { background: var(--success-soft); color: var(--success); }
 .badge-warn { background: var(--warn-soft); color: var(--warn); }
 .badge-danger { background: var(--danger-soft); color: var(--danger); }
 .rowline { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
 .rowline:last-child { border-bottom: 0; }
-.progress { height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; margin: 6px 0; }
+.progress { height: 10px; background: var(--surface-2); border-radius: var(--radius-full); overflow: hidden; margin: 6px 0; }
 .progress > div { height: 100%; background: var(--gradient); }
 
 /* ---- responsive ---- */
@@ -415,30 +439,44 @@ textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-
 [data-theme="dark"] .ai-welcome .btn { background: rgba(28, 16, 5, 0.92); color: #fff7ed; }
 [data-theme="dark"] .ai-welcome .btn:hover { background: #000; }
 
-/* ---- Dashboard graphics (pure SVG/CSS, no library) ----------------
+/* ---- Dashboard graphics (Chart.js, vendored locally) ------------
    All charts are drawn from the user's own data by app.js (see the
    gx* render helpers) and re-render whenever their section reloads.
-   Colours come from the theme variables, so the charts read in both
-   the light Panze theme and the dark fallback. Bars, rings and the
-   donut animate via CSS transitions: app.js renders them at 0 and
-   sets the real value on the next animation frame. Tooltips are
-   pure CSS ([data-tip]) for HTML elements and native <title> for
-   SVG elements. Nothing here overflows on mobile: charts scale to
-   the card width (see the media query at the end of this block). */
+   Colours come from the theme variables at render time, so the
+   charts read in both the light Panze theme and the dark fallback.
+   Chart.js animates each chart with its own tuned duration and
+   easing (see gxAnim in app.js); tooltips are Chart.js tooltips
+   with exact values. The heatmap and the study timeline strip
+   stay hand-built CSS (Chart.js has no native heatmap). Nothing
+   here overflows on mobile: canvases scale to the card width
+   inside fixed-height wrappers (see the media query at the end
+   of this block). */
 .gx-fade { animation: gxFade 0.4s ease; }
 @keyframes gxFade { from { opacity: 0; } to { opacity: 1; } }
 
-/* Donut (Overview budget): two solid arcs — spent (accent pink) and
-   remaining (primary blue) — with the remaining amount in the
-   centre. r=54, circumference 2*pi*54 = 339.29. */
+/* Chart.js wrappers: the canvas fills a fixed-height box, so each
+   chart has a stable size on desktop and mobile (Chart.js is
+   responsive inside it). Heights are tuned per chart, not one
+   global value — a task chart does not need the trend chart's
+   height. The category chart sets its own height inline (it
+   grows with the number of categories). */
+.gx-chart-wrap { position: relative; width: 100%; }
+.gx-chart-task { height: 108px; }
+.gx-chart-trend { height: 260px; }
+.gx-chart-week { height: 150px; }
+.gx-chart-study { height: 30px; }
+.gx-chart-note { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
+
+/* Donut (Overview budget): a Chart.js doughnut with an HTML
+   centre overlay — the remaining amount lives in the DOM, so it
+   counts up like before and stays readable. The legend beside
+   it carries the exact values. */
 .gx-donut-row { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
-.gx-donut { flex: none; }
-.gx-donut circle { transition: stroke-dasharray 0.5s ease, stroke-dashoffset 0.5s ease; }
-.gx-donut-track { fill: none; stroke: var(--primary-soft); stroke-width: 22; }
-.gx-donut-spent { fill: none; stroke: var(--accent); stroke-width: 22; }
-.gx-donut-left { fill: none; stroke: var(--primary); stroke-width: 22; }
-.gx-donut-center { font-weight: 700; fill: var(--text); }
-.gx-donut-sub { fill: var(--muted); }
+.gx-donut-wrap { position: relative; width: 180px; height: 180px; flex: none; }
+.gx-centre { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.gx-donut-center { font-size: 19px; font-weight: 700; color: var(--text); }
+.gx-donut-sub { font-size: 12px; color: var(--muted); }
+.gx-centre-sm span { font-size: 20px; font-weight: 700; color: var(--text); }
 .gx-big { font-size: 28px; font-weight: 700; }
 .gx-legend { list-style: none; padding: 0; margin: 8px 0 0; font-size: 14px; }
 .gx-legend li { margin: 4px 0; }
@@ -448,73 +486,43 @@ textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-
 .gx-dot.inc { background: var(--success); }
 .gx-dot.exp { background: var(--accent); }
 
-/* Horizontal bars (task status, expense categories): the fill
-   animates from 0 to its target width on render. */
-.gx-bar-row { display: flex; align-items: center; gap: 10px; margin: 10px 0; font-size: 14px; }
-.gx-bar-row .lbl { width: 110px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gx-track { flex: 1; height: 14px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
-.gx-fill { display: block; height: 100%; border-radius: 99px; background: var(--gradient); transition: width 0.5s ease; }
-.gx-fill.green { background: #22c55e; }
-.gx-fill.amber { background: #f59e0b; }
-.gx-bar-row .val { width: 92px; text-align: right; font-weight: 600; flex: none; }
-
 /* KPI tiles (task status: top score, nearest deadline). */
 .gx-kpi-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
-.gx-kpi { background: var(--surface-2); border-radius: 14px; padding: 10px 14px; flex: 1; min-width: 110px; }
+.gx-kpi { background: var(--surface-2); border-radius: var(--radius-md); padding: 10px 14px; flex: 1; min-width: 110px; }
 .gx-kpi .n { font-size: 20px; font-weight: 700; }
 .gx-kpi .l { font-size: 13px; color: var(--muted); }
+.gx-pill { display: inline-block; background: var(--success-soft); color: var(--success); border-radius: var(--radius-full); padding: 2px 10px; font-size: 13px; font-weight: 600; }
 
-/* 7-day habit bars: one column per day, filled = done that day. */
-.gx-week { display: flex; align-items: flex-end; gap: 8px; height: 120px; }
-.gx-week .col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; min-width: 0; }
-.gx-week .b { width: 100%; max-width: 34px; border-radius: 8px 8px 0 0; background: var(--gradient); transition: height 0.5s ease; min-height: 4px; }
-.gx-week .b.off { background: var(--border); }
-.gx-week .d { font-size: 12px; color: var(--muted); }
-.gx-pill { display: inline-block; background: var(--success-soft); color: var(--success); border-radius: 99px; padding: 2px 10px; font-size: 13px; font-weight: 600; }
-
-/* Heatmap: 30 cells, 7 per row, oldest first. */
-.gx-heat { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; max-width: 320px; }
-.gx-heat-cell { aspect-ratio: 1; border-radius: 3px; background: var(--surface-2); border: 1px solid var(--border); }
-.gx-heat-cell.on { background: var(--gradient); border-color: transparent; }
+/* Heatmap: 30 cells, 7 per row, oldest first. Hand-built CSS
+   (Chart.js has no heatmap): rounder cells with a soft lift on
+   active days, so the grid reads as a designed element rather
+   than a spreadsheet. */
+.gx-heat { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; max-width: 340px; }
+.gx-heat-cell { aspect-ratio: 1; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); transition: transform 0.15s ease; }
+.gx-heat-cell.on { background: var(--gradient); border-color: transparent; box-shadow: 0 1px 4px var(--glow); }
 .gx-heat-cell.today { outline: 2px solid var(--primary); outline-offset: 1px; }
+.gx-heat-cell:hover { transform: scale(1.15); }
 
-/* Monthly trend line chart (Overview): SVG scales to the card. */
-.gx-trend { width: 100%; height: auto; display: block; }
-.gx-trend text { font-family: inherit; fill: var(--muted); font-size: 11px; }
-.gx-trend .gridline { stroke: var(--border); stroke-width: 1; }
-.gx-trend .area-inc { fill: var(--success); fill-opacity: 0.12; }
-.gx-trend .area-exp { fill: var(--accent); fill-opacity: 0.12; }
-.gx-trend .line-inc { fill: none; stroke: var(--success); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-.gx-trend .line-exp { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-.gx-trend .pt-inc { fill: var(--surface); stroke: var(--success); stroke-width: 2; }
-.gx-trend .pt-exp { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
-
-/* Small per-goal rings (Savings): same ring pattern as the habit
-   ring, smaller. r=40, circumference 2*pi*40 = 251.33. Each ring
-   carries its own gradient defs (id svGrad-<goal id>) so no two
-   SVGs share an id. */
+/* Small per-goal rings (Savings): a Chart.js doughnut per goal
+   in a 96px wrap, with an HTML centre overlay for the %. */
 .gx-rings { display: flex; flex-wrap: wrap; gap: 24px; }
 .gx-ring-item { display: flex; gap: 14px; align-items: center; min-width: 250px; }
 .gx-ring-sm { position: relative; width: 96px; height: 96px; flex: none; }
-.gx-ring-sm svg { width: 96px; height: 96px; transform: rotate(-90deg); }
-.gx-ring-sm .ring-track { stroke-width: 11; }
-.gx-ring-sm .ring-fill { stroke-width: 11; stroke-dasharray: 251.33; stroke-dashoffset: 251.33; }
-.gx-ring-sm .ring-center span { font-size: 20px; }
 
-/* Study plan progress bar + day timeline strip. */
-.gx-progress { height: 14px; background: var(--surface-2); border-radius: 999px; overflow: hidden; margin: 8px 0; }
-.gx-progress > div { height: 100%; background: var(--gradient); border-radius: 999px; transition: width 0.5s ease; }
+/* Study plan day timeline strip (the progress bar above it is a
+   Chart.js bar): one cell per schedule day — done (filled),
+   revision (pink border), today (outline). */
 .gx-timeline { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
-.gx-timeline .cell { width: 22px; height: 22px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); }
+.gx-timeline .cell { width: 24px; height: 24px; border-radius: 7px; background: var(--surface-2); border: 1px solid var(--border); }
 .gx-timeline .cell.done { background: var(--gradient); border-color: transparent; }
 .gx-timeline .cell.rev { background: var(--primary-soft); border: 2px solid var(--accent); }
 .gx-timeline .cell.rev.done { background: var(--gradient); border: 2px solid var(--accent); }
 .gx-timeline .cell.today { outline: 2px solid var(--primary); outline-offset: 1px; }
 
-/* Pure-CSS tooltips for HTML chart elements. SVG elements use a
-   native <title> child instead (CSS pseudo-elements do not work
-   inside SVG). On mobile the card's horizontal scroll clips the
-   tooltip, which is fine — touch has no hover. */
+/* Pure-CSS tooltips for the hand-built chart elements (heatmap
+   cells, timeline cells). The Chart.js charts use Chart.js
+   tooltips instead. On mobile the card's horizontal scroll clips
+   the tooltip, which is fine — touch has no hover. */
 [data-tip] { position: relative; }
 [data-tip]:hover::after {
   content: attr(data-tip);
@@ -526,8 +534,7 @@ textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-
 
 @media (max-width: 720px) {
   .gx-donut-row { gap: 12px; }
-  .gx-bar-row .lbl { width: 80px; }
-  .gx-bar-row .val { width: 76px; }
+  .gx-chart-trend { height: 220px; }
   .gx-heat { max-width: 100%; }
   .gx-ring-item { min-width: 0; }
 }
@@ -602,7 +609,7 @@ textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-
    while a list loads (app.js skeletonHtml). The sweep is the
    only looping decoration on a loaded page, and it disappears
    the moment real data arrives. */
-.skeleton-row { height: 46px; border-radius: 14px; margin: 8px 0; background: linear-gradient(100deg, var(--surface-2) 40%, var(--border) 50%, var(--surface-2) 60%); background-size: 200% 100%; animation: skeletonSweep 1.4s ease-in-out infinite; }
+.skeleton-row { height: 46px; border-radius: var(--radius-md); margin: 8px 0; background: linear-gradient(100deg, var(--surface-2) 40%, var(--border) 50%, var(--surface-2) 60%); background-size: 200% 100%; animation: skeletonSweep 1.4s ease-in-out infinite; }
 .skeleton-row.short { width: 62%; }
 @keyframes skeletonSweep { from { background-position: 120% 0; } to { background-position: -80% 0; } }
 
