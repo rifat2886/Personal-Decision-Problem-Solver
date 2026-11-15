@@ -379,6 +379,40 @@ dir.
 `{"subject": "Maths", "days": 30, "hoursPerDay": 2, "totalHours": 60,
 "plan": [{"day": 1, "text": "Day 1: Maths - 2 hour(s)"}, ...]}`.
 
+### Saved study plans (Study Planner upgrade)
+
+Saved plans are per-user; cross-user access returns 404 everywhere.
+Both servers implement the same five endpoints; the Postgres mode uses
+`study_plans` + `study_plan_days` tables (created by the server on
+startup), txt mode uses `study_plans.txt` + `study_plan_days.txt`.
+
+**`GET /api/study-plans`** — list the caller's plans: `id`, `subject`,
+`startDate`, `days`, `hoursPerDay`, `examDate` ("" for a regular plan),
+`topics`, `totalDays`, `doneDays`, `progressPct` (done/total rows,
+rounded half-up). Study and revision rows both count toward progress.
+
+**`POST /api/study-plans`** — create a plan. Regular: `{"subject":
+"Maths", "days": 30, "hours": 2}` (start = the server date, days 1–365,
+hours 1–24). Countdown: `{"subject": "Physics", "hours": 3,
+"examDate": "2026-11-20", "topics": ["Waves", "Thermo"]}` — days are
+computed from the server clock fresh on every request (last study day =
+the day before the exam); topics are required (1–10, each 1–100
+characters) and spread over the days. A past exam date, an exam today,
+or an exam more than 365 days away returns 400. Response 201: the full
+plan including `schedule` — `[{id, date, dayIndex, topic, hours, kind
+("study"/"revision"), done}]`.
+
+**`GET /api/study-plans/{id}`** — the full plan with its schedule.
+
+**`PATCH /api/study-plans/{id}/days/{dayId}`** — `{"done": true/false}`
+(ticks a day; idempotent). Ticking a study day done auto-schedules
+Smart Revision rows for that topic at +1/+3/+7 days; unticking removes
+undone revisions unless another done study day with the same topic
+still generates that date. Response: `{"day": {...}, "plan": {...}}`.
+
+**`DELETE /api/study-plans/{id}`** — deletes the plan and all its day
+rows. Response: the deleted plan summary.
+
 **`POST /api/time-allocation`** — `{"sleep": 8, "study": 6, "work": 4,
 "other": 2}`. Each 0–24. Response includes `total`, `remaining` (24 − total),
 and `warning` (`"Total exceeds 24 hours!"` when total > 24, else `null`).

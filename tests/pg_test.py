@@ -107,7 +107,7 @@ def main():
     conn = psycopg2.connect(args.database_url)
     conn.autocommit = True
     with conn.cursor() as cur:
-        for t in ("ai_history", "daily_reports", "error_logs", "habit_log", "savings_goals",
+        for t in ("study_plan_days", "study_plans", "ai_history", "daily_reports", "error_logs", "habit_log", "savings_goals",
                   "transactions", "tasks", "decisions_backup", "decisions", "users"):
             cur.execute(f"DROP TABLE IF EXISTS {t} CASCADE")
     conn.close()
@@ -224,6 +224,61 @@ def main():
         goals2 = json.loads(b) if s == 200 else []
         check("pg goal PATCH victim untouched",
               any(x.get("id") == goal_id and x.get("target") == 12000 for x in goals2), b)
+
+        # Study Planner upgrade (Postgres mode): saved plans, countdown,
+        # Smart Revision, per-user isolation, delete. Tables are created
+        # by the server's pgInit (CREATE TABLE IF NOT EXISTS).
+        import datetime as _dt
+        _today = _dt.date.today()
+        _exam5 = (_today + _dt.timedelta(days=5)).isoformat()
+        s, b, _ = req(args.port, "POST", "/api/study-plans", token=tok_a,
+                      body={"subject": "PgMaths", "days": 3, "hours": 2})
+        pg_plan = json.loads(b).get("id") if s == 201 else None
+        pg_day1 = json.loads(b)["schedule"][0]["id"] if s == 201 else None
+        check("pg study plan create", s == 201 and bool(pg_plan)
+              and json.loads(b).get("totalDays") == 3, b)
+        conn_sp = psycopg2.connect(args.database_url)
+        conn_sp.autocommit = True
+        with conn_sp.cursor() as cur:
+            cur.execute("SELECT to_regclass('public.study_plans'), to_regclass('public.study_plan_days')")
+            reg = cur.fetchone()
+            cur.execute("SELECT COUNT(*) FROM study_plans WHERE owner='alice'")
+            n_plans = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM study_plan_days WHERE plan_id=%s", (pg_plan,))
+            n_days = cur.fetchone()[0]
+        conn_sp.close()
+        check("pg study plan tables exist", reg[0] is not None and reg[1] is not None, str(reg))
+        check("pg study plan rows in db", n_plans == 1 and n_days == 3, f"plans={n_plans} days={n_days}")
+        s, b, _ = req(args.port, "POST", "/api/study-plans", token=tok_a,
+                      body={"subject": "PgPhysics", "hours": 3, "examDate": _exam5,
+                            "topics": ["Waves", "Thermo"]})
+        pg_countdown = json.loads(b).get("id") if s == 201 else None
+        check("pg study plan countdown", s == 201 and json.loads(b).get("days") == 5
+              and json.loads(b).get("examDate") == _exam5, b)
+        s, b, _ = req(args.port, "PATCH", f"/api/study-plans/{pg_plan}/days/{pg_day1}", token=tok_a,
+                      body={"done": True})
+        check("pg study plan tick day", s == 200 and json.loads(b).get("day", {}).get("done") is True, b)
+        s, b, _ = req(args.port, "GET", f"/api/study-plans/{pg_plan}", token=tok_a)
+        pg_sched = json.loads(b).get("schedule", []) if s == 200 else []
+        check("pg study plan tick creates revisions", s == 200
+              and len([d for d in pg_sched if d.get("kind") == "revision"]) == 3
+              and json.loads(b).get("doneDays") == 1, b)
+        s, b, _ = req(args.port, "GET", "/api/study-plans", token=tok_b)
+        check("pg bob cannot see alice plan", s == 200 and "PgMaths" not in b, b)
+        s, b, _ = req(args.port, "GET", f"/api/study-plans/{pg_plan}", token=tok_b)
+        check("pg bob get alice plan 404", s == 404, b)
+        s, b, _ = req(args.port, "PATCH", f"/api/study-plans/{pg_plan}/days/{pg_day1}", token=tok_b,
+                      body={"done": True})
+        check("pg bob patch alice plan day 404", s == 404, b)
+        s, b, _ = req(args.port, "DELETE", f"/api/study-plans/{pg_countdown}", token=tok_a)
+        check("pg study plan delete", s == 200 and json.loads(b).get("id") == pg_countdown, b)
+        conn_sp = psycopg2.connect(args.database_url)
+        conn_sp.autocommit = True
+        with conn_sp.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM study_plan_days WHERE plan_id=%s", (pg_countdown,))
+            n_left = cur.fetchone()[0]
+        conn_sp.close()
+        check("pg study plan delete removes days", n_left == 0, f"days left={n_left}")
 
         # AI history (Phase 2.1, Postgres): the server's pgInit must
         # have created the table; owner is NOT NULL (no legacy rows);

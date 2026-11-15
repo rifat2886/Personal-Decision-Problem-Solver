@@ -227,6 +227,58 @@ def main():
             check("habit ring 3% after one day", page.evaluate("document.getElementById('hbRingPct').textContent") == "3%")
             check("habit ring caption 1 active day", "1 active day in the last 30 days" in page.evaluate("document.getElementById('hbRingCaption').textContent"))
 
+            # Study Planner upgrade: saved plan via the UI, reload
+            # persistence, per-day tick with Smart Revision, countdown
+            # plan, validation, delete.
+            page.click("button[data-section='study']")
+            page.wait_for_function("document.querySelector('section.active')?.id === 'study'")
+            page.fill("#spSubject", "BrowserMaths")
+            page.fill("#spDays", "3")
+            page.fill("#spHours", "2")
+            page.click("#spBtn")
+            page.wait_for_function("document.getElementById('spList').textContent.includes('BrowserMaths')")
+            check("study plan create via UI",
+                  "BrowserMaths" in page.evaluate("document.getElementById('spList').textContent")
+                  and "0/3 (0%)" in page.evaluate("document.getElementById('spList').textContent"))
+            page.reload()
+            page.wait_for_function("document.querySelector('section.active')?.id === 'overview'")
+            page.click("button[data-section='study']")
+            page.wait_for_function("document.getElementById('spList').textContent.includes('BrowserMaths')")
+            check("study plan persists after reload",
+                  "BrowserMaths" in page.evaluate("document.getElementById('spList').textContent"))
+            page.locator("#spList .sp-plan input[type=checkbox]").first.check()
+            page.wait_for_function("document.getElementById('spList').textContent.includes('1/6 (17%)')")
+            check("study plan tick updates progress",
+                  "1/6 (17%)" in page.evaluate("document.getElementById('spList').textContent"))
+            check("study plan revisions appear after tick",
+                  page.evaluate("document.getElementById('spList').textContent").count("Revision") == 3)
+            # Countdown plan: exam 5 days out, 2 topics.
+            import datetime as _dt
+            _exam = (_dt.date.today() + _dt.timedelta(days=5)).isoformat()
+            page.fill("#spSubject", "BrowserPhysics")
+            page.fill("#spHours", "3")
+            page.fill("#spExamDate", _exam)
+            page.locator("#spTopics .ai-opt-input").first.fill("Algebra")
+            page.click("#spAddTopic")
+            page.locator("#spTopics .ai-opt-input").nth(1).fill("Geometry")
+            page.click("#spBtn")
+            page.wait_for_function("document.getElementById('spList').textContent.includes('BrowserPhysics')")
+            check("study plan countdown via UI",
+                  "(countdown plan)" in page.evaluate("document.getElementById('spList').textContent")
+                  and _exam in page.evaluate("document.getElementById('spList').textContent"))
+            check("study plan countdown 5 days",
+                  "0/5 (0%)" in page.evaluate("document.getElementById('spList').textContent"))
+            page.click("#spBtn")
+            page.wait_for_function("document.getElementById('spMsg').textContent.length > 0")
+            check("study plan empty subject error",
+                  "subject" in page.evaluate("document.getElementById('spMsg').textContent").lower())
+            page.on("dialog", lambda d: d.accept())
+            page.locator("#spList .sp-plan button.btn-danger").first.click()
+            page.wait_for_function("!document.getElementById('spList').textContent.includes('BrowserMaths')")
+            check("study plan delete via UI",
+                  "BrowserMaths" not in page.evaluate("document.getElementById('spList').textContent")
+                  and "BrowserPhysics" in page.evaluate("document.getElementById('spList').textContent"))
+
             # AI Daily Decision (Phase 3.1): client-side validation,
             # mock-Gemini success, newline sanitization, 503 and 400.
             page.click("button[data-section='ai-daily']")

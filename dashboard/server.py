@@ -322,6 +322,94 @@ def save_savings(data_dir, goals):
                  for g in goals])
 
 
+# ---- Study Planner upgrade: saved plans + per-day progress ----
+# Txt formats (the plan id differs from transactions/savings on
+# purpose):
+#   study_plans.txt:     id|subject|start_date|days|hours|exam_date|topics_json|owner
+#   study_plan_days.txt: plan_id|day_date|day_index|topic|hours|kind|done|owner
+# The plan id is stored EXPLICITLY in the txt line (monotonically
+# increasing, never reused) because day rows reference it: with a
+# 1-based line index, deleting a plan would renumber later plans
+# and orphan their days. Day ids are 1-based line indices in
+# study_plan_days.txt (nothing references a day id except the UI,
+# which always re-reads the plan after a change).
+def load_study_plans(data_dir):
+    out = []
+    for line in read_lines(data_dir, "study_plans.txt"):
+        parts = line.split("|")
+        if len(parts) < 7:
+            continue
+        try:
+            topics = json.loads(parts[6]) if parts[6] else []
+            if not isinstance(topics, list):
+                topics = []
+            out.append({"id": int(parts[0]), "subject": parts[1], "startDate": parts[2],
+                        "days": int(parts[3]), "hoursPerDay": int(parts[4]),
+                        "examDate": parts[5], "topics": topics,
+                        "owner": parts[7] if len(parts) >= 8 else ""})
+        except (ValueError, TypeError):
+            continue
+    return out
+
+
+def load_study_days(data_dir):
+    out = []
+    for idx, line in enumerate(read_lines(data_dir, "study_plan_days.txt"), start=1):
+        parts = line.split("|")
+        if len(parts) < 7:
+            continue
+        try:
+            out.append({"id": idx, "planId": int(parts[0]), "date": parts[1],
+                        "dayIndex": int(parts[2]), "topic": parts[3],
+                        "hours": int(parts[4]), "kind": parts[5],
+                        "done": int(parts[6]) != 0,
+                        "owner": parts[7] if len(parts) >= 8 else ""})
+        except ValueError:
+            continue
+    return out
+
+
+def study_plan_json(plan, all_days, include_days):
+    mine = sorted([d for d in all_days if d["planId"] == plan["id"]],
+                  key=lambda d: (d["date"], 0 if d["kind"] == "study" else 1, d["id"]))
+    done = sum(1 for d in mine if d["done"])
+    total = len(mine)
+    # Round-half-up integer math, identical to the C++ server
+    # ((done*100 + total/2) / total); Python round() is banker's
+    # rounding and would disagree (e.g. 1/8 -> 12 vs 13).
+    pct = (done * 100 + total // 2) // total if total else 0
+    out = {"id": plan["id"], "subject": plan["subject"], "startDate": plan["startDate"],
+           "days": plan["days"], "hoursPerDay": plan["hoursPerDay"],
+           "examDate": plan["examDate"], "topics": plan["topics"],
+           "totalDays": total, "doneDays": done, "progressPct": pct}
+    if include_days:
+        out["schedule"] = [{k: d[k] for k in
+                            ("id", "planId", "date", "dayIndex", "topic", "hours", "kind", "done")}
+                           for d in mine]
+    return out
+
+
+def topics_for_day(day_idx1, total_days, topics):
+    # Topics are spread over the days in contiguous blocks, so every
+    # day has at least one topic and every topic is covered at least
+    # once (days hold several topics when there are more topics than
+    # days). Mirrors the C++ topicsForDay.
+    if not topics or total_days < 1:
+        return ""
+    count = len(topics)
+    start = (day_idx1 - 1) * count // total_days
+    end = day_idx1 * count // total_days
+    if end <= start:
+        return topics[start]
+    return ", ".join(topics[start:end])
+
+
+def revision_dates_for(study_date):
+    # Smart Revision dates: +1, +3, +7 days (spaced repetition).
+    base = datetime.date.fromisoformat(study_date)
+    return [(base + datetime.timedelta(days=off)).isoformat() for off in (1, 3, 7)]
+
+
 def load_tasks(data_dir):
     out = []
     for line in read_lines(data_dir, "tasks.txt"):
@@ -1161,6 +1249,218 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_error_json(400, "A plan needs a subject, days 1-365, hours 1-24.")
             return self.send_json(200, {"subject": subject, "days": days, "hoursPerDay": hours, "totalHours": days * hours,
                                         "plan": [{"day": d, "text": f"Day {d}: {subject} - {hours} hour(s)"} for d in range(1, days + 1)]})
+        # ---- Study Planner upgrade: saved plans + per-day progress ----
+        # Mirrors the C++ endpoints exactly (same paths, validation,
+        # error messages, and response shapes); txt storage only.
+        if path == "/api/study-plans" and method == "GET":
+            plans = load_study_plans(data_dir)
+            days = load_study_days(data_dir)
+            return self.send_json(200, [study_plan_json(p, days, False) for p in plans
+                                        if owner_visible(p.get("owner", ""), user, data_dir)])
+        if path == "/api/study-plans" and method == "POST":
+            body = self.read_json()
+            if body is None:
+                return self.send_error_json(400, "Invalid JSON.")
+            subject = (body.get("subject") or "").strip()
+            exam_date = (body.get("examDate") or "").strip()
+            hours = body.get("hours")
+            if (not subject or len(subject) > 200 or type(hours) is not int
+                    or not 1 <= hours <= 24):
+                return self.send_error_json(400, "A plan needs a subject (up to 200 characters) and hours 1-24.")
+            countdown = bool(exam_date)
+            topics = []
+            if countdown:
+                # Exam Countdown Plan: days are computed BACKWARD from
+                # the exam date over the remaining days, from the server
+                # clock fresh on every request — never hard-coded. The
+                # last study day is the day before the exam.
+                if not valid_date(exam_date):
+                    return self.send_error_json(400, "Exam date must be a real date (YYYY-MM-DD).")
+                left = (datetime.date.fromisoformat(exam_date) - datetime.date.today()).days
+                if left < 0:
+                    return self.send_error_json(400, "Exam date is in the past.")
+                if left == 0:
+                    return self.send_error_json(400, "The exam is today — no days left to plan.")
+                if left > 365:
+                    return self.send_error_json(400, "Exam is more than a year away — at most 365 days can be planned.")
+                raw_topics = body.get("topics")
+                if (not isinstance(raw_topics, list) or not raw_topics
+                        or len(raw_topics) > 10):
+                    return self.send_error_json(400, "A countdown plan needs 1-10 topics.")
+                for item in raw_topics:
+                    item = (item or "").strip() if isinstance(item, str) else ""
+                    if not item or len(item) > 100:
+                        return self.send_error_json(400, "Each topic must be 1-100 characters.")
+                    if item not in topics:
+                        topics.append(item)
+                total_days = left
+            else:
+                days = body.get("days")
+                if type(days) is not int or not 1 <= days <= 365:
+                    return self.send_error_json(400, "Days must be 1-365.")
+                total_days = days
+            plans = load_study_plans(data_dir)
+            plan_id = max((p["id"] for p in plans), default=0) + 1
+            start = today_str()
+            topics_json = json.dumps(topics, ensure_ascii=False) if countdown else ""
+            try:
+                append_line(data_dir, "study_plans.txt", "|".join([
+                    str(plan_id), sanitize(subject), start, str(total_days),
+                    str(hours), exam_date if countdown else "", topics_json, user]))
+                base = datetime.date.fromisoformat(start)
+                for i in range(1, total_days + 1):
+                    topic = topics_for_day(i, total_days, topics) if countdown else subject
+                    append_line(data_dir, "study_plan_days.txt", "|".join([
+                        str(plan_id), (base + datetime.timedelta(days=i - 1)).isoformat(),
+                        str(i), sanitize(topic), str(hours), "study", "0", user]))
+            except OSError:
+                return self.send_error_json(500, "Could not save the plan. Please try again later.")
+            plan = {"id": plan_id, "subject": subject, "startDate": start,
+                    "days": total_days, "hoursPerDay": hours,
+                    "examDate": exam_date if countdown else "", "topics": topics,
+                    "owner": user}
+            return self.send_json(201, study_plan_json(plan, load_study_days(data_dir), True))
+        if path.startswith("/api/study-plans/") and method == "GET":
+            # Only a bare numeric id matches here; /days/... paths
+            # must not fall through to a plan lookup.
+            tail = path[len("/api/study-plans/"):]
+            if not tail.isdigit():
+                return self.send_error_json(404, "Plan not found.")
+            plan_id = int(tail)
+            if plan_id < 1:
+                return self.send_error_json(404, "Plan not found.")
+            for plan in load_study_plans(data_dir):
+                if plan["id"] == plan_id and owner_visible(plan.get("owner", ""), user, data_dir):
+                    return self.send_json(200, study_plan_json(plan, load_study_days(data_dir), True))
+            return self.send_error_json(404, "Plan not found.")
+        if path.startswith("/api/study-plans/") and method == "PATCH":
+            # /api/study-plans/:id/days/:dayId — tick a day done/undone.
+            parts = path.split("/")
+            if len(parts) != 6 or parts[4] != "days":
+                return self.send_error_json(404, "Plan not found.")
+            try:
+                plan_id, day_id = int(parts[3]), int(parts[5])
+            except ValueError:
+                return self.send_error_json(404, "Plan not found.")
+            if plan_id < 1 or day_id < 1:
+                return self.send_error_json(404, "Plan not found.")
+            body = self.read_json()
+            if body is None:
+                return self.send_error_json(400, "Invalid JSON.")
+            if type(body.get("done")) is not bool:
+                return self.send_error_json(400, "Need done true or false.")
+            done = body["done"]
+            plan = next((p for p in load_study_plans(data_dir)
+                         if p["id"] == plan_id
+                         and owner_visible(p.get("owner", ""), user, data_dir)), None)
+            if plan is None:
+                return self.send_error_json(404, "Plan not found.")
+            days = load_study_days(data_dir)
+            day = next((d for d in days if d["id"] == day_id and d["planId"] == plan_id
+                        and owner_visible(d.get("owner", ""), user, data_dir)), None)
+            if day is None:
+                return self.send_error_json(404, "Day not found.")
+            if day["done"] == done:
+                # Idempotent re-tick: nothing changes, report the
+                # current state (revisions are already in sync).
+                return self.send_json(200, {"day": {k: day[k] for k in
+                                                    ("id", "planId", "date", "dayIndex", "topic", "hours", "kind", "done")},
+                                            "plan": study_plan_json(plan, days, False)})
+            lines = read_lines(data_dir, "study_plan_days.txt")
+            if day_id > len(lines):
+                return self.send_error_json(404, "Day not found.")
+            row = lines[day_id - 1].split("|")
+            if len(row) < 7:
+                return self.send_error_json(404, "Day not found.")
+            try:
+                line_plan = int(row[0])
+            except ValueError:
+                return self.send_error_json(404, "Day not found.")
+            line_owner = row[7] if len(row) >= 8 else ""
+            if line_plan != plan_id or not owner_visible(line_owner, user, data_dir):
+                return self.send_error_json(404, "Day not found.")
+            row[6] = "1" if done else "0"
+            lines[day_id - 1] = "|".join(row)
+            try:
+                write_lines(data_dir, "study_plan_days.txt", lines)
+            except OSError:
+                return self.send_error_json(500, "Could not update the day. Please try again later.")
+            day["done"] = done
+            if day["kind"] == "study":
+                # Smart Revision reconciliation: recompute the desired
+                # revisions for the whole plan from its done study days,
+                # then add missing rows and drop undone rows no longer
+                # wanted. Done revision rows are always kept.
+                cur = load_study_days(data_dir)
+                mine = [d for d in cur if d["planId"] == plan_id]
+                desired = []
+                for d in mine:
+                    if d["kind"] == "study" and d["done"]:
+                        for rev_date in revision_dates_for(d["date"]):
+                            if (rev_date, d["topic"]) not in desired:
+                                desired.append((rev_date, d["topic"]))
+                lines = read_lines(data_dir, "study_plan_days.txt")
+                kept = []
+                for line in lines:
+                    row = line.split("|")
+                    drop = False
+                    if len(row) >= 7:
+                        try:
+                            if (int(row[0]) == plan_id and row[5] == "revision"
+                                    and int(row[6]) == 0
+                                    and (row[1], row[3]) not in desired):
+                                drop = True
+                        except ValueError:
+                            pass
+                    if not drop:
+                        kept.append(line)
+                try:
+                    write_lines(data_dir, "study_plan_days.txt", kept)
+                except OSError:
+                    return self.send_error_json(500, "Could not update the day. Please try again later.")
+                for rev_date, topic in desired:
+                    if not any(d["kind"] == "revision" and d["date"] == rev_date
+                               and d["topic"] == topic for d in mine):
+                        try:
+                            append_line(data_dir, "study_plan_days.txt", "|".join([
+                                str(plan_id), rev_date, "0", sanitize(topic),
+                                str(plan["hoursPerDay"]), "revision", "0", user]))
+                        except OSError:
+                            return self.send_error_json(500, "Could not update the day. Please try again later.")
+            # Re-read: the rewrite can shift day ids, so find the
+            # ticked day by its stable key (plan, date, kind, topic).
+            fresh = load_study_days(data_dir)
+            out = next((d for d in fresh if d["planId"] == plan_id and d["date"] == day["date"]
+                        and d["kind"] == day["kind"] and d["topic"] == day["topic"]), day)
+            return self.send_json(200, {"day": {k: out[k] for k in
+                                                ("id", "planId", "date", "dayIndex", "topic", "hours", "kind", "done")},
+                                        "plan": study_plan_json(plan, fresh, False)})
+        if path.startswith("/api/study-plans/") and method == "DELETE":
+            tail = path[len("/api/study-plans/"):]
+            if not tail.isdigit():
+                return self.send_error_json(404, "Plan not found.")
+            plan_id = int(tail)
+            if plan_id < 1:
+                return self.send_error_json(404, "Plan not found.")
+            plans = load_study_plans(data_dir)
+            plan = next((p for p in plans
+                         if p["id"] == plan_id
+                         and owner_visible(p.get("owner", ""), user, data_dir)), None)
+            if plan is None:
+                return self.send_error_json(404, "Plan not found.")
+            days = load_study_days(data_dir)
+            try:
+                day_lines = read_lines(data_dir, "study_plan_days.txt")
+                write_lines(data_dir, "study_plan_days.txt",
+                            [ln for ln in day_lines
+                             if not (ln.split("|") and ln.split("|")[0] == str(plan_id))])
+                plan_lines = read_lines(data_dir, "study_plans.txt")
+                write_lines(data_dir, "study_plans.txt",
+                            [ln for ln in plan_lines
+                             if not (ln.split("|") and ln.split("|")[0] == str(plan_id))])
+            except OSError:
+                return self.send_error_json(500, "Could not delete the plan. Please try again later.")
+            return self.send_json(200, study_plan_json(plan, days, False))
         if path == "/api/time-allocation" and method == "POST":
             body = self.read_json()
             if body is None:

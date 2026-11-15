@@ -102,7 +102,9 @@ inline const char* schemaSql() {
         "CREATE TABLE IF NOT EXISTS habit_log (id SERIAL PRIMARY KEY, habit TEXT NOT NULL, log_date TEXT NOT NULL, owner TEXT);"
         "CREATE TABLE IF NOT EXISTS daily_reports (id SERIAL PRIMARY KEY, line TEXT NOT NULL);"
         "CREATE TABLE IF NOT EXISTS error_logs (id SERIAL PRIMARY KEY, line TEXT NOT NULL);"
-        "CREATE TABLE IF NOT EXISTS ai_history (id SERIAL PRIMARY KEY, owner TEXT NOT NULL, feature TEXT NOT NULL, prompt TEXT NOT NULL, response TEXT NOT NULL, created_at TEXT NOT NULL);";
+        "CREATE TABLE IF NOT EXISTS ai_history (id SERIAL PRIMARY KEY, owner TEXT NOT NULL, feature TEXT NOT NULL, prompt TEXT NOT NULL, response TEXT NOT NULL, created_at TEXT NOT NULL);"
+        "CREATE TABLE IF NOT EXISTS study_plans (id SERIAL PRIMARY KEY, subject TEXT NOT NULL, start_date TEXT NOT NULL, days INTEGER NOT NULL, hours_per_day INTEGER NOT NULL, exam_date TEXT NOT NULL DEFAULT '', topics TEXT NOT NULL DEFAULT '', owner TEXT);"
+        "CREATE TABLE IF NOT EXISTS study_plan_days (id SERIAL PRIMARY KEY, plan_id INTEGER NOT NULL, day_date TEXT NOT NULL, day_index INTEGER NOT NULL, topic TEXT NOT NULL, hours INTEGER NOT NULL, kind TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0, owner TEXT);";
 }
 }  // namespace detail
 
